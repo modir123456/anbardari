@@ -16,13 +16,7 @@ import re
 from typing import Dict, List, Optional
 from datetime import datetime
 
-# Import drag & drop library
-try:
-    from tkinterdnd2 import TkinterDnD, DND_FILES
-    DRAG_DROP_AVAILABLE = True
-except ImportError:
-    DRAG_DROP_AVAILABLE = False
-    print("تحذیر: کتابخانه tkinterdnd2 نصب نیست. قابلیت Drag & Drop با کلیک دستی جایگزین شده است.")
+# Note: Using click-to-select instead of drag & drop for better compatibility
 
 # Enhanced theme configurations
 THEMES = {
@@ -210,7 +204,7 @@ class FileCopierApp:
         
         instruction_label = ctk.CTkLabel(
             title_frame,
-            text="فایل‌ها را به پوشه‌های مقصد بکشید و رها کنید تا فوراً شروع به کپی شوند",
+            text="روی پوشه‌های مقصد کلیک کنید تا فایل‌ها را انتخاب و فوراً شروع به کپی کنید",
             font=ctk.CTkFont(size=14)
         )
         instruction_label.pack(pady=5)
@@ -247,7 +241,7 @@ class FileCopierApp:
         # Destination folders display
         self.dest_folders_frame = ctk.CTkScrollableFrame(
             self.dragdrop_frame,
-            label_text="🎯 Drop Zones - Drag files here",
+            label_text="🎯 Quick Copy Zones - Click to select files",
             height=400
         )
         self.dest_folders_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
@@ -2094,14 +2088,14 @@ class FileCopierApp:
         controls_frame = ctk.CTkFrame(info_frame, fg_color="transparent")
         controls_frame.pack(fill="x")
         
-        # Drop instruction
-        drop_label = ctk.CTkLabel(
+        # Click instruction
+        click_label = ctk.CTkLabel(
             controls_frame,
-            text="🎯 فایل‌ها را اینجا بکشید و رها کنید",
+            text="🎯 کلیک کنید تا فایل‌ها را انتخاب و کپی کنید",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=("blue", "lightblue")
         )
-        drop_label.pack(side="left")
+        click_label.pack(side="left")
         
         # Remove button
         remove_btn = ctk.CTkButton(
@@ -2119,40 +2113,67 @@ class FileCopierApp:
         self.enable_drop_on_widget(drop_frame, folder_path)
 
     def enable_drop_on_widget(self, widget, destination_path):
-        """Enable drag & drop functionality on a widget"""
-        if DRAG_DROP_AVAILABLE:
-            try:
-                def on_drop(event):
-                    files = self.root.tk.splitlist(event.data)
-                    self.handle_dropped_files(files, destination_path)
-                    return event.action
-                
-                def on_drag_enter(event):
-                    widget.configure(border_color=("green", "lightgreen"))
-                    return event.action
-                
-                def on_drag_leave(event):
-                    widget.configure(border_color=("blue", "lightblue"))
-                    return event.action
-                
-                widget.drop_target_register(DND_FILES)
-                widget.dnd_bind('<<Drop>>', on_drop)
-                widget.dnd_bind('<<DragEnter>>', on_drag_enter)
-                widget.dnd_bind('<<DragLeave>>', on_drag_leave)
-                
-            except Exception as e:
-                self.logger.warning(f"Failed to enable drag & drop: {e}")
-                self.setup_manual_file_selection(widget, destination_path)
-        else:
-            # Fallback: Manual file selection
-            self.setup_manual_file_selection(widget, destination_path)
+        """Enable click-to-select functionality on a widget"""
+        # Use manual file selection for better compatibility
+        self.setup_manual_file_selection(widget, destination_path)
 
     def setup_manual_file_selection(self, widget, destination_path):
-        """Setup manual file selection fallback"""
+        """Setup manual file selection"""
         def manual_select(event=None):
-            files = filedialog.askopenfilenames(title="انتخاب فایل‌ها برای کپی")
-            if files:
-                self.handle_dropped_files(files, destination_path)
+            # Create a simple dialog to choose between files or folders
+            choice_window = ctk.CTkToplevel(self.root)
+            choice_window.title("انتخاب نوع فایل")
+            choice_window.geometry("300x200")
+            choice_window.transient(self.root)
+            choice_window.grab_set()
+            
+            # Center the window
+            choice_window.update_idletasks()
+            x = (choice_window.winfo_screenwidth() // 2) - (300 // 2)
+            y = (choice_window.winfo_screenheight() // 2) - (200 // 2)
+            choice_window.geometry(f"300x200+{x}+{y}")
+            
+            ctk.CTkLabel(
+                choice_window,
+                text="چه چیزی می‌خواهید کپی کنید؟",
+                font=ctk.CTkFont(size=16, weight="bold")
+            ).pack(pady=20)
+            
+            def select_files():
+                choice_window.destroy()
+                files = filedialog.askopenfilenames(title="انتخاب فایل‌ها برای کپی")
+                if files:
+                    self.handle_dropped_files(files, destination_path)
+            
+            def select_folders():
+                choice_window.destroy()
+                folders = []
+                while True:
+                    folder = filedialog.askdirectory(title="انتخاب پوشه برای کپی (Cancel برای پایان)")
+                    if folder:
+                        folders.append(folder)
+                        if not messagebox.askyesno("ادامه", "آیا می‌خواهید پوشه دیگری نیز اضافه کنید؟"):
+                            break
+                    else:
+                        break
+                if folders:
+                    self.handle_dropped_files(folders, destination_path)
+            
+            ctk.CTkButton(
+                choice_window,
+                text="📄 انتخاب فایل‌ها",
+                command=select_files,
+                width=200,
+                height=40
+            ).pack(pady=10)
+            
+            ctk.CTkButton(
+                choice_window,
+                text="📁 انتخاب پوشه‌ها",
+                command=select_folders,
+                width=200,
+                height=40
+            ).pack(pady=10)
         
         widget.bind("<Button-1>", manual_select)
 
@@ -2329,14 +2350,8 @@ class FileCopierApp:
 def main():
     """Main entry point"""
     try:
-        if DRAG_DROP_AVAILABLE:
-            root = TkinterDnD.Tk()
-            root._use_dark_theme = True  # Enable dark theme for TkinterDnD
-            # Apply CustomTkinter styling to TkinterDnD window
-            ctk.set_appearance_mode("dark")
-            ctk.set_default_color_theme("blue")
-        else:
-            root = ctk.CTk()
+        # Use CTk for full CustomTkinter compatibility
+        root = ctk.CTk()
         
         app = FileCopierApp(root)
         app.run()
