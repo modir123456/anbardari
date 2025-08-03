@@ -45,7 +45,7 @@ ctk.set_default_color_theme("blue")
 class FileCopierApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Persian File Copier Pro")
+        self.root.title("مدیریت فایل ایرانی پیشرفته - Persian File Copier Pro")
         self.root.geometry("1100x700")
         self.root.minsize(900, 600)
         
@@ -200,24 +200,24 @@ class FileCopierApp:
         
         self.notebook.pack(fill="both", expand=True, pady=(0, 10))
         
-        # File Explorer Tab - Blue theme
+        # تب مرورگر فایل - تم آبی
         self.explorer_frame = ctk.CTkFrame(self.notebook, fg_color=("#e3f2fd", "#1a237e"))
-        self.notebook.add(self.explorer_frame, text="📁 File Explorer")
+        self.notebook.add(self.explorer_frame, text="📁 مرورگر فایل")
         self.setup_explorer_tab()
         
-        # Tasks Tab - Green theme
+        # تب کارهای کپی - تم سبز
         self.tasks_frame = ctk.CTkFrame(self.notebook, fg_color=("#e0f2f1", "#1b5e20"))
-        self.notebook.add(self.tasks_frame, text="📋 Copy Tasks")
+        self.notebook.add(self.tasks_frame, text="📋 کارهای کپی")
         self.setup_tasks_tab()
         
-        # Drag & Drop Tab - Pink theme
+        # تب کپی سریع - تم صورتی
         self.dragdrop_frame = ctk.CTkFrame(self.notebook, fg_color=("#fce4ec", "#880e4f"))
-        self.notebook.add(self.dragdrop_frame, text="🎯 Quick Copy")
+        self.notebook.add(self.dragdrop_frame, text="🎯 کپی سریع")
         self.setup_dragdrop_tab()
         
-        # Settings Tab - Orange theme
+        # تب تنظیمات - تم نارنجی
         self.settings_frame = ctk.CTkFrame(self.notebook, fg_color=("#fff3e0", "#e65100"))
-        self.notebook.add(self.settings_frame, text="⚙️ Settings")
+        self.notebook.add(self.settings_frame, text="⚙️ تنظیمات")
         self.setup_settings_tab()
         
         # Tab colors are now implemented through frame colors
@@ -239,7 +239,7 @@ class FileCopierApp:
             
         title_label = ctk.CTkLabel(
             title_frame,
-            text="🚀 Quick Copy - Drag & Drop",
+            text="🚀 کپی سریع - بکشید و رها کنید",
             font=title_font
         )
         title_label.pack(pady=10)
@@ -263,8 +263,8 @@ class FileCopierApp:
         
         dest_title = ctk.CTkLabel(
             dest_mgmt_frame,
-            text="📁 Destination Folders",
-            font=ctk.CTkFont(size=18, weight="bold")
+            text="📁 پوشه‌های مقصد",
+            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")
         )
         dest_title.pack(pady=10)
         
@@ -275,22 +275,25 @@ class FileCopierApp:
         self.new_dest_entry = ctk.CTkEntry(
             add_dest_frame,
             placeholder_text="انتخاب پوشه مقصد جدید...",
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(family="B Nazanin", size=12),
+            justify="right"
         )
         self.new_dest_entry.pack(side="left", fill="x", expand=True, padx=5)
         
         ctk.CTkButton(
             add_dest_frame,
-            text="📂 Browse",
+            text="📂 انتخاب پوشه",
             command=self.add_destination_folder,
-            width=100
+            width=120,
+            font=ctk.CTkFont(family="B Nazanin", size=12)
         ).pack(side="right", padx=5)
         
         # Destination folders display
         self.dest_folders_frame = ctk.CTkScrollableFrame(
             self.dragdrop_frame,
-            label_text="🎯 Quick Copy Zones - Click to select files",
-            height=400
+            label_text="🎯 نواحی کپی سریع - فایل بکشید یا کلیک کنید",
+            height=400,
+            label_font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
         )
         self.dest_folders_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
@@ -308,23 +311,23 @@ class FileCopierApp:
         dir_frame = ctk.CTkFrame(nav_frame)
         dir_frame.pack(fill="x", pady=(0, 10))
         
-        ctk.CTkLabel(dir_frame, text="Current Directory:", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=5)
-        self.current_dir_label = ctk.CTkLabel(dir_frame, text=self.current_dir)
+        ctk.CTkLabel(dir_frame, text="پوشه فعلی:", font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="right", padx=5)
+        self.current_dir_label = ctk.CTkLabel(dir_frame, text=self.current_dir, font=ctk.CTkFont(family="B Nazanin"))
         self.current_dir_label.pack(side="left", padx=5)
         
-        ctk.CTkButton(dir_frame, text="Browse", command=self.browse_directory, width=80).pack(side="right", padx=5)
-        ctk.CTkButton(dir_frame, text="Home", command=self.go_home, width=60).pack(side="right", padx=5)
+        ctk.CTkButton(dir_frame, text="🏠 خانه", command=self.go_home, width=80, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
+        ctk.CTkButton(dir_frame, text="📂 انتخاب پوشه", command=self.browse_directory, width=120, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
         
         # Search frame
         search_frame = ctk.CTkFrame(nav_frame)
         search_frame.pack(fill="x")
         
-        ctk.CTkLabel(search_frame, text="Search:", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=5)
-        self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="Enter filename or .extension")
+        ctk.CTkLabel(search_frame, text="جستجو:", font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="right", padx=5)
+        self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="نام فایل یا پسوند وارد کنید", font=ctk.CTkFont(family="B Nazanin"), justify="right")
         self.search_entry.pack(side="left", fill="x", expand=True, padx=5)
         
-        ctk.CTkButton(search_frame, text="Clear", command=self.clear_search, width=60).pack(side="right", padx=5)
-        ctk.CTkButton(search_frame, text="Refresh", command=self.refresh_files, width=80).pack(side="right", padx=5)
+        ctk.CTkButton(search_frame, text="🔄 بروزرسانی", command=self.refresh_files, width=100, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
+        ctk.CTkButton(search_frame, text="🗑️ پاک کردن", command=self.clear_search, width=90, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
         
         # File tree with improved styling
         tree_frame = ctk.CTkFrame(self.explorer_frame)
@@ -385,39 +388,39 @@ class FileCopierApp:
         ctk.CTkButton(dest_frame, text="Browse", command=self.browse_dest, width=80).pack(side="right", padx=5)
 
     def setup_tasks_tab(self):
-        """Setup the tasks management tab"""
-        # Control buttons
+        """راه‌اندازی تب مدیریت کارها"""
+        # دکمه‌های کنترل
         control_frame = ctk.CTkFrame(self.tasks_frame)
         control_frame.pack(fill="x", padx=10, pady=10)
         
-        # Main controls
+        # کنترل‌های اصلی
         main_controls = ctk.CTkFrame(control_frame)
         main_controls.pack(fill="x", pady=(0, 5))
         
-        self.start_btn = ctk.CTkButton(main_controls, text="▶ Start Selected", command=self.start_selected_task,
-                                      fg_color="green", hover_color="darkgreen")
-        self.start_btn.pack(side="left", padx=5)
+        self.start_btn = ctk.CTkButton(main_controls, text="▶ شروع انتخاب شده", command=self.start_selected_task,
+                                      fg_color="green", hover_color="darkgreen", font=ctk.CTkFont(family="B Nazanin"))
+        self.start_btn.pack(side="right", padx=5)
         
-        self.pause_btn = ctk.CTkButton(main_controls, text="⏸ Pause Selected", command=self.pause_selected_task,
-                                      fg_color="orange", hover_color="darkorange")
-        self.pause_btn.pack(side="left", padx=5)
+        self.pause_btn = ctk.CTkButton(main_controls, text="⏸ توقف انتخاب شده", command=self.pause_selected_task,
+                                      fg_color="orange", hover_color="darkorange", font=ctk.CTkFont(family="B Nazanin"))
+        self.pause_btn.pack(side="right", padx=5)
         
-        self.cancel_btn = ctk.CTkButton(main_controls, text="⏹ Cancel Selected", command=self.cancel_selected_task,
-                                       fg_color="red", hover_color="darkred")
-        self.cancel_btn.pack(side="left", padx=5)
+        self.cancel_btn = ctk.CTkButton(main_controls, text="⏹ لغو انتخاب شده", command=self.cancel_selected_task,
+                                       fg_color="red", hover_color="darkred", font=ctk.CTkFont(family="B Nazanin"))
+        self.cancel_btn.pack(side="right", padx=5)
         
-        self.restart_btn = ctk.CTkButton(main_controls, text="🔄 Restart Selected", command=self.restart_selected_task,
-                                        fg_color="blue", hover_color="darkblue")
-        self.restart_btn.pack(side="left", padx=5)
+        self.restart_btn = ctk.CTkButton(main_controls, text="🔄 شروع مجدد", command=self.restart_selected_task,
+                                        fg_color="blue", hover_color="darkblue", font=ctk.CTkFont(family="B Nazanin"))
+        self.restart_btn.pack(side="right", padx=5)
         
-        # Task management controls
+        # کنترل‌های مدیریت کار
         task_controls = ctk.CTkFrame(control_frame)
         task_controls.pack(fill="x")
         
-        ctk.CTkButton(task_controls, text="↑ Move Up", command=self.move_task_up).pack(side="left", padx=5)
-        ctk.CTkButton(task_controls, text="↓ Move Down", command=self.move_task_down).pack(side="left", padx=5)
-        ctk.CTkButton(task_controls, text="🗑 Clear Completed", command=self.clear_completed).pack(side="left", padx=5)
-        ctk.CTkButton(task_controls, text="📋 Clear All", command=self.clear_all_tasks).pack(side="left", padx=5)
+        ctk.CTkButton(task_controls, text="📋 پاک کردن همه", command=self.clear_all_tasks, font=ctk.CTkFont(family="B Nazanin")).pack(side="right", padx=5)
+        ctk.CTkButton(task_controls, text="🗑 پاک کردن تکمیل شده", command=self.clear_completed, font=ctk.CTkFont(family="B Nazanin")).pack(side="right", padx=5)
+        ctk.CTkButton(task_controls, text="↓ پایین بردن", command=self.move_task_down, font=ctk.CTkFont(family="B Nazanin")).pack(side="right", padx=5)
+        ctk.CTkButton(task_controls, text="↑ بالا بردن", command=self.move_task_up, font=ctk.CTkFont(family="B Nazanin")).pack(side="right", padx=5)
         
         # Progress overview
         progress_frame = ctk.CTkFrame(self.tasks_frame)
@@ -427,7 +430,7 @@ class FileCopierApp:
         self.overall_progress.pack(fill="x", padx=10, pady=5)
         self.overall_progress.set(0)
         
-        self.progress_label = ctk.CTkLabel(progress_frame, text="No active tasks")
+        self.progress_label = ctk.CTkLabel(progress_frame, text="هیچ کار فعالی موجود نیست", font=ctk.CTkFont(family="B Nazanin"))
         self.progress_label.pack(pady=5)
         
         # Tasks tree
@@ -2165,46 +2168,82 @@ class FileCopierApp:
         self.enable_drop_on_widget(click_label, folder_path)
 
     def enable_drop_on_widget(self, widget, destination_path):
-        """Enable drag and drop functionality on a widget"""
+        """فعال کردن قابلیت درگ اند دراپ روی ویجت"""
         drag_drop_enabled = False
         
         if DND_FILES and TkinterDnD:
             try:
-                # List of potential underlying widgets to try
-                widgets_to_register = [widget]
+                # تبدیل widget به tkinter widget اصلی
+                tk_widget = widget
                 
-                # Add underlying tkinter widgets
+                # برای CustomTkinter widgets، widget اصلی tkinter را پیدا کن
                 if hasattr(widget, '_canvas') and widget._canvas:
-                    widgets_to_register.append(widget._canvas)
-                
-                if hasattr(widget, '_text_label') and widget._text_label:
-                    widgets_to_register.append(widget._text_label)
-                    
-                if hasattr(widget, 'winfo_children'):
+                    tk_widget = widget._canvas
+                elif hasattr(widget, 'winfo_children'):
                     children = widget.winfo_children()
-                    widgets_to_register.extend(children)
+                    if children:
+                        tk_widget = children[0]
                 
-                # Register all found widgets
-                for w in widgets_to_register:
+                # روش مستقیم tkinter برای drag & drop
+                def handle_drop(event):
+                    """مدیریت drop event"""
                     try:
-                        w.drop_target_register(DND_FILES)
-                        w.dnd_bind('<<Drop>>', lambda event, path=destination_path: self.handle_drop_event(event, path))
-                        w.dnd_bind('<<DragEnter>>', lambda event, widget_ref=widget: self.on_drag_enter(widget_ref))
-                        w.dnd_bind('<<DragLeave>>', lambda event, widget_ref=widget: self.on_drag_leave(widget_ref))
-                    except Exception as inner_e:
-                        # Silently ignore failures for individual widgets
-                        pass
+                        # دریافت فایل‌ها از event
+                        files_data = event.data if hasattr(event, 'data') else str(event)
+                        if files_data:
+                            # پارس کردن مسیر فایل‌ها
+                            files = []
+                            if '{' in files_data and '}' in files_data:
+                                # فایل‌های با space در نام
+                                import re
+                                files = re.findall(r'\{[^}]+\}', files_data)
+                                files = [f.strip('{}') for f in files]
+                            else:
+                                # فایل‌های عادی
+                                files = files_data.split()
+                            
+                            if files:
+                                print(f"📁 فایل‌های دریافتی: {files}")
+                                self.handle_dropped_files(files, destination_path)
+                            return 'copy'
+                    except Exception as e:
+                        print(f"❌ خطا در پردازش فایل: {e}")
+                    return 'none'
+                
+                def handle_enter(event):
+                    """ورود drag به منطقه"""
+                    print("🎯 فایل وارد منطقه درگ شد")
+                    self.on_drag_enter(widget)
+                    return 'copy'
+                
+                def handle_leave(event):
+                    """خروج drag از منطقه"""
+                    print("↩ فایل از منطقه درگ خارج شد")
+                    self.on_drag_leave(widget)
+                
+                # ثبت widget برای drop
+                tk_widget.drop_target_register(DND_FILES)
+                tk_widget.dnd_bind('<<Drop>>', handle_drop)
+                tk_widget.dnd_bind('<<DragEnter>>', handle_enter)
+                tk_widget.dnd_bind('<<DragLeave>>', handle_leave)
+                
+                # ثبت widget اصلی هم
+                widget.drop_target_register(DND_FILES)
+                widget.dnd_bind('<<Drop>>', handle_drop)
+                widget.dnd_bind('<<DragEnter>>', handle_enter)
+                widget.dnd_bind('<<DragLeave>>', handle_leave)
                 
                 drag_drop_enabled = True
-                print(f"✓ Drag and drop enabled for {os.path.basename(destination_path)}")
+                print(f"✓ درگ اند دراپ فعال شد برای: {os.path.basename(destination_path)}")
+                
             except Exception as e:
-                print(f"⚠ Could not enable drag and drop: {e}")
+                print(f"⚠ نتوانست درگ اند دراپ را فعال کند: {e}")
         
-        # Always enable click-to-select (either as backup or primary method)
+        # همیشه کلیک برای انتخاب فعال است
         self.setup_manual_file_selection(widget, destination_path)
         
         if not drag_drop_enabled:
-            print(f"→ Using click-to-select for {os.path.basename(destination_path)}")
+            print(f"→ استفاده از کلیک برای انتخاب: {os.path.basename(destination_path)}")
     
     def handle_drop_event(self, event, destination_path):
         """Handle drop events from tkinterdnd2"""
@@ -2497,12 +2536,15 @@ def main():
         # Apply drag and drop wrapper if available
         if TkinterDnD:
             try:
-                # Apply DnD functionality to the root window
+                # Initialize tkdnd package
                 root.tk.call('package', 'require', 'tkdnd')
+                # Enable DnD for the root window
+                root.tk.call('tkdnd::drag_source', 'register', root, 'DND_Files')
+                root.tk.call('tkdnd::drop_target', 'register', root, 'DND_Files')
                 root._dnd_init = True
-                print("✓ Drag and drop initialized successfully")
+                print("✓ سیستم درگ اند دراپ با موفقیت فعال شد")
             except Exception as e:
-                print(f"⚠ Could not initialize drag and drop: {e}, using fallback method")
+                print(f"⚠ نتوانست درگ اند دراپ را فعال کند: {e}, از روش کلیک استفاده می‌شود")
         
         app = FileCopierApp(root)
         app.run()

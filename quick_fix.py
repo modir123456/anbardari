@@ -97,6 +97,21 @@ def check_and_fix_main_function():
         fixes_made = True
         print("✅ Fixed TTK styling issues")
     
+    # Fix 4: Update window size
+    if 'self.root.geometry("1400x900")' in content:
+        print("🔧 Found large window size, making it smaller...")
+        content = content.replace('self.root.geometry("1400x900")', 'self.root.geometry("1100x700")')
+        content = content.replace('self.root.minsize(1200, 800)', 'self.root.minsize(900, 600)')
+        fixes_made = True
+        print("✅ Fixed window size")
+    
+    # Fix 5: Improve drag & drop functionality
+    if 'def enable_drop_on_widget(self, widget, destination_path):' in content and 'widgets_to_register = [widget]' in content:
+        print("🔧 Found old drag & drop implementation, updating...")
+        # This is complex, recommend running the latest version
+        fixes_made = True
+        print("⚠ Drag & drop needs manual update - use latest version from dist/")
+    
     if fixes_made:
         # Write back the fixed content
         with open('file_copier_app.py', 'w', encoding='utf-8') as f:
