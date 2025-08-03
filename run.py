@@ -33,6 +33,18 @@ def check_dependencies():
     except ImportError:
         missing_deps.append("customtkinter (install with: pip install customtkinter)")
     
+    try:
+        import psutil
+        print(f"✓ psutil {psutil.__version__}")
+    except ImportError:
+        missing_deps.append("psutil (install with: pip install psutil)")
+    
+    try:
+        import tkinterdnd2
+        print(f"✓ tkinterdnd2 (drag & drop support)")
+    except ImportError:
+        print("⚠ tkinterdnd2 not found (drag & drop will use click-to-select)")
+    
     if missing_deps:
         print("\n❌ Missing dependencies:")
         for dep in missing_deps:

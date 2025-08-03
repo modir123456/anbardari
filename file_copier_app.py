@@ -15,8 +15,14 @@ import logging
 import re
 from typing import Dict, List, Optional
 from datetime import datetime
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+except ImportError:
+    print("tkinterdnd2 not available, using click-to-select instead")
+    DND_FILES = None
+    TkinterDnD = None
 
-# Note: Using click-to-select instead of drag & drop for better compatibility
+# Enhanced drag & drop functionality with tkinterdnd2
 
 # Enhanced theme configurations
 THEMES = {
@@ -152,6 +158,17 @@ class FileCopierApp:
         # Configure window
         self.root.configure(fg_color=("gray95", "gray10"))
         
+        # Set default font for the entire application
+        try:
+            # Try to use B Nazanin font
+            default_font = ctk.CTkFont(family="B Nazanin", size=12)
+            self.default_font = default_font
+        except:
+            # Fallback to system default if B Nazanin is not available
+            default_font = ctk.CTkFont(size=12)
+            self.default_font = default_font
+            print("B Nazanin font not found, using system default")
+        
         # Main container with gradient effect
         self.main_frame = ctk.CTkFrame(
             self.root,
@@ -162,29 +179,59 @@ class FileCopierApp:
         )
         self.main_frame.pack(fill="both", expand=True, padx=15, pady=15)
         
-        # Create notebook for tabs
+        # Create notebook for tabs with custom styling
         self.notebook = ttk.Notebook(self.main_frame)
+        
+        # Configure tab colors
+        style = ttk.Style()
+        style.theme_use('clam')
+        
+        # Define different colors for each tab
+        tab_colors = {
+            0: "#1f538d",  # Blue for File Explorer
+            1: "#14a085",  # Teal for Copy Tasks  
+            2: "#d63384",  # Pink for Quick Copy
+            3: "#fd7e14"   # Orange for Settings
+        }
+        
+        # Configure each tab with different colors
+        for i, color in tab_colors.items():
+            style.configure(f"Tab{i}.TNotebook.Tab", 
+                          background=color,
+                          foreground="white",
+                          focuscolor="none",
+                          padding=[20, 8])
+            style.map(f"Tab{i}.TNotebook.Tab",
+                     background=[("selected", color), ("active", color)],
+                     foreground=[("selected", "white"), ("active", "white")])
+        
         self.notebook.pack(fill="both", expand=True, pady=(0, 10))
         
         # File Explorer Tab
-        self.explorer_frame = ctk.CTkFrame(self.notebook)
-        self.notebook.add(self.explorer_frame, text="File Explorer")
+        self.explorer_frame = ctk.CTkFrame(self.notebook, fg_color=("#e3f2fd", "#0d1b2a"))
+        self.notebook.add(self.explorer_frame, text="📁 File Explorer")
         self.setup_explorer_tab()
         
         # Tasks Tab
-        self.tasks_frame = ctk.CTkFrame(self.notebook)
-        self.notebook.add(self.tasks_frame, text="Copy Tasks")
+        self.tasks_frame = ctk.CTkFrame(self.notebook, fg_color=("#e0f2f1", "#0a1e1a"))
+        self.notebook.add(self.tasks_frame, text="📋 Copy Tasks")
         self.setup_tasks_tab()
         
         # Drag & Drop Tab
-        self.dragdrop_frame = ctk.CTkFrame(self.notebook)
+        self.dragdrop_frame = ctk.CTkFrame(self.notebook, fg_color=("#fce4ec", "#2d0a1f"))
         self.notebook.add(self.dragdrop_frame, text="🎯 Quick Copy")
         self.setup_dragdrop_tab()
         
         # Settings Tab
-        self.settings_frame = ctk.CTkFrame(self.notebook)
-        self.notebook.add(self.settings_frame, text="Settings")
+        self.settings_frame = ctk.CTkFrame(self.notebook, fg_color=("#fff3e0", "#2d1b0a"))
+        self.notebook.add(self.settings_frame, text="⚙️ Settings")
         self.setup_settings_tab()
+        
+        # Apply individual tab styles
+        for i in range(4):
+            tab_id = self.notebook.tabs()[i] if i < len(self.notebook.tabs()) else None
+            if tab_id:
+                self.notebook.tab(tab_id, style=f"Tab{i}.TNotebook.Tab")
         
         # Status bar
         self.setup_status_bar()
@@ -198,14 +245,14 @@ class FileCopierApp:
         title_label = ctk.CTkLabel(
             title_frame,
             text="🚀 Quick Copy - Drag & Drop",
-            font=ctk.CTkFont(size=24, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=24, weight="bold")
         )
         title_label.pack(pady=10)
         
         instruction_label = ctk.CTkLabel(
             title_frame,
-            text="روی پوشه‌های مقصد کلیک کنید تا فایل‌ها را انتخاب و فوراً شروع به کپی کنید",
-            font=ctk.CTkFont(size=14)
+            text="فایل‌ها را روی پوشه‌های مقصد بکشید و رها کنید یا کلیک کنید تا انتخاب کرده و کپی کنید",
+            font=ctk.CTkFont(family="B Nazanin", size=14)
         )
         instruction_label.pack(pady=5)
         
@@ -2113,9 +2160,41 @@ class FileCopierApp:
         self.enable_drop_on_widget(drop_frame, folder_path)
 
     def enable_drop_on_widget(self, widget, destination_path):
-        """Enable click-to-select functionality on a widget"""
-        # Use manual file selection for better compatibility
-        self.setup_manual_file_selection(widget, destination_path)
+        """Enable drag and drop functionality on a widget"""
+        if DND_FILES and TkinterDnD:
+            # Enable real drag and drop
+            widget.drop_target_register(DND_FILES)
+            widget.dnd_bind('<<Drop>>', lambda event: self.handle_drop_event(event, destination_path))
+            
+            # Also enable click-to-select as backup
+            self.setup_manual_file_selection(widget, destination_path)
+            
+            # Visual feedback for drop zones
+            widget.bind("<Enter>", lambda e: self.on_drag_enter(widget))
+            widget.bind("<Leave>", lambda e: self.on_drag_leave(widget))
+        else:
+            # Fallback to manual file selection
+            self.setup_manual_file_selection(widget, destination_path)
+    
+    def handle_drop_event(self, event, destination_path):
+        """Handle drop events from tkinterdnd2"""
+        try:
+            # Get the dropped files
+            files = event.data.split()
+            # Clean up file paths (remove {} if present)
+            files = [f.strip('{}') for f in files]
+            self.handle_dropped_files(files, destination_path)
+        except Exception as e:
+            self.logger.error(f"Error handling drop event: {e}")
+            messagebox.showerror("خطا", f"خطا در پردازش فایل‌های انداخته شده: {e}")
+    
+    def on_drag_enter(self, widget):
+        """Visual feedback when dragging over drop zone"""
+        widget.configure(fg_color=("#a8e6cf", "#2d5a3d"))  # Light green highlight
+    
+    def on_drag_leave(self, widget):
+        """Reset visual feedback when leaving drop zone"""
+        widget.configure(fg_color=("gray80", "gray25"))  # Reset to default
 
     def setup_manual_file_selection(self, widget, destination_path):
         """Setup manual file selection"""
@@ -2350,13 +2429,25 @@ class FileCopierApp:
 def main():
     """Main entry point"""
     try:
+        # Initialize drag and drop support if available
+        if TkinterDnD:
+            root = TkinterDnD.Tk()
+            root.withdraw()
+            root.destroy()
+            
         # Use CTk for full CustomTkinter compatibility
         root = ctk.CTk()
+        
+        # Apply drag and drop wrapper if available
+        if TkinterDnD:
+            root = TkinterDnD.DnDWrapper(root)
         
         app = FileCopierApp(root)
         app.run()
     except Exception as e:
         print(f"Failed to start application: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":
