@@ -182,28 +182,21 @@ class FileCopierApp:
         # Create notebook for tabs with custom styling
         self.notebook = ttk.Notebook(self.main_frame)
         
-        # Configure tab colors
-        style = ttk.Style()
-        style.theme_use('clam')
-        
-        # Define different colors for each tab
-        tab_colors = {
-            0: "#1f538d",  # Blue for File Explorer
-            1: "#14a085",  # Teal for Copy Tasks  
-            2: "#d63384",  # Pink for Quick Copy
-            3: "#fd7e14"   # Orange for Settings
-        }
-        
-        # Configure each tab with different colors
-        for i, color in tab_colors.items():
-            style.configure(f"Tab{i}.TNotebook.Tab", 
-                          background=color,
-                          foreground="white",
-                          focuscolor="none",
-                          padding=[20, 8])
-            style.map(f"Tab{i}.TNotebook.Tab",
-                     background=[("selected", color), ("active", color)],
-                     foreground=[("selected", "white"), ("active", "white")])
+        # Configure tab colors with simplified approach
+        try:
+            style = ttk.Style()
+            
+            # Try to configure basic styling
+            style.configure("TNotebook", 
+                          background=("gray95", "gray10"),
+                          borderwidth=0)
+            style.configure("TNotebook.Tab",
+                          padding=[15, 8],
+                          font=('TkDefaultFont', 10, 'bold'))
+            
+            print("✓ Basic tab styling applied")
+        except Exception as e:
+            print(f"Could not configure tab styling: {e}")
         
         self.notebook.pack(fill="both", expand=True, pady=(0, 10))
         
@@ -227,11 +220,8 @@ class FileCopierApp:
         self.notebook.add(self.settings_frame, text="⚙️ Settings")
         self.setup_settings_tab()
         
-        # Apply individual tab styles
-        for i in range(4):
-            tab_id = self.notebook.tabs()[i] if i < len(self.notebook.tabs()) else None
-            if tab_id:
-                self.notebook.tab(tab_id, style=f"Tab{i}.TNotebook.Tab")
+        # Tab colors are now implemented through frame colors
+        print("✓ Tab colors implemented through frame backgrounds")
         
         # Status bar
         self.setup_status_bar()
