@@ -242,17 +242,27 @@ class FileCopierApp:
         title_frame = ctk.CTkFrame(self.dragdrop_frame)
         title_frame.pack(fill="x", padx=20, pady=20)
         
+        try:
+            title_font = ctk.CTkFont(family="B Nazanin", size=24, weight="bold")
+        except:
+            title_font = ctk.CTkFont(size=24, weight="bold")
+            
         title_label = ctk.CTkLabel(
             title_frame,
             text="🚀 Quick Copy - Drag & Drop",
-            font=ctk.CTkFont(family="B Nazanin", size=24, weight="bold")
+            font=title_font
         )
         title_label.pack(pady=10)
         
+        try:
+            instruction_font = ctk.CTkFont(family="B Nazanin", size=14)
+        except:
+            instruction_font = ctk.CTkFont(size=14)
+            
         instruction_label = ctk.CTkLabel(
             title_frame,
             text="فایل‌ها را روی پوشه‌های مقصد بکشید و رها کنید یا کلیک کنید تا انتخاب کرده و کپی کنید",
-            font=ctk.CTkFont(family="B Nazanin", size=14)
+            font=instruction_font
         )
         instruction_label.pack(pady=5)
         
@@ -2161,20 +2171,28 @@ class FileCopierApp:
 
     def enable_drop_on_widget(self, widget, destination_path):
         """Enable drag and drop functionality on a widget"""
-        if DND_FILES and TkinterDnD:
-            # Enable real drag and drop
-            widget.drop_target_register(DND_FILES)
-            widget.dnd_bind('<<Drop>>', lambda event: self.handle_drop_event(event, destination_path))
-            
-            # Also enable click-to-select as backup
-            self.setup_manual_file_selection(widget, destination_path)
-            
-            # Visual feedback for drop zones
-            widget.bind("<Enter>", lambda e: self.on_drag_enter(widget))
-            widget.bind("<Leave>", lambda e: self.on_drag_leave(widget))
-        else:
-            # Fallback to manual file selection
-            self.setup_manual_file_selection(widget, destination_path)
+        drag_drop_enabled = False
+        
+        if DND_FILES and TkinterDnD and hasattr(self.root, '_dnd_init'):
+            try:
+                # Enable real drag and drop for CustomTkinter widgets
+                widget.drop_target_register(DND_FILES)
+                widget.dnd_bind('<<Drop>>', lambda event: self.handle_drop_event(event, destination_path))
+                
+                # Visual feedback for drop zones
+                widget.bind("<Enter>", lambda e: self.on_drag_enter(widget))
+                widget.bind("<Leave>", lambda e: self.on_drag_leave(widget))
+                
+                drag_drop_enabled = True
+                print(f"Drag and drop enabled for {destination_path}")
+            except Exception as e:
+                print(f"Could not enable drag and drop: {e}")
+        
+        # Always enable click-to-select (either as backup or primary method)
+        self.setup_manual_file_selection(widget, destination_path)
+        
+        if not drag_drop_enabled:
+            print(f"Using click-to-select for {destination_path}")
     
     def handle_drop_event(self, event, destination_path):
         """Handle drop events from tkinterdnd2"""
@@ -2429,18 +2447,17 @@ class FileCopierApp:
 def main():
     """Main entry point"""
     try:
-        # Initialize drag and drop support if available
-        if TkinterDnD:
-            root = TkinterDnD.Tk()
-            root.withdraw()
-            root.destroy()
-            
         # Use CTk for full CustomTkinter compatibility
         root = ctk.CTk()
         
         # Apply drag and drop wrapper if available
         if TkinterDnD:
-            root = TkinterDnD.DnDWrapper(root)
+            try:
+                # Apply DnD functionality to the root window
+                root.tk.call('package', 'require', 'tkdnd')
+                root._dnd_init = True
+            except:
+                print("Could not initialize drag and drop, using fallback method")
         
         app = FileCopierApp(root)
         app.run()
