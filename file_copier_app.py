@@ -16,6 +16,14 @@ import re
 from typing import Dict, List, Optional
 from datetime import datetime
 
+# Import drag & drop library
+try:
+    from tkinterdnd2 import TkinterDnD, DND_FILES
+    DRAG_DROP_AVAILABLE = True
+except ImportError:
+    DRAG_DROP_AVAILABLE = False
+    print("تحذیر: کتابخانه tkinterdnd2 نصب نیست. قابلیت Drag & Drop با کلیک دستی جایگزین شده است.")
+
 # Enhanced theme configurations
 THEMES = {
     "dark_blue": {"mode": "dark", "color": "blue"},
@@ -174,6 +182,11 @@ class FileCopierApp:
         self.notebook.add(self.tasks_frame, text="Copy Tasks")
         self.setup_tasks_tab()
         
+        # Drag & Drop Tab
+        self.dragdrop_frame = ctk.CTkFrame(self.notebook)
+        self.notebook.add(self.dragdrop_frame, text="🎯 Quick Copy")
+        self.setup_dragdrop_tab()
+        
         # Settings Tab
         self.settings_frame = ctk.CTkFrame(self.notebook)
         self.notebook.add(self.settings_frame, text="Settings")
@@ -181,6 +194,67 @@ class FileCopierApp:
         
         # Status bar
         self.setup_status_bar()
+
+    def setup_dragdrop_tab(self):
+        """Setup the drag & drop quick copy tab"""
+        # Title and instructions
+        title_frame = ctk.CTkFrame(self.dragdrop_frame)
+        title_frame.pack(fill="x", padx=20, pady=20)
+        
+        title_label = ctk.CTkLabel(
+            title_frame,
+            text="🚀 Quick Copy - Drag & Drop",
+            font=ctk.CTkFont(size=24, weight="bold")
+        )
+        title_label.pack(pady=10)
+        
+        instruction_label = ctk.CTkLabel(
+            title_frame,
+            text="فایل‌ها را به پوشه‌های مقصد بکشید و رها کنید تا فوراً شروع به کپی شوند",
+            font=ctk.CTkFont(size=14)
+        )
+        instruction_label.pack(pady=5)
+        
+        # Destination folders management
+        dest_mgmt_frame = ctk.CTkFrame(self.dragdrop_frame)
+        dest_mgmt_frame.pack(fill="x", padx=20, pady=(0, 20))
+        
+        dest_title = ctk.CTkLabel(
+            dest_mgmt_frame,
+            text="📁 Destination Folders",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        dest_title.pack(pady=10)
+        
+        # Add destination folder controls
+        add_dest_frame = ctk.CTkFrame(dest_mgmt_frame)
+        add_dest_frame.pack(fill="x", padx=10, pady=5)
+        
+        self.new_dest_entry = ctk.CTkEntry(
+            add_dest_frame,
+            placeholder_text="انتخاب پوشه مقصد جدید...",
+            font=ctk.CTkFont(size=12)
+        )
+        self.new_dest_entry.pack(side="left", fill="x", expand=True, padx=5)
+        
+        ctk.CTkButton(
+            add_dest_frame,
+            text="📂 Browse",
+            command=self.add_destination_folder,
+            width=100
+        ).pack(side="right", padx=5)
+        
+        # Destination folders display
+        self.dest_folders_frame = ctk.CTkScrollableFrame(
+            self.dragdrop_frame,
+            label_text="🎯 Drop Zones - Drag files here",
+            height=400
+        )
+        self.dest_folders_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        
+        # Load saved destination folders
+        self.destination_folders = self.settings.get("destination_folders", [])
+        self.update_destination_folders_display()
 
     def setup_explorer_tab(self):
         """Setup the file explorer tab"""
@@ -1088,9 +1162,8 @@ class FileCopierApp:
             self.update_task_display(task)
             self.update_status(f"شروع کپی: {task['filename']}")
             
-            # Update button states
+            # Update copying state but keep buttons enabled for individual control
             self.is_copying = True
-            self.start_btn.configure(state="disabled")
         else:
             messagebox.showinfo("خطا", f"این تسک قابل شروع نیست! وضعیت فعلی: {task['status']}")
 
@@ -1937,12 +2010,300 @@ class FileCopierApp:
             
             # Calculate and set new widths
             for col, weight in column_weights.items():
-                new_width = max(60, int(available_width * weight))
+                                new_width = max(60, int(available_width * weight))
                 self.task_tree.column(col, width=new_width)
                 
         except Exception as e:
             self.logger.error(f"Error adjusting column widths: {e}")
 
+    def add_destination_folder(self):
+        """Add a new destination folder"""
+        folder = filedialog.askdirectory(title="انتخاب پوشه مقصد")
+        if folder and folder not in self.destination_folders:
+            self.destination_folders.append(folder)
+            self.settings["destination_folders"] = self.destination_folders
+            self.save_settings()
+            self.update_destination_folders_display()
+            self.new_dest_entry.delete(0, 'end')
+            self.new_dest_entry.insert(0, folder)
+
+    def remove_destination_folder(self, folder_path):
+        """Remove a destination folder"""
+        if folder_path in self.destination_folders:
+            self.destination_folders.remove(folder_path)
+            self.settings["destination_folders"] = self.destination_folders
+            self.save_settings()
+            self.update_destination_folders_display()
+
+    def update_destination_folders_display(self):
+        """Update the display of destination folders"""
+        # Clear existing widgets
+        for widget in self.dest_folders_frame.winfo_children():
+            widget.destroy()
+        
+        if not self.destination_folders:
+            # Show message when no folders
+            no_folders_label = ctk.CTkLabel(
+                self.dest_folders_frame,
+                text="📂 هیچ پوشه مقصدی اضافه نشده است\n\nبرای اضافه کردن پوشه جدید از دکمه Browse استفاده کنید",
+                font=ctk.CTkFont(size=14),
+                text_color="gray"
+            )
+            no_folders_label.pack(pady=50)
+            return
+        
+        # Create drop zones for each destination folder
+        for i, folder_path in enumerate(self.destination_folders):
+            self.create_drop_zone(folder_path, i)
+
+    def create_drop_zone(self, folder_path, index):
+        """Create a drop zone for a destination folder"""
+        # Main drop zone frame
+        drop_frame = ctk.CTkFrame(
+            self.dest_folders_frame,
+            height=120,
+            border_width=3,
+            border_color=("blue", "lightblue"),
+            corner_radius=15
+        )
+        drop_frame.pack(fill="x", padx=10, pady=10)
+        drop_frame.pack_propagate(False)
+        
+        # Folder info frame
+        info_frame = ctk.CTkFrame(drop_frame, fg_color="transparent")
+        info_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        
+        # Folder name and path
+        folder_name = os.path.basename(folder_path) or folder_path
+        name_label = ctk.CTkLabel(
+            info_frame,
+            text=f"📁 {folder_name}",
+            font=ctk.CTkFont(size=16, weight="bold")
+        )
+        name_label.pack(anchor="w")
+        
+        path_label = ctk.CTkLabel(
+            info_frame,
+            text=folder_path,
+            font=ctk.CTkFont(size=12),
+            text_color="gray"
+        )
+        path_label.pack(anchor="w", pady=(0, 10))
+        
+        # Controls frame
+        controls_frame = ctk.CTkFrame(info_frame, fg_color="transparent")
+        controls_frame.pack(fill="x")
+        
+        # Drop instruction
+        drop_label = ctk.CTkLabel(
+            controls_frame,
+            text="🎯 فایل‌ها را اینجا بکشید و رها کنید",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=("blue", "lightblue")
+        )
+        drop_label.pack(side="left")
+        
+        # Remove button
+        remove_btn = ctk.CTkButton(
+            controls_frame,
+            text="🗑️",
+            width=30,
+            height=30,
+            command=lambda: self.remove_destination_folder(folder_path),
+            fg_color="red",
+            hover_color="darkred"
+        )
+        remove_btn.pack(side="right")
+        
+        # Enable drag & drop
+        self.enable_drop_on_widget(drop_frame, folder_path)
+
+    def enable_drop_on_widget(self, widget, destination_path):
+        """Enable drag & drop functionality on a widget"""
+        if DRAG_DROP_AVAILABLE:
+            try:
+                def on_drop(event):
+                    files = self.root.tk.splitlist(event.data)
+                    self.handle_dropped_files(files, destination_path)
+                    return event.action
+                
+                def on_drag_enter(event):
+                    widget.configure(border_color=("green", "lightgreen"))
+                    return event.action
+                
+                def on_drag_leave(event):
+                    widget.configure(border_color=("blue", "lightblue"))
+                    return event.action
+                
+                widget.drop_target_register(DND_FILES)
+                widget.dnd_bind('<<Drop>>', on_drop)
+                widget.dnd_bind('<<DragEnter>>', on_drag_enter)
+                widget.dnd_bind('<<DragLeave>>', on_drag_leave)
+                
+            except Exception as e:
+                self.logger.warning(f"Failed to enable drag & drop: {e}")
+                self.setup_manual_file_selection(widget, destination_path)
+        else:
+            # Fallback: Manual file selection
+            self.setup_manual_file_selection(widget, destination_path)
+
+    def setup_manual_file_selection(self, widget, destination_path):
+        """Setup manual file selection fallback"""
+        def manual_select(event=None):
+            files = filedialog.askopenfilenames(title="انتخاب فایل‌ها برای کپی")
+            if files:
+                self.handle_dropped_files(files, destination_path)
+        
+        widget.bind("<Button-1>", manual_select)
+
+    def handle_dropped_files(self, files, destination_path):
+        """Handle files dropped on a destination folder"""
+        try:
+            valid_files = []
+            for file_path in files:
+                if os.path.exists(file_path):
+                    valid_files.append(file_path)
+            
+            if not valid_files:
+                messagebox.showwarning("خطا", "فایل‌های انتخابی معتبر نیستند!")
+                return
+            
+            # Add files to copy queue and start immediately
+            added_count = 0
+            for file_path in valid_files:
+                if os.path.isfile(file_path):
+                    filename = os.path.basename(file_path)
+                    dest_file = os.path.join(destination_path, filename)
+                    
+                    # Check if already exists
+                    if any(task["source"] == file_path and task["destination"] == dest_file 
+                           for task in self.copy_tasks):
+                        continue
+                    
+                    # Add to queue
+                    file_size = self.get_file_size(file_path)
+                    task_id = len(self.copy_tasks)
+                    
+                    task = {
+                        "id": task_id,
+                        "source": file_path,
+                        "destination": dest_file,
+                        "filename": filename,
+                        "size": file_size,
+                        "copied": 0,
+                        "progress": 0.0,
+                        "speed": 0.0,
+                        "status": "🚀 Auto-Starting",
+                        "paused": False,
+                        "cancelled": False,
+                        "completed": False,
+                        "start_time": time.time(),
+                        "last_update": time.time(),
+                        "retry_count": 0,
+                        "error_message": "",
+                        "future": None
+                    }
+                    
+                    self.copy_tasks.append(task)
+                    
+                    # Add to tree display
+                    self.task_tree.insert("", "end", iid=str(task_id), values=(
+                        filename,
+                        dest_file,
+                        "0%",
+                        self.format_size(file_size),
+                        "0 B",
+                        "0.0",
+                        "🚀 Auto-Starting"
+                    ))
+                    
+                    # Start immediately
+                    task["status"] = "🔄 Running"
+                    task["future"] = self.executor.submit(self.copy_task, task)
+                    self.update_task_display(task)
+                    added_count += 1
+                    
+                elif os.path.isdir(file_path):
+                    # Handle directories
+                    dirname = os.path.basename(file_path)
+                    dest_dir = os.path.join(destination_path, dirname)
+                    
+                    # Check if already exists
+                    if any(task["source"] == file_path and task["destination"] == dest_dir 
+                           for task in self.copy_tasks):
+                        continue
+                    
+                    # Calculate directory size
+                    dir_size = self.get_directory_size(file_path)
+                    task_id = len(self.copy_tasks)
+                    
+                    task = {
+                        "id": task_id,
+                        "source": file_path,
+                        "destination": dest_dir,
+                        "filename": dirname,
+                        "size": dir_size,
+                        "copied": 0,
+                        "progress": 0.0,
+                        "speed": 0.0,
+                        "status": "🚀 Auto-Starting",
+                        "paused": False,
+                        "cancelled": False,
+                        "completed": False,
+                        "start_time": time.time(),
+                        "last_update": time.time(),
+                        "retry_count": 0,
+                        "error_message": "",
+                        "future": None
+                    }
+                    
+                    self.copy_tasks.append(task)
+                    
+                    # Add to tree display
+                    self.task_tree.insert("", "end", iid=str(task_id), values=(
+                        dirname,
+                        dest_dir,
+                        "0%",
+                        self.format_size(dir_size),
+                        "0 B",
+                        "0.0",
+                        "🚀 Auto-Starting"
+                    ))
+                    
+                    # Start immediately
+                    task["status"] = "🔄 Running"
+                    task["future"] = self.executor.submit(self.copy_task, task)
+                    self.update_task_display(task)
+                    added_count += 1
+            
+            self.update_overall_progress()
+            
+            # Switch to tasks tab to show progress
+            self.notebook.select(1)  # Tasks tab
+            
+            if added_count > 0:
+                self.update_status(f"🚀 شروع خودکار: {added_count} فایل/پوشه")
+                messagebox.showinfo("شروع کپی", f"{added_count} فایل/پوشه به صورت خودکار شروع به کپی شدند!")
+            else:
+                messagebox.showinfo("هشدار", "همه فایل‌ها قبلاً در صف کپی موجود هستند!")
+                
+        except Exception as e:
+            self.logger.error(f"Error handling dropped files: {e}")
+            messagebox.showerror("خطا", f"خطا در پردازش فایل‌ها: {str(e)}")
+
+    def get_directory_size(self, directory_path):
+        """Calculate total size of a directory"""
+        total_size = 0
+        try:
+            for dirpath, dirnames, filenames in os.walk(directory_path):
+                for filename in filenames:
+                    file_path = os.path.join(dirpath, filename)
+                    if os.path.exists(file_path):
+                        total_size += os.path.getsize(file_path)
+        except Exception as e:
+            self.logger.warning(f"Error calculating directory size: {e}")
+        return total_size
+ 
     def run(self):
         """Run the application"""
         try:
@@ -1968,7 +2329,15 @@ class FileCopierApp:
 def main():
     """Main entry point"""
     try:
-        root = ctk.CTk()
+        if DRAG_DROP_AVAILABLE:
+            root = TkinterDnD.Tk()
+            root._use_dark_theme = True  # Enable dark theme for TkinterDnD
+            # Apply CustomTkinter styling to TkinterDnD window
+            ctk.set_appearance_mode("dark")
+            ctk.set_default_color_theme("blue")
+        else:
+            root = ctk.CTk()
+        
         app = FileCopierApp(root)
         app.run()
     except Exception as e:
