@@ -321,19 +321,19 @@ class FileCopierApp:
         
         # Configure task tree columns
         columns_config = [
-            ("File", 180, "📁 File Name"),
-            ("Destination", 220, "📂 Destination Path"),
-            ("Progress", 100, "📊 Progress %"),
-            ("Size", 80, "💾 Total Size"),
-            ("Copied", 80, "✅ Copied"),
-            ("Speed", 100, "⚡ Speed (MB/s)"),
-            ("Status", 100, "🔄 Status"),
-            ("Controls", 120, "🎮 Controls")
+            ("File", 200, "📁 File Name", 100),
+            ("Destination", 250, "📂 Destination Path", 150),
+            ("Progress", 80, "📊 Progress %", 60),
+            ("Size", 90, "💾 Total Size", 70),
+            ("Copied", 90, "✅ Copied", 70),
+            ("Speed", 100, "⚡ Speed (MB/s)", 80),
+            ("Status", 120, "🔄 Status", 100),
+            ("Controls", 140, "🎮 Controls", 120)
         ]
         
-        for col, width, heading in columns_config:
+        for col, width, heading, minwidth in columns_config:
             self.task_tree.heading(col, text=heading)
-            self.task_tree.column(col, width=width, minwidth=60)
+            self.task_tree.column(col, width=width, minwidth=minwidth, anchor="center")
         
         # Task tree scrollbars
         task_v_scrollbar = ttk.Scrollbar(tasks_container, orient="vertical", command=self.task_tree.yview)
@@ -797,7 +797,9 @@ class FileCopierApp:
         self.search_entry.bind("<KeyRelease>", self.on_search_change)
         self.file_tree.bind("<Double-1>", self.on_file_double_click)
         self.task_tree.bind("<Double-1>", self.on_task_double_click)
+        self.task_tree.bind("<Button-1>", self.on_task_click)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.bind("<Configure>", self.on_window_resize)
 
     def update_status(self, message: str):
         """Update status bar message"""
@@ -1038,7 +1040,7 @@ class FileCopierApp:
         self.copy_tasks.append(task)
         
         # Add to task tree with controls
-        controls_frame = self.create_task_controls(task_id)
+        controls_text = self.create_task_controls(task_id)
         self.task_tree.insert("", "end", iid=str(task_id), values=(
             filename,
             dest_path,
@@ -1047,7 +1049,7 @@ class FileCopierApp:
             "0 B",
             "0.0",
             "⏳ Pending",
-            ""  # Controls will be added separately
+            controls_text
         ))
         
         self.update_overall_progress()
@@ -1055,12 +1057,8 @@ class FileCopierApp:
 
     def start_all_tasks(self):
         """Start all pending tasks"""
-        if self.is_copying:
-            messagebox.showwarning("Warning", "Copy operations are already in progress!")
-            return
-        
         pending_tasks = [task for task in self.copy_tasks 
-                        if task["status"] == "Pending" and not task["cancelled"]]
+                        if task["status"] in ["⏳ Pending", "❌ Cancelled", "❌ Error"] and not task.get("cancelled", False)]
         
         if not pending_tasks:
             messagebox.showinfo("Info", "No pending tasks to start!")
@@ -1072,9 +1070,14 @@ class FileCopierApp:
         # Update button states
         self.start_btn.configure(state="disabled")
         
-        # Start tasks in thread pool
+        # Start all tasks in parallel using thread pool
         for task in pending_tasks:
-            self.executor.submit(self.copy_task, task)
+            task["status"] = "🔄 Running"
+            task["cancelled"] = False
+            task["paused"] = False
+            task["start_time"] = time.time()
+            task["future"] = self.executor.submit(self.copy_task, task)
+            self.update_task_display(task)
 
     def preview_theme(self, theme_name: str):
         """Preview selected theme"""
@@ -1284,6 +1287,10 @@ class FileCopierApp:
                 self.task_tree.set(task_id, "Copied", self.format_size(task["copied"]))
                 self.task_tree.set(task_id, "Speed", f"{task['speed']:.1f}")
                 self.task_tree.set(task_id, "Status", task["status"])
+                
+                # Update controls based on current status
+                controls_text = self.create_task_controls(task["id"])
+                self.task_tree.set(task_id, "Controls", controls_text)
             
             self.update_overall_progress()
         except Exception as e:
@@ -1316,23 +1323,48 @@ class FileCopierApp:
 
     def pause_all_tasks(self):
         """Pause/resume all tasks"""
-        for task in self.copy_tasks:
-            if task["status"] == "Running":
-                task["paused"] = not task["paused"]
-                task["status"] = "Paused" if task["paused"] else "Running"
+        running_tasks = [task for task in self.copy_tasks if task["status"] == "🔄 Running"]
+        paused_tasks = [task for task in self.copy_tasks if task["status"] == "⏸ Paused"]
+        
+        if running_tasks:
+            # Pause all running tasks
+            for task in running_tasks:
+                task["paused"] = True
+                task["status"] = "⏸ Paused"
                 self.update_task_display(task)
+            self.pause_btn.configure(text="▶ Resume All")
+            self.update_status(f"Paused {len(running_tasks)} tasks")
+        elif paused_tasks:
+            # Resume all paused tasks
+            for task in paused_tasks:
+                task["paused"] = False
+                task["status"] = "🔄 Running"
+                self.update_task_display(task)
+            self.pause_btn.configure(text="⏸ Pause All")
+            self.update_status(f"Resumed {len(paused_tasks)} tasks")
 
     def cancel_all_tasks(self):
         """Cancel all tasks"""
-        for task in self.copy_tasks:
-            if task["status"] in ["Running", "Paused", "Pending"]:
-                task["cancelled"] = True
-                task["status"] = "Cancelled"
-                self.update_task_display(task)
+        active_tasks = [task for task in self.copy_tasks 
+                       if task["status"] in ["🔄 Running", "⏸ Paused", "⏳ Pending"]]
         
-        self.is_copying = False
-        self.start_btn.configure(state="normal")
-        self.update_status("All tasks cancelled")
+        if not active_tasks:
+            messagebox.showinfo("Info", "No active tasks to cancel!")
+            return
+        
+        # Confirm cancellation
+        if messagebox.askyesno("Confirm", f"Cancel {len(active_tasks)} active tasks?"):
+            for task in active_tasks:
+                task["cancelled"] = True
+                task["status"] = "❌ Cancelled"
+                if task.get("future"):
+                    task["future"].cancel()
+                self.update_task_display(task)
+            
+            self.is_copying = False
+            self.start_btn.configure(state="normal")
+            self.pause_btn.configure(text="⏸ Pause All")
+            self.update_status(f"Cancelled {len(active_tasks)} tasks")
 
     def move_task_up(self):
         """Move selected task up in the queue"""
@@ -1398,6 +1430,7 @@ class FileCopierApp:
         self.task_tree.delete(*self.task_tree.get_children())
         
         for task in self.copy_tasks:
+            controls_text = self.create_task_controls(task["id"])
             self.task_tree.insert("", "end", iid=str(task["id"]), values=(
                 task["filename"],
                 task["destination"],
@@ -1405,7 +1438,8 @@ class FileCopierApp:
                 self.format_size(task["size"]),
                 self.format_size(task["copied"]),
                 f"{task['speed']:.1f}",
-                task["status"]
+                task["status"],
+                controls_text
             ))
         
         self.update_overall_progress()
@@ -1569,20 +1603,86 @@ class FileCopierApp:
             if task_id < len(self.copy_tasks):
                 task = self.copy_tasks[task_id]
                 # Toggle pause/resume for individual task
-                if task["status"] == "Running":
-                    task["paused"] = not task["paused"]
-                    task["status"] = "Paused" if task["paused"] else "Running"
-                    self.update_task_display(task)
+                if task["status"] in ["🔄 Running"]:
+                    self.pause_individual_task(task_id)
+                elif task["status"] in ["⏸ Paused", "⏳ Pending"]:
+                    self.start_individual_task(task_id)
+
+    def on_task_click(self, event):
+        """Handle single click on task tree for controls"""
+        # Get the item and region clicked
+        item = self.task_tree.identify('item', event.x, event.y)
+        column = self.task_tree.identify('column', event.x, event.y)
+        
+        if item and column == '#8':  # Controls column
+            task_id = int(item)
+            if task_id < len(self.copy_tasks):
+                # Get click position within the controls column
+                bbox = self.task_tree.bbox(item, column)
+                if bbox:
+                    click_x = event.x - bbox[0]
+                    column_width = bbox[2]
+                    
+                    task = self.copy_tasks[task_id]
+                    status = task["status"]
+                    
+                    # Determine which control was clicked based on position
+                    if click_x < column_width / 2:  # Left side (Start/Pause/Resume/Restart)
+                        if status in ["⏳ Pending", "❌ Cancelled", "❌ Error"]:
+                            self.start_individual_task(task_id)
+                        elif status in ["🔄 Running"]:
+                            if task.get("paused", False):
+                                self.start_individual_task(task_id)  # Resume
+                            else:
+                                self.pause_individual_task(task_id)  # Pause
+                        elif status in ["⏸ Paused"]:
+                            self.start_individual_task(task_id)  # Resume
+                        elif status in ["✅ Completed"]:
+                            self.restart_individual_task(task_id)  # Restart
+                    else:  # Right side (Cancel/Remove)
+                        if status in ["✅ Completed"]:
+                            self.remove_individual_task(task_id)  # Remove
+                        else:
+                            self.cancel_individual_task(task_id)  # Cancel
 
     def create_task_controls(self, task_id: int):
         """Create control buttons for individual task"""
-        # This will be implemented in the GUI update
-        pass
+        if task_id >= len(self.copy_tasks):
+            return ""
+        
+        task = self.copy_tasks[task_id]
+        status = task["status"]
+        
+        # Create simple text-based controls for the tree view
+        if status in ["Pending", "❌ Cancelled", "❌ Error"]:
+            return "▶ Start | ⏹ Cancel"
+        elif status in ["🔄 Running"]:
+            if task.get("paused", False):
+                return "▶ Resume | ⏹ Cancel"
+            else:
+                return "⏸ Pause | ⏹ Cancel"
+        elif status in ["⏸ Paused"]:
+            return "▶ Resume | ⏹ Cancel"
+        elif status in ["✅ Completed"]:
+            return "🔄 Restart | 🗑 Remove"
+        else:
+            return "▶ Start | ⏹ Cancel"
     
     def update_task_controls(self, task_id: int):
         """Update control buttons for a task"""
-        # This will be implemented in the GUI update
-        pass
+        if task_id >= len(self.copy_tasks):
+            return
+        
+        # Update the controls column in the tree view
+        controls_text = self.create_task_controls(task_id)
+        try:
+            item = self.task_tree.item(str(task_id))
+            values = list(item['values'])
+            if len(values) >= 8:
+                values[7] = controls_text  # Controls column
+                self.task_tree.item(str(task_id), values=values)
+        except Exception as e:
+            self.logger.error(f"Error updating task controls: {e}")
     
     def start_individual_task(self, task_id: int):
         """Start an individual task"""
@@ -1590,8 +1690,8 @@ class FileCopierApp:
             return
         
         task = self.copy_tasks[task_id]
-        if task["status"] in ["Pending", "Cancelled", "Error"]:
-            task["status"] = "Running"
+        if task["status"] in ["⏳ Pending", "❌ Cancelled", "❌ Error", "⏸ Paused"]:
+            task["status"] = "🔄 Running"
             task["cancelled"] = False
             task["paused"] = False
             task["start_time"] = time.time()
@@ -1604,9 +1704,9 @@ class FileCopierApp:
             return
         
         task = self.copy_tasks[task_id]
-        if task["status"] == "Running":
-            task["paused"] = not task["paused"]
-            task["status"] = "⏸ Paused" if task["paused"] else "🔄 Running"
+        if task["status"] == "🔄 Running":
+            task["paused"] = True
+            task["status"] = "⏸ Paused"
             self.update_task_display(task)
     
     def cancel_individual_task(self, task_id: int):
@@ -1615,10 +1715,10 @@ class FileCopierApp:
             return
         
         task = self.copy_tasks[task_id]
-        if task["status"] in ["Running", "Paused", "Pending"]:
+        if task["status"] in ["🔄 Running", "⏸ Paused", "⏳ Pending"]:
             task["cancelled"] = True
             task["status"] = "❌ Cancelled"
-            if task["future"]:
+            if task.get("future"):
                 task["future"].cancel()
             self.update_task_display(task)
     
@@ -1636,6 +1736,24 @@ class FileCopierApp:
         task["retry_count"] = 0
         task["error_message"] = ""
         self.start_individual_task(task_id)
+    
+    def remove_individual_task(self, task_id: int):
+        """Remove a completed task from the list"""
+        if task_id >= len(self.copy_tasks):
+            return
+        
+        task = self.copy_tasks[task_id]
+        if task["status"] in ["✅ Completed", "❌ Cancelled", "❌ Error"]:
+            # Remove the task
+            del self.copy_tasks[task_id]
+            
+            # Reassign IDs to remaining tasks
+            for i, remaining_task in enumerate(self.copy_tasks):
+                remaining_task["id"] = i
+            
+            # Refresh the tree view
+            self.refresh_task_tree()
+            self.update_status(f"Removed task. {len(self.copy_tasks)} remaining.")
     
     def show_help(self, section: str):
         """Show help information for settings sections"""
@@ -1765,6 +1883,9 @@ class FileCopierApp:
             else:
                 return
         
+        # Save current window geometry
+        self.settings["window_geometry"] = self.root.geometry()
+        
         # Save settings and cleanup
         self.save_settings()
         self.save_cache()
@@ -1773,6 +1894,49 @@ class FileCopierApp:
             self.executor.shutdown(wait=False)
         
         self.root.destroy()
+
+    def on_window_resize(self, event):
+        """Handle window resize events for responsive design"""
+        if event.widget == self.root:
+            try:
+                # Get current window size
+                window_width = self.root.winfo_width()
+                window_height = self.root.winfo_height()
+                
+                # Only adjust if window is visible and has reasonable size
+                if window_width > 100 and window_height > 100:
+                    # Adjust column widths based on window size
+                    if hasattr(self, 'task_tree'):
+                        self.adjust_column_widths(window_width)
+                        
+            except Exception as e:
+                self.logger.error(f"Error handling window resize: {e}")
+
+    def adjust_column_widths(self, window_width):
+        """Adjust tree column widths based on window size"""
+        try:
+            # Calculate available width (minus scrollbar and padding)
+            available_width = max(800, window_width - 100)
+            
+            # Define column weight ratios (flexible sizing)
+            column_weights = {
+                "File": 0.20,        # 20% - File name
+                "Destination": 0.25, # 25% - Destination path  
+                "Progress": 0.08,    # 8% - Progress
+                "Size": 0.08,        # 8% - Size
+                "Copied": 0.08,      # 8% - Copied
+                "Speed": 0.10,       # 10% - Speed
+                "Status": 0.12,      # 12% - Status
+                "Controls": 0.09     # 9% - Controls
+            }
+            
+            # Calculate and set new widths
+            for col, weight in column_weights.items():
+                new_width = max(60, int(available_width * weight))
+                self.task_tree.column(col, width=new_width)
+                
+        except Exception as e:
+            self.logger.error(f"Error adjusting column widths: {e}")
 
     def run(self):
         """Run the application"""
