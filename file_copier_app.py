@@ -46,8 +46,8 @@ class FileCopierApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Persian File Copier Pro")
-        self.root.geometry("1400x900")
-        self.root.minsize(1200, 800)
+        self.root.geometry("1100x700")
+        self.root.minsize(900, 600)
         
         # Initialize variables
         self.copy_tasks = []
@@ -96,7 +96,7 @@ class FileCopierApp:
             "buffer_size": 64 * 1024,  # 64KB default
             "max_threads": 4,
             "overwrite_policy": "prompt",
-            "window_geometry": "1400x900",
+            "window_geometry": "1100x700",
             "verify_copy": True,
             "show_hidden_files": False,
             "auto_retry": True,
@@ -2139,7 +2139,7 @@ class FileCopierApp:
         # Click instruction
         click_label = ctk.CTkLabel(
             controls_frame,
-            text="🎯 کلیک کنید تا فایل‌ها را انتخاب و کپی کنید",
+            text="🎯 فایل بکشید اینجا یا کلیک کنید",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=("blue", "lightblue")
         )
@@ -2157,8 +2157,12 @@ class FileCopierApp:
         )
         remove_btn.pack(side="right")
         
-        # Enable drag & drop
+        # Enable drag & drop on all elements of the drop zone
         self.enable_drop_on_widget(drop_frame, folder_path)
+        self.enable_drop_on_widget(info_frame, folder_path) 
+        self.enable_drop_on_widget(name_label, folder_path)
+        self.enable_drop_on_widget(path_label, folder_path)
+        self.enable_drop_on_widget(click_label, folder_path)
 
     def enable_drop_on_widget(self, widget, destination_path):
         """Enable drag and drop functionality on a widget"""
@@ -2166,29 +2170,33 @@ class FileCopierApp:
         
         if DND_FILES and TkinterDnD:
             try:
-                # For CustomTkinter widgets, we need to work with the underlying tkinter widget
-                underlying_widget = widget
-                if hasattr(widget, '_canvas'):
-                    underlying_widget = widget._canvas
-                elif hasattr(widget, 'winfo_children'):
+                # List of potential underlying widgets to try
+                widgets_to_register = [widget]
+                
+                # Add underlying tkinter widgets
+                if hasattr(widget, '_canvas') and widget._canvas:
+                    widgets_to_register.append(widget._canvas)
+                
+                if hasattr(widget, '_text_label') and widget._text_label:
+                    widgets_to_register.append(widget._text_label)
+                    
+                if hasattr(widget, 'winfo_children'):
                     children = widget.winfo_children()
-                    if children:
-                        underlying_widget = children[0]
+                    widgets_to_register.extend(children)
                 
-                # Register the widget for drag and drop
-                underlying_widget.drop_target_register(DND_FILES)
-                underlying_widget.dnd_bind('<<Drop>>', lambda event: self.handle_drop_event(event, destination_path))
-                underlying_widget.dnd_bind('<<DragEnter>>', lambda event: self.on_drag_enter(widget))
-                underlying_widget.dnd_bind('<<DragLeave>>', lambda event: self.on_drag_leave(widget))
-                
-                # Also bind to the main widget
-                widget.drop_target_register(DND_FILES)
-                widget.dnd_bind('<<Drop>>', lambda event: self.handle_drop_event(event, destination_path))
-                widget.dnd_bind('<<DragEnter>>', lambda event: self.on_drag_enter(widget))
-                widget.dnd_bind('<<DragLeave>>', lambda event: self.on_drag_leave(widget))
+                # Register all found widgets
+                for w in widgets_to_register:
+                    try:
+                        w.drop_target_register(DND_FILES)
+                        w.dnd_bind('<<Drop>>', lambda event, path=destination_path: self.handle_drop_event(event, path))
+                        w.dnd_bind('<<DragEnter>>', lambda event, widget_ref=widget: self.on_drag_enter(widget_ref))
+                        w.dnd_bind('<<DragLeave>>', lambda event, widget_ref=widget: self.on_drag_leave(widget_ref))
+                    except Exception as inner_e:
+                        # Silently ignore failures for individual widgets
+                        pass
                 
                 drag_drop_enabled = True
-                print(f"✓ Drag and drop enabled for {destination_path}")
+                print(f"✓ Drag and drop enabled for {os.path.basename(destination_path)}")
             except Exception as e:
                 print(f"⚠ Could not enable drag and drop: {e}")
         
@@ -2196,7 +2204,7 @@ class FileCopierApp:
         self.setup_manual_file_selection(widget, destination_path)
         
         if not drag_drop_enabled:
-            print(f"→ Using click-to-select for {destination_path}")
+            print(f"→ Using click-to-select for {os.path.basename(destination_path)}")
     
     def handle_drop_event(self, event, destination_path):
         """Handle drop events from tkinterdnd2"""
