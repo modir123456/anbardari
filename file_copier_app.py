@@ -1033,7 +1033,7 @@ class FileCopierApp:
             "copied": 0,
             "progress": 0.0,
             "speed": 0.0,
-            "status": "Pending",
+            "status": "⏳ Pending",
             "paused": False,
             "cancelled": False,
             "completed": False,
@@ -1083,11 +1083,16 @@ class FileCopierApp:
             task["cancelled"] = False
             task["paused"] = False
             task["start_time"] = time.time()
+            task["last_update"] = time.time()
             task["future"] = self.executor.submit(self.copy_task, task)
             self.update_task_display(task)
             self.update_status(f"شروع کپی: {task['filename']}")
+            
+            # Update button states
+            self.is_copying = True
+            self.start_btn.configure(state="disabled")
         else:
-            messagebox.showinfo("خطا", "این تسک قابل شروع نیست!")
+            messagebox.showinfo("خطا", f"این تسک قابل شروع نیست! وضعیت فعلی: {task['status']}")
 
     def preview_theme(self, theme_name: str):
         """Preview selected theme"""
@@ -1477,7 +1482,8 @@ class FileCopierApp:
 
     def clear_completed(self):
         """Clear completed tasks"""
-        completed_statuses = ["Completed", "Cancelled", "Skipped"]
+        completed_statuses = ["✅ Completed", "❌ Cancelled", "⏭ Skipped"]
+        initial_count = len(self.copy_tasks)
         self.copy_tasks = [task for task in self.copy_tasks 
                           if not any(status in task["status"] for status in completed_statuses)]
         
@@ -1486,15 +1492,23 @@ class FileCopierApp:
             task["id"] = i
         
         self.refresh_task_tree()
-        self.update_status(f"Cleared completed tasks. {len(self.copy_tasks)} remaining.")
+        cleared_count = initial_count - len(self.copy_tasks)
+        self.update_status(f"پاک شد: {cleared_count} تسک تکمیل شده. باقی‌مانده: {len(self.copy_tasks)}")
 
     def clear_all_tasks(self):
         """Clear all tasks"""
-        if messagebox.askyesno("Confirm", "Clear all tasks? This will cancel any running operations."):
-            self.cancel_all_tasks()
+        if messagebox.askyesno("تأیید", "همه تسک‌ها پاک شوند؟ این عمل تسک‌های در حال اجرا را لغو می‌کند."):
+            # Cancel all active tasks first
+            for task in self.copy_tasks:
+                if task["status"] in ["🔄 Running", "⏸ Paused", "⏳ Pending"]:
+                    task["cancelled"] = True
+                    task["status"] = "❌ Cancelled"
+                    if task.get("future"):
+                        task["future"].cancel()
+            
             self.copy_tasks.clear()
             self.refresh_task_tree()
-            self.update_status("All tasks cleared")
+            self.update_status("همه تسک‌ها پاک شدند")
 
     def refresh_task_tree(self):
         """Refresh the task tree display"""
@@ -1516,16 +1530,17 @@ class FileCopierApp:
     def check_all_tasks_complete(self):
         """Check if all tasks are complete"""
         active_tasks = [task for task in self.copy_tasks 
-                       if task["status"] in ["Running", "Pending"]]
+                       if task["status"] in ["🔄 Running", "⏳ Pending"]]
         
         if not active_tasks and self.is_copying:
             self.is_copying = False
             self.start_btn.configure(state="normal")
-            self.update_status("All tasks completed!")
+            self.update_status("همه تسک‌ها تکمیل شدند!")
             
             # Show completion notification
-            completed_count = len([task for task in self.copy_tasks if task["status"] == "Completed"])
-            messagebox.showinfo("Tasks Complete", f"Completed {completed_count} copy operations!")
+            completed_count = len([task for task in self.copy_tasks if task["status"] == "✅ Completed"])
+            if completed_count > 0:
+                messagebox.showinfo("اتمام کار", f"{completed_count} عملیات کپی با موفقیت تکمیل شد!")
 
     def save_settings_from_gui(self):
         """Save settings from GUI controls"""
