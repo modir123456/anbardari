@@ -186,9 +186,9 @@ class FileCopierApp:
         try:
             style = ttk.Style()
             
-            # Try to configure basic styling
+            # Try to configure basic styling - use valid color names
             style.configure("TNotebook", 
-                          background=("gray95", "gray10"),
+                          background="#f0f0f0",
                           borderwidth=0)
             style.configure("TNotebook.Tab",
                           padding=[15, 8],
@@ -200,23 +200,23 @@ class FileCopierApp:
         
         self.notebook.pack(fill="both", expand=True, pady=(0, 10))
         
-        # File Explorer Tab
-        self.explorer_frame = ctk.CTkFrame(self.notebook, fg_color=("#e3f2fd", "#0d1b2a"))
+        # File Explorer Tab - Blue theme
+        self.explorer_frame = ctk.CTkFrame(self.notebook, fg_color=("#e3f2fd", "#1a237e"))
         self.notebook.add(self.explorer_frame, text="📁 File Explorer")
         self.setup_explorer_tab()
         
-        # Tasks Tab
-        self.tasks_frame = ctk.CTkFrame(self.notebook, fg_color=("#e0f2f1", "#0a1e1a"))
+        # Tasks Tab - Green theme
+        self.tasks_frame = ctk.CTkFrame(self.notebook, fg_color=("#e0f2f1", "#1b5e20"))
         self.notebook.add(self.tasks_frame, text="📋 Copy Tasks")
         self.setup_tasks_tab()
         
-        # Drag & Drop Tab
-        self.dragdrop_frame = ctk.CTkFrame(self.notebook, fg_color=("#fce4ec", "#2d0a1f"))
+        # Drag & Drop Tab - Pink theme
+        self.dragdrop_frame = ctk.CTkFrame(self.notebook, fg_color=("#fce4ec", "#880e4f"))
         self.notebook.add(self.dragdrop_frame, text="🎯 Quick Copy")
         self.setup_dragdrop_tab()
         
-        # Settings Tab
-        self.settings_frame = ctk.CTkFrame(self.notebook, fg_color=("#fff3e0", "#2d1b0a"))
+        # Settings Tab - Orange theme
+        self.settings_frame = ctk.CTkFrame(self.notebook, fg_color=("#fff3e0", "#e65100"))
         self.notebook.add(self.settings_frame, text="⚙️ Settings")
         self.setup_settings_tab()
         
@@ -2202,7 +2202,7 @@ class FileCopierApp:
     
     def on_drag_leave(self, widget):
         """Reset visual feedback when leaving drop zone"""
-        widget.configure(fg_color=("gray80", "gray25"))  # Reset to default
+        widget.configure(fg_color=("#f0f0f0", "#333333"))  # Reset to default
 
     def setup_manual_file_selection(self, widget, destination_path):
         """Setup manual file selection"""
