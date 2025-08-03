@@ -2010,7 +2010,7 @@ class FileCopierApp:
             
             # Calculate and set new widths
             for col, weight in column_weights.items():
-                                new_width = max(60, int(available_width * weight))
+                new_width = max(60, int(available_width * weight))
                 self.task_tree.column(col, width=new_width)
                 
         except Exception as e:
