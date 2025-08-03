@@ -115,6 +115,33 @@ def check_ttk_styling():
     print("- This provides better compatibility across platforms")
     return True
 
+def test_drag_drop_functionality():
+    """Test if drag and drop works"""
+    print("\n🎯 Testing Drag & Drop:")
+    
+    try:
+        from tkinterdnd2 import DND_FILES, TkinterDnD
+        print("✓ tkinterdnd2 is available")
+        
+        # Create a simple test
+        import tkinter as tk
+        try:
+            root = TkinterDnD.Tk()
+            root.withdraw()  # Hide window
+            root.destroy()
+            print("✓ TkinterDnD.Tk() works")
+        except Exception as e:
+            print(f"⚠ TkinterDnD.Tk() failed: {e}")
+            
+        return True
+    except ImportError:
+        print("❌ tkinterdnd2 not installed")
+        print("   Run: pip install tkinterdnd2")
+        return False
+    except Exception as e:
+        print(f"❌ Drag & drop error: {e}")
+        return False
+
 def main():
     """Main execution"""
     print("=" * 50)
@@ -128,11 +155,24 @@ def main():
     # Check TTK styling
     check_ttk_styling()
     
+    # Test drag and drop
+    drag_drop_works = test_drag_drop_functionality()
+    
     print("\n" + "=" * 50)
     print("🚀 Ready to run!")
     print("=" * 50)
-    print("You can now run: python file_copier_app.py")
-    print("Or use: python run.py")
+    
+    if drag_drop_works:
+        print("✅ Drag & drop should work")
+        print("📝 Run test_drag_drop.py to test drag & drop specifically")
+    else:
+        print("⚠ Drag & drop may not work - using click-to-select instead")
+    
+    print("\n🎯 To run the application:")
+    print("   python file_copier_app.py")
+    print("   python run.py")
+    print("\n🧪 To test drag & drop:")
+    print("   python test_drag_drop.py")
 
 if __name__ == "__main__":
     main()

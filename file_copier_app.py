@@ -251,8 +251,9 @@ class FileCopierApp:
             
         instruction_label = ctk.CTkLabel(
             title_frame,
-            text="فایل‌ها را روی پوشه‌های مقصد بکشید و رها کنید یا کلیک کنید تا انتخاب کرده و کپی کنید",
-            font=instruction_font
+            text="فایل‌ها را از Explorer بکشید و روی پوشه‌های مقصد رها کنید\nاگر کار نکرد، روی پوشه‌ها کلیک کنید تا فایل انتخاب کنید",
+            font=instruction_font,
+            wraplength=600
         )
         instruction_label.pack(pady=5)
         
@@ -2163,46 +2164,91 @@ class FileCopierApp:
         """Enable drag and drop functionality on a widget"""
         drag_drop_enabled = False
         
-        if DND_FILES and TkinterDnD and hasattr(self.root, '_dnd_init'):
+        if DND_FILES and TkinterDnD:
             try:
-                # Enable real drag and drop for CustomTkinter widgets
+                # For CustomTkinter widgets, we need to work with the underlying tkinter widget
+                underlying_widget = widget
+                if hasattr(widget, '_canvas'):
+                    underlying_widget = widget._canvas
+                elif hasattr(widget, 'winfo_children'):
+                    children = widget.winfo_children()
+                    if children:
+                        underlying_widget = children[0]
+                
+                # Register the widget for drag and drop
+                underlying_widget.drop_target_register(DND_FILES)
+                underlying_widget.dnd_bind('<<Drop>>', lambda event: self.handle_drop_event(event, destination_path))
+                underlying_widget.dnd_bind('<<DragEnter>>', lambda event: self.on_drag_enter(widget))
+                underlying_widget.dnd_bind('<<DragLeave>>', lambda event: self.on_drag_leave(widget))
+                
+                # Also bind to the main widget
                 widget.drop_target_register(DND_FILES)
                 widget.dnd_bind('<<Drop>>', lambda event: self.handle_drop_event(event, destination_path))
-                
-                # Visual feedback for drop zones
-                widget.bind("<Enter>", lambda e: self.on_drag_enter(widget))
-                widget.bind("<Leave>", lambda e: self.on_drag_leave(widget))
+                widget.dnd_bind('<<DragEnter>>', lambda event: self.on_drag_enter(widget))
+                widget.dnd_bind('<<DragLeave>>', lambda event: self.on_drag_leave(widget))
                 
                 drag_drop_enabled = True
-                print(f"Drag and drop enabled for {destination_path}")
+                print(f"✓ Drag and drop enabled for {destination_path}")
             except Exception as e:
-                print(f"Could not enable drag and drop: {e}")
+                print(f"⚠ Could not enable drag and drop: {e}")
         
         # Always enable click-to-select (either as backup or primary method)
         self.setup_manual_file_selection(widget, destination_path)
         
         if not drag_drop_enabled:
-            print(f"Using click-to-select for {destination_path}")
+            print(f"→ Using click-to-select for {destination_path}")
     
     def handle_drop_event(self, event, destination_path):
         """Handle drop events from tkinterdnd2"""
         try:
-            # Get the dropped files
-            files = event.data.split()
-            # Clean up file paths (remove {} if present)
-            files = [f.strip('{}') for f in files]
-            self.handle_dropped_files(files, destination_path)
+            # Get the dropped files - handle different formats
+            files_data = getattr(event, 'data', '')
+            if not files_data:
+                files_data = str(event)
+            
+            print(f"🎯 Drop event received: {files_data}")
+            
+            # Parse the file paths - handle different possible formats
+            files = []
+            if isinstance(files_data, str):
+                # Handle space-separated paths with potential {} wrapping
+                import re
+                # Split by space but keep paths with spaces together if wrapped in {}
+                pattern = r'\{[^}]+\}|\S+'
+                raw_files = re.findall(pattern, files_data)
+                files = [f.strip('{}').strip() for f in raw_files if f.strip()]
+            else:
+                files = [str(files_data)]
+            
+            print(f"📁 Parsed files: {files}")
+            
+            if files:
+                self.handle_dropped_files(files, destination_path)
+            else:
+                messagebox.showinfo("اطلاعات", "هیچ فایل معتبری دریافت نشد")
+                
         except Exception as e:
             self.logger.error(f"Error handling drop event: {e}")
+            print(f"❌ Drop error: {e}")
             messagebox.showerror("خطا", f"خطا در پردازش فایل‌های انداخته شده: {e}")
     
     def on_drag_enter(self, widget):
         """Visual feedback when dragging over drop zone"""
-        widget.configure(fg_color=("#a8e6cf", "#2d5a3d"))  # Light green highlight
+        try:
+            widget.configure(fg_color=("#c8e6c9", "#2e7d32"))  # Light green highlight
+            widget.configure(border_color="#4caf50", border_width=3)
+            print("🎯 Drag entered drop zone")
+        except:
+            pass
     
     def on_drag_leave(self, widget):
         """Reset visual feedback when leaving drop zone"""
-        widget.configure(fg_color=("#f0f0f0", "#333333"))  # Reset to default
+        try:
+            widget.configure(fg_color=("#f5f5f5", "#424242"))  # Reset to default
+            widget.configure(border_color=("gray70", "gray25"), border_width=2)
+            print("↩ Drag left drop zone")
+        except:
+            pass
 
     def setup_manual_file_selection(self, widget, destination_path):
         """Setup manual file selection"""
@@ -2446,8 +2492,9 @@ def main():
                 # Apply DnD functionality to the root window
                 root.tk.call('package', 'require', 'tkdnd')
                 root._dnd_init = True
-            except:
-                print("Could not initialize drag and drop, using fallback method")
+                print("✓ Drag and drop initialized successfully")
+            except Exception as e:
+                print(f"⚠ Could not initialize drag and drop: {e}, using fallback method")
         
         app = FileCopierApp(root)
         app.run()
