@@ -326,7 +326,7 @@ Persian File Technology Team
         email_dialog.title("قالب ایمیل")
         email_dialog.geometry("600x500")
         
-        text_widget = tk.Text(email_dialog, wrap=tk.WORD, font=("Arial", 10))
+        text_widget = tk.Text(email_dialog, wrap=tk.WORD, font=("B Nazanin", 10))
         text_widget.pack(fill="both", expand=True, padx=20, pady=20)
         text_widget.insert("1.0", email_template)
         

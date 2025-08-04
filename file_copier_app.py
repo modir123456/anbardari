@@ -106,6 +106,26 @@ class LicenseManager:
         if not license_data:
             return False
         return self.validate_serial(license_data.get("serial", ""))
+    
+    def is_trial_mode(self):
+        """Check if application is in trial mode"""
+        license_data = self.load_license()
+        if not license_data:
+            return True
+        return license_data.get("serial", "") == "TRIAL-MODE"
+    
+    def get_license_type(self):
+        """Get the license type (trial, standard, pro)"""
+        license_data = self.load_license()
+        if not license_data:
+            return "trial"
+        
+        serial = license_data.get("serial", "")
+        if serial == "TRIAL-MODE":
+            return "trial"
+        elif self.validate_serial(serial):
+            return license_data.get("license_type", "standard")
+        return "trial"
 
 # Enhanced theme configurations - lighter and more colorful
 THEMES = {
@@ -178,6 +198,11 @@ class FileCopierApp:
         if not selected_items:
             messagebox.showwarning("هشدار", "لطفاً فایل‌هایی را برای کپی انتخاب کنید")
             return
+        
+        # Check if bulk copy is allowed (more than 5 files)
+        if len(selected_items) > 5:
+            if not self.enforce_license_restriction("bulk_copy"):
+                return
         
         destination = self.destination_var.get()
         if not destination or destination == "انتخاب مقصد...":
@@ -342,6 +367,46 @@ class FileCopierApp:
         
         ctk.CTkButton(frame, text="استفاده آزمایشی 30 روزه", 
                      command=skip_trial, fg_color="orange").pack(pady=5)
+
+    def check_feature_license(self, feature_name):
+        """Check if a feature is available with current license"""
+        license_type = self.license_manager.get_license_type()
+        
+        # Features that require a valid license (not trial)
+        premium_features = [
+            "bulk_copy",           # Bulk file operations
+            "advanced_settings",   # Advanced performance settings  
+            "network_drives",      # Network drive access
+            "scheduled_tasks",     # Task scheduling
+            "batch_processing",    # Batch file processing
+            "export_reports"       # Export operation reports
+        ]
+        
+        if feature_name in premium_features:
+            return license_type != "trial"
+        
+        return True  # Basic features are always available
+    
+    def show_license_restriction_message(self, feature_name):
+        """Show message about license restriction"""
+        messagebox.showwarning(
+            "قابلیت محدود شده", 
+            f"این قابلیت ({feature_name}) فقط در نسخه لایسنس شده موجود است.\n"
+            "برای فعال‌سازی نرم‌افزار، لطفاً سریال نامبر معتبر وارد کنید.\n\n"
+            "برای خرید لایسنس با ما تماس بگیرید:\n"
+            "info@persianfile.ir"
+        )
+    
+    def enforce_license_restriction(self, feature_name):
+        """Enforce license restriction for a feature"""
+        if not self.check_feature_license(feature_name):
+            self.show_license_restriction_message(feature_name)
+            return False
+        return True
+    
+    def show_license_prompt_for_advanced_settings(self, value=None):
+        """Show license prompt when trying to use advanced settings"""
+        self.show_license_restriction_message("advanced_settings")
 
     def setup_logging(self):
         """Setup logging configuration"""
@@ -635,6 +700,10 @@ class FileCopierApp:
             # Update destination folders in GUI
             self.update_destination_folders_display()
             
+            # Update drive combo box if it exists
+            if hasattr(self, 'drive_combo'):
+                self.populate_drive_combo()
+            
             # Update status
             total_files = self.file_cache.get("total_files", 0)
             total_drives = len(self.all_drives)
@@ -645,6 +714,28 @@ class FileCopierApp:
         except Exception as e:
             print(f"❌ Error completing scan: {e}")
             self.update_status("Ready - scan completed with errors")
+
+    def populate_drive_combo(self):
+        """Populate the drive combo box with available drives"""
+        try:
+            drive_options = []
+            
+            for drive in self.all_drives:
+                if drive['accessible']:
+                    free_space = self.format_size(drive['free'])
+                    total_space = self.format_size(drive['total'])
+                    drive_label = f"{drive['device']} - {drive['mountpoint']} ({free_space}/{total_space})"
+                    drive_options.append(drive_label)
+            
+            if drive_options:
+                self.drive_combo.configure(values=drive_options)
+                self.drive_var.set(drive_options[0])
+            else:
+                self.drive_combo.configure(values=["هیچ درایوی یافت نشد"])
+                self.drive_var.set("هیچ درایوی یافت نشد")
+                
+        except Exception as e:
+            print(f"Error populating drive combo: {e}")
 
     def start_auto_cleanup(self):
         """Start automatic cleanup of completed tasks"""
@@ -681,6 +772,87 @@ class FileCopierApp:
         
         # Start the cleanup cycle
         self.root.after(5000, cleanup_completed_tasks)  # Start after 5 seconds
+
+    def refresh_drives(self):
+        """Refresh the drive list in the drive combo box"""
+        try:
+            self.scan_all_drives()
+            drive_options = []
+            
+            for drive in self.all_drives:
+                if drive['accessible']:
+                    free_space = self.format_size(drive['free'])
+                    total_space = self.format_size(drive['total'])
+                    drive_label = f"{drive['device']} - {drive['mountpoint']} ({free_space}/{total_space})"
+                    drive_options.append(drive_label)
+            
+            if drive_options:
+                self.drive_combo.configure(values=drive_options)
+                if not self.drive_var.get() or self.drive_var.get() == "در حال بارگذاری...":
+                    self.drive_var.set(drive_options[0])
+            else:
+                self.drive_combo.configure(values=["هیچ درایوی یافت نشد"])
+                self.drive_var.set("هیچ درایوی یافت نشد")
+                
+        except Exception as e:
+            print(f"Error refreshing drives: {e}")
+            self.drive_combo.configure(values=["خطا در بارگذاری درایوها"])
+            self.drive_var.set("خطا در بارگذاری درایوها")
+
+    def on_drive_selected(self, selected_drive):
+        """Handle drive selection from combo box"""
+        try:
+            if not selected_drive or selected_drive in ["در حال بارگذاری...", "هیچ درایوی یافت نشد", "خطا در بارگذاری درایوها"]:
+                return
+                
+            # Extract mountpoint from the selected drive string
+            # Format is "Device - Mountpoint (free/total)"
+            parts = selected_drive.split(" - ")
+            if len(parts) >= 2:
+                mountpoint_part = parts[1].split(" (")[0]  # Remove the space info part
+                
+                # Find the drive in our all_drives list
+                selected_drive_info = None
+                for drive in self.all_drives:
+                    if drive['mountpoint'] == mountpoint_part:
+                        selected_drive_info = drive
+                        break
+                
+                if selected_drive_info:
+                    self.browse_drive(selected_drive_info)
+                    
+        except Exception as e:
+            print(f"Error selecting drive: {e}")
+
+    def browse_drive(self, drive_info):
+        """Browse files in the selected drive"""
+        try:
+            mountpoint = drive_info['mountpoint']
+            print(f"Browsing drive: {mountpoint}")
+            
+            # Clear current file tree
+            for item in self.file_tree.get_children():
+                self.file_tree.delete(item)
+            
+            # Scan files in the selected drive
+            drive_files = self.scan_directory_recursive(mountpoint, max_depth=2)
+            
+            # Display files in the tree
+            for file_path, file_info in drive_files.items():
+                try:
+                    name = file_info.get("name", os.path.basename(file_path))
+                    file_type = file_info.get("type", "file")
+                    size = self.format_size(file_info.get("size", 0))
+                    
+                    self.file_tree.insert("", "end", values=(name, file_path, file_type, size))
+                except Exception as e:
+                    print(f"Error adding file to tree: {e}")
+                    
+            self.update_status(f"تصفح درایو {mountpoint} - {len(drive_files)} فایل یافت شد")
+            
+        except Exception as e:
+            print(f"Error browsing drive: {e}")
+            self.update_status(f"خطا در تصفح درایو: {e}")
 
     def setup_gui(self):
         """Setup the main GUI"""
@@ -733,7 +905,7 @@ class FileCopierApp:
                           borderwidth=0)
             style.configure("TNotebook.Tab",
                           padding=[15, 8],
-                          font=('TkDefaultFont', 10, 'bold'))
+                          font=('B Nazanin', 10, 'bold'))
             
             print("✓ Basic tab styling applied")
         except Exception as e:
@@ -906,27 +1078,33 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             self.root.after(0, lambda: self.update_status("Destination refresh error"))
 
     def setup_explorer_tab(self):
-        """Setup the file explorer tab with 50/50 split layout"""
-        # Main horizontal layout: file browser on left (50%), copy operations on right (50%)
+        """Setup the file explorer tab with 3-column layout: File Browser, Copy Operations, Task Management"""
+        # Main horizontal layout: file browser (33%), copy operations (33%), task management (33%)
         main_container = ctk.CTkFrame(self.explorer_frame)
         main_container.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Configure grid weights for 50/50 split
+        # Configure grid weights for 3-column split
         main_container.grid_columnconfigure(0, weight=1)
         main_container.grid_columnconfigure(1, weight=1)
+        main_container.grid_columnconfigure(2, weight=1)
         main_container.grid_rowconfigure(0, weight=1)
         
-        # Left side: File Browser (50%)
+        # Left side: File Browser (33%)
         browser_frame = ctk.CTkFrame(main_container)
-        browser_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        browser_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 3))
         
-        # Right side: Copy Operations (50%)
+        # Middle: Copy Operations (33%)
         copy_operations_frame = ctk.CTkFrame(main_container)
-        copy_operations_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        copy_operations_frame.grid(row=0, column=1, sticky="nsew", padx=(3, 3))
         
-        # Setup both sections
+        # Right side: Task Management (33%)
+        task_management_frame = ctk.CTkFrame(main_container)
+        task_management_frame.grid(row=0, column=2, sticky="nsew", padx=(3, 0))
+        
+        # Setup all sections
         self.setup_file_browser_section(browser_frame)
         self.setup_copy_operations_section(copy_operations_frame)
+        self.setup_task_management_section(task_management_frame)
 
     def setup_file_browser_section(self, browser_frame):
         """Setup the file browser section"""
@@ -935,6 +1113,23 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         title_label = ctk.CTkLabel(browser_frame, text="📁 مرورگر فایل", 
                                   font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
         title_label.pack(pady=(10, 5))
+        
+        # Drive selection frame
+        drive_frame = ctk.CTkFrame(browser_frame)
+        drive_frame.pack(fill="x", padx=10, pady=5)
+        
+        ctk.CTkLabel(drive_frame, text="💿 انتخاب درایو:", 
+                    font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="right", padx=5)
+        
+        self.drive_var = tk.StringVar()
+        self.drive_combo = ctk.CTkComboBox(drive_frame, variable=self.drive_var,
+                                         font=ctk.CTkFont(family="B Nazanin"),
+                                         values=["در حال بارگذاری..."],
+                                         command=self.on_drive_selected)
+        self.drive_combo.pack(side="left", fill="x", expand=True, padx=5)
+        
+        ctk.CTkButton(drive_frame, text="🔄", command=self.refresh_drives,
+                     width=30, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
         
         # Search and navigation frame
         nav_frame = ctk.CTkFrame(browser_frame)
@@ -1106,6 +1301,100 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         recent_container.grid_rowconfigure(0, weight=1)
         recent_container.grid_columnconfigure(0, weight=1)
 
+    def setup_task_management_section(self, task_frame):
+        """Setup the task management section in the main explorer tab"""
+        
+        # Title
+        title_label = ctk.CTkLabel(task_frame, text="📋 مدیریت کارها", 
+                                  font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
+        title_label.pack(pady=(10, 5))
+        
+        # Control buttons (compact version)
+        control_frame = ctk.CTkFrame(task_frame)
+        control_frame.pack(fill="x", padx=5, pady=5)
+        
+        # Main control buttons
+        main_controls = ctk.CTkFrame(control_frame)
+        main_controls.pack(fill="x", pady=(0, 2))
+        
+        self.start_btn = ctk.CTkButton(main_controls, text="▶", command=self.start_selected_task,
+                                      fg_color="green", hover_color="darkgreen", 
+                                      font=ctk.CTkFont(family="B Nazanin"), width=40, height=25)
+        self.start_btn.pack(side="left", padx=1)
+        
+        self.pause_btn = ctk.CTkButton(main_controls, text="⏸", command=self.pause_selected_task,
+                                      fg_color="orange", hover_color="darkorange", 
+                                      font=ctk.CTkFont(family="B Nazanin"), width=40, height=25)
+        self.pause_btn.pack(side="left", padx=1)
+        
+        self.cancel_btn = ctk.CTkButton(main_controls, text="⏹", command=self.cancel_selected_task,
+                                       fg_color="red", hover_color="darkred", 
+                                       font=ctk.CTkFont(family="B Nazanin"), width=40, height=25)
+        self.cancel_btn.pack(side="left", padx=1)
+        
+        self.restart_btn = ctk.CTkButton(main_controls, text="🔄", command=self.restart_selected_task,
+                                        fg_color="blue", hover_color="darkblue", 
+                                        font=ctk.CTkFont(family="B Nazanin"), width=40, height=25)
+        self.restart_btn.pack(side="left", padx=1)
+        
+        # Task management buttons
+        task_controls = ctk.CTkFrame(control_frame)
+        task_controls.pack(fill="x")
+        
+        ctk.CTkButton(task_controls, text="🗑", command=self.clear_all_tasks, 
+                     font=ctk.CTkFont(family="B Nazanin"), width=40, height=25).pack(side="left", padx=1)
+        ctk.CTkButton(task_controls, text="✓", command=self.clear_completed, 
+                     font=ctk.CTkFont(family="B Nazanin"), width=40, height=25).pack(side="left", padx=1)
+        ctk.CTkButton(task_controls, text="↓", command=self.move_task_down, 
+                     font=ctk.CTkFont(family="B Nazanin"), width=40, height=25).pack(side="left", padx=1)
+        ctk.CTkButton(task_controls, text="↑", command=self.move_task_up, 
+                     font=ctk.CTkFont(family="B Nazanin"), width=40, height=25).pack(side="left", padx=1)
+        
+        # Progress overview (compact)
+        progress_frame = ctk.CTkFrame(task_frame)
+        progress_frame.pack(fill="x", padx=5, pady=2)
+        
+        self.overall_progress = ctk.CTkProgressBar(progress_frame, height=15)
+        self.overall_progress.pack(fill="x", padx=5, pady=2)
+        self.overall_progress.set(0)
+        
+        self.progress_label = ctk.CTkLabel(progress_frame, text="آماده", 
+                                         font=ctk.CTkFont(family="B Nazanin", size=10))
+        self.progress_label.pack(pady=1)
+        
+        # Tasks tree (compact version)
+        tasks_tree_frame = ctk.CTkFrame(task_frame)
+        tasks_tree_frame.pack(fill="both", expand=True, padx=5, pady=2)
+        
+        tasks_container = tk.Frame(tasks_tree_frame, bg=tasks_tree_frame.cget("fg_color")[1])
+        tasks_container.pack(fill="both", expand=True, padx=2, pady=2)
+        
+        self.task_tree = ttk.Treeview(
+            tasks_container,
+            columns=("File", "Status", "Progress"),
+            show="headings",
+            height=10
+        )
+        
+        # Configure compact task tree columns
+        self.task_tree.heading("File", text="📁 فایل")
+        self.task_tree.heading("Status", text="🔄 وضعیت")
+        self.task_tree.heading("Progress", text="📊 پیشرفت")
+        
+        self.task_tree.column("File", width=120, minwidth=80)
+        self.task_tree.column("Status", width=60, minwidth=50)
+        self.task_tree.column("Progress", width=60, minwidth=50)
+        
+        # Task tree scrollbar
+        task_v_scrollbar = ttk.Scrollbar(tasks_container, orient="vertical", command=self.task_tree.yview)
+        self.task_tree.configure(yscrollcommand=task_v_scrollbar.set)
+        
+        self.task_tree.grid(row=0, column=0, sticky="nsew")
+        task_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        
+        tasks_container.grid_rowconfigure(0, weight=1)
+        tasks_container.grid_columnconfigure(0, weight=1)
+
     def setup_quick_copy_sidebar(self, parent):
         """Setup the quick copy sidebar with auto-detected destinations"""
         # Sidebar frame
@@ -1252,7 +1541,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         )
         settings_scroll.pack(fill="both", expand=True, padx=15, pady=15)
         
-        # Performance Settings
+        # Performance Settings (Licensed Feature)
         perf_frame = ctk.CTkFrame(
             settings_scroll,
             corner_radius=12,
@@ -1265,12 +1554,18 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         perf_header = ctk.CTkFrame(perf_frame, fg_color="transparent")
         perf_header.pack(fill="x", padx=15, pady=(15, 5))
         
-        ctk.CTkLabel(
+        # Check license for advanced settings
+        license_text = "⚡ Performance Settings"
+        if not self.check_feature_license("advanced_settings"):
+            license_text += " 🔒 (نیاز به لایسنس)"
+        
+        perf_title = ctk.CTkLabel(
             perf_header, 
-            text="⚡ Performance Settings", 
+            text=license_text, 
             font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold"),
-            text_color=("gray10", "white")
-        ).pack(side="left")
+            text_color=("red", "orange") if not self.check_feature_license("advanced_settings") else ("gray10", "white")
+        )
+        perf_title.pack(side="left")
         
         # Performance help button
         perf_help = ctk.CTkButton(
@@ -1301,7 +1596,8 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             buffer_header, 
             textvariable=self.buffer_var, 
             width=80,
-            placeholder_text="KB"
+            placeholder_text="KB",
+            state="disabled" if not self.check_feature_license("advanced_settings") else "normal"
         )
         buffer_entry.pack(side="right", padx=5)
         
@@ -1313,7 +1609,8 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             from_=16,
             to=1024,
             number_of_steps=32,
-            command=self.update_buffer_from_slider
+            command=self.update_buffer_from_slider if self.check_feature_license("advanced_settings") else self.show_license_prompt_for_advanced_settings,
+            state="disabled" if not self.check_feature_license("advanced_settings") else "normal"
         )
         self.buffer_slider.pack(fill="x", pady=(5, 0))
         self.buffer_slider.set(int(self.buffer_var.get()))
