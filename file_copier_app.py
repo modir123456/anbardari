@@ -26,22 +26,21 @@ except ImportError:
 
 # Enhanced drag & drop functionality with tkinterdnd2
 
-# Enhanced theme configurations
+# Enhanced theme configurations - lighter and more colorful
 THEMES = {
     "dark_blue": {"mode": "dark", "color": "blue"},
     "dark_green": {"mode": "dark", "color": "green"},
-    "dark_red": {"mode": "dark", "color": "dark-blue"},
     "light_blue": {"mode": "light", "color": "blue"},
     "light_green": {"mode": "light", "color": "green"},
-    "cyberpunk": {"mode": "dark", "color": "blue"},
-    "sunset": {"mode": "dark", "color": "green"},
+    "cyberpunk": {"mode": "light", "color": "blue"},  # Changed to light
+    "sunset": {"mode": "light", "color": "green"},    # Changed to light
     "ocean": {"mode": "light", "color": "blue"},
-    "forest": {"mode": "dark", "color": "green"},
+    "forest": {"mode": "light", "color": "green"},    # Changed to light
     "system": {"mode": "system", "color": "blue"}
 }
 
-# Set initial appearance
-ctk.set_appearance_mode("dark")
+# Set initial appearance - lighter theme
+ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 class FileCopierApp:
@@ -50,6 +49,13 @@ class FileCopierApp:
         self.root.title("مدیریت فایل ایرانی پیشرفته - Persian File Copier Pro")
         self.root.geometry("1200x800")
         self.root.minsize(1000, 700)
+        
+        # Set application icon
+        try:
+            # Try to set icon using the emoji as text icon
+            self.root.iconname("📁 Persian File Copier Pro")
+        except:
+            pass
         
         # Initialize variables
         self.copy_tasks = []
@@ -68,6 +74,9 @@ class FileCopierApp:
         self.setup_executor()
         self.setup_gui()
         self.setup_bindings()
+        
+        # Start auto-cleanup of completed tasks
+        self.start_auto_cleanup()
         
         # Start comprehensive system scan in background after GUI is ready
         self.update_status("Scanning system drives and files...")
@@ -96,7 +105,7 @@ class FileCopierApp:
     def load_settings(self) -> Dict:
         """Load application settings from file"""
         default_settings = {
-            "theme": "dark_blue",
+            "theme": "light_blue",
             "buffer_size": 64 * 1024,  # 64KB default
             "max_threads": 4,
             "overwrite_policy": "prompt",
@@ -376,6 +385,42 @@ class FileCopierApp:
             print(f"❌ Error completing scan: {e}")
             self.update_status("Ready - scan completed with errors")
 
+    def start_auto_cleanup(self):
+        """Start automatic cleanup of completed tasks"""
+        def cleanup_completed_tasks():
+            try:
+                current_time = time.time()
+                tasks_to_remove = []
+                
+                for i, task in enumerate(self.copy_tasks):
+                    if task["completed"] and task["status"] == "✅ Completed":
+                        # Check if task was completed more than 30 seconds ago
+                        completion_time = task.get("completion_time", 0)
+                        if completion_time > 0 and (current_time - completion_time) > 30:
+                            tasks_to_remove.append(i)
+                
+                # Remove completed tasks from list and tree
+                for i in reversed(tasks_to_remove):
+                    task_id = self.copy_tasks[i]["id"]
+                    try:
+                        self.task_tree.delete(str(task_id))
+                    except:
+                        pass
+                    self.copy_tasks.pop(i)
+                
+                if tasks_to_remove:
+                    print(f"🧹 Cleaned up {len(tasks_to_remove)} completed tasks")
+                    self.update_overall_progress()
+                    
+            except Exception as e:
+                print(f"Error in auto cleanup: {e}")
+            
+            # Schedule next cleanup
+            self.root.after(10000, cleanup_completed_tasks)  # Check every 10 seconds
+        
+        # Start the cleanup cycle
+        self.root.after(5000, cleanup_completed_tasks)  # Start after 5 seconds
+
     def setup_gui(self):
         """Setup the main GUI"""
         # Apply theme
@@ -386,10 +431,10 @@ class FileCopierApp:
         # Configure window - check if it's CTk or regular Tk
         try:
             if isinstance(self.root, ctk.CTk):
-                self.root.configure(fg_color=("gray95", "gray10"))
+                self.root.configure(fg_color=("#f8f9fa", "gray20"))  # Lighter background
             else:
                 # For TkinterDnD.Tk(), use regular tkinter configuration
-                self.root.configure(bg='gray10')
+                self.root.configure(bg='#f8f9fa')
         except Exception as e:
             print(f"Warning: Could not configure root window: {e}")
         
@@ -408,9 +453,9 @@ class FileCopierApp:
         self.main_frame = ctk.CTkFrame(
             self.root,
             corner_radius=15,
-            fg_color=("white", "gray15"),
+            fg_color=("#ffffff", "#f0f0f0"),  # Much lighter colors
             border_width=2,
-            border_color=("gray70", "gray25")
+            border_color=("#d0d0d0", "#b0b0b0")
         )
         self.main_frame.pack(fill="both", expand=True, padx=15, pady=15)
         
@@ -435,18 +480,18 @@ class FileCopierApp:
         
         self.notebook.pack(fill="both", expand=True, pady=(0, 10))
         
-        # تب مرورگر فایل با سایدبار کپی سریع - تم آبی
-        self.explorer_frame = ctk.CTkFrame(self.notebook, fg_color=("#e3f2fd", "#1a237e"))
+        # تب مرورگر فایل با سایدبار کپی سریع - تم آبی روشن
+        self.explorer_frame = ctk.CTkFrame(self.notebook, fg_color=("#f3f9ff", "#e3f2fd"))
         self.notebook.add(self.explorer_frame, text="📁 مرورگر فایل و کپی سریع")
         self.setup_explorer_tab()
         
-        # تب کارهای کپی - تم سبز
-        self.tasks_frame = ctk.CTkFrame(self.notebook, fg_color=("#e0f2f1", "#1b5e20"))
+        # تب کارهای کپی - تم سبز روشن
+        self.tasks_frame = ctk.CTkFrame(self.notebook, fg_color=("#f1f8e9", "#e8f5e8"))
         self.notebook.add(self.tasks_frame, text="📋 کارهای کپی")
         self.setup_tasks_tab()
         
-        # تب تنظیمات - تم نارنجی
-        self.settings_frame = ctk.CTkFrame(self.notebook, fg_color=("#fff3e0", "#e65100"))
+        # تب تنظیمات - تم نارنجی روشن
+        self.settings_frame = ctk.CTkFrame(self.notebook, fg_color=("#fff8e1", "#fff3e0"))
         self.notebook.add(self.settings_frame, text="⚙️ تنظیمات")
         self.setup_settings_tab()
         
@@ -490,16 +535,11 @@ class FileCopierApp:
         nav_frame = ctk.CTkFrame(browser_frame)
         nav_frame.pack(fill="x", padx=10, pady=10)
         
-        # Current directory display
-        dir_frame = ctk.CTkFrame(nav_frame)
-        dir_frame.pack(fill="x", pady=(0, 10))
+        # Title for all files display
+        title_frame = ctk.CTkFrame(nav_frame)
+        title_frame.pack(fill="x", pady=(0, 10))
         
-        ctk.CTkLabel(dir_frame, text="پوشه فعلی:", font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="right", padx=5)
-        self.current_dir_label = ctk.CTkLabel(dir_frame, text=self.current_dir, font=ctk.CTkFont(family="B Nazanin"))
-        self.current_dir_label.pack(side="left", padx=5)
-        
-        ctk.CTkButton(dir_frame, text="🏠 خانه", command=self.go_home, width=80, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
-        ctk.CTkButton(dir_frame, text="📂 انتخاب پوشه", command=self.browse_directory, width=120, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
+        ctk.CTkLabel(title_frame, text="📁 همه فایل‌های موجود در سیستم", font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=10)
         
         # Search frame
         search_frame = ctk.CTkFrame(nav_frame)
@@ -509,8 +549,8 @@ class FileCopierApp:
         self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="نام فایل یا پسوند وارد کنید", font=ctk.CTkFont(family="B Nazanin"), justify="right")
         self.search_entry.pack(side="left", fill="x", expand=True, padx=5)
         
-        ctk.CTkButton(search_frame, text="🔄 بروزرسانی لیست", command=self.refresh_files, width=100, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
-        ctk.CTkButton(search_frame, text="🗑️ پاک کردن", command=self.clear_search, width=90, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
+        ctk.CTkButton(search_frame, text="🔄 بروزرسانی همه فایل‌ها", command=self.refresh_all_files, width=150, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
+        ctk.CTkButton(search_frame, text="🗑️ پاک کردن جستجو", command=self.clear_search, width=120, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
         
         # File tree with improved styling
         tree_frame = ctk.CTkFrame(browser_frame)
@@ -1227,10 +1267,14 @@ class FileCopierApp:
             self.dest_entry.delete(0, tk.END)
             self.dest_entry.insert(0, directory)
 
+    def refresh_all_files(self):
+        """Refresh all files from all drives"""
+        self.update_status("بروزرسانی همه فایل‌ها از تمام درایوها...")
+        threading.Thread(target=self.initial_system_scan, daemon=True).start()
+
     def refresh_files(self):
-        """Refresh file list"""
-        self.update_status("Refreshing files...")
-        threading.Thread(target=self._refresh_files_thread, daemon=True).start()
+        """Legacy method - redirects to refresh_all_files"""
+        self.refresh_all_files()
 
     def _refresh_files_thread(self):
         """Thread function to refresh files"""
@@ -1548,6 +1592,7 @@ class FileCopierApp:
                 task["progress"] = 100.0
                 task["copied"] = task["size"]
                 task["completed"] = True
+                task["completion_time"] = time.time()  # Record completion time for auto-cleanup
                 self.root.after(0, lambda: self.update_task_display(task))
                 self.logger.info(f"Successfully copied {source} to {destination}")
                 
@@ -2575,31 +2620,75 @@ class FileCopierApp:
     def handle_dropped_files_quick(self, event, destination_path):
         """Handle files dropped from external applications"""
         try:
-            # Get the dropped files
-            files_data = getattr(event, 'data', '')
+            print(f"🎯 Drop event received on destination: {destination_path}")
+            
+            # Get the dropped files - try multiple methods
+            files_data = None
+            if hasattr(event, 'data'):
+                files_data = event.data
+            elif hasattr(event, 'widget') and hasattr(event.widget, 'tk'):
+                # Try to get data from tkinter event
+                try:
+                    files_data = event.widget.tk.call('tkdnd::drop_target', 'get_data', event.widget, 'DND_Files')
+                except:
+                    pass
+            
             if not files_data:
                 files_data = str(event)
             
-            # Parse file paths
+            print(f"📁 Raw drop data: {files_data}")
+            
+            # Parse file paths with enhanced parsing
             files = []
             if isinstance(files_data, str):
+                # Handle different formats of file paths
                 import re
-                pattern = r'\{[^}]+\}|\S+'
-                raw_files = re.findall(pattern, files_data)
-                files = [f.strip('{}').strip() for f in raw_files if f.strip()]
+                
+                # Method 1: Files wrapped in {}
+                if '{' in files_data and '}' in files_data:
+                    files = re.findall(r'\{([^}]+)\}', files_data)
+                # Method 2: Space-separated paths
+                elif ' ' in files_data:
+                    # Split by space but handle paths with spaces
+                    pattern = r'"([^"]+)"|(\S+)'
+                    matches = re.findall(pattern, files_data)
+                    files = [match[0] if match[0] else match[1] for match in matches]
+                # Method 3: Single file
+                else:
+                    files = [files_data.strip()]
+                
+                # Clean up file paths
+                files = [f.strip().strip('"').strip("'") for f in files if f.strip()]
+            elif isinstance(files_data, (list, tuple)):
+                files = [str(f).strip() for f in files_data]
+            
+            print(f"📋 Parsed files: {files}")
             
             if files:
                 added_count = 0
                 for file_path in files:
+                    # Convert to proper path format
+                    file_path = os.path.normpath(file_path)
                     if os.path.exists(file_path):
+                        print(f"✓ Adding file: {file_path}")
                         self.add_task_and_start(file_path, destination_path)
                         added_count += 1
+                    else:
+                        print(f"⚠ File not found: {file_path}")
                 
                 if added_count > 0:
                     messagebox.showinfo("کپی آغاز شد", f"{added_count} فایل از درگ و رها به صف کپی اضافه شد!")
+                else:
+                    messagebox.showwarning("خطا", "هیچ فایل معتبری پیدا نشد!")
+            else:
+                print("⚠ No files detected in drop data")
+                messagebox.showwarning("خطا", "فایلی برای کپی پیدا نشد!")
             
         except Exception as e:
-            print(f"Error handling dropped files: {e}")
+            print(f"❌ Error handling dropped files: {e}")
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("خطا", f"خطا در پردازش فایل‌های درگ شده: {e}")
 
     def create_drop_zone(self, folder_path, index):
         """Create a drop zone for a destination folder"""
