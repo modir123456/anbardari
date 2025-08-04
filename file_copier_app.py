@@ -383,8 +383,15 @@ class FileCopierApp:
         ctk.set_appearance_mode(theme_config["mode"])
         ctk.set_default_color_theme(theme_config["color"])
         
-        # Configure window
-        self.root.configure(fg_color=("gray95", "gray10"))
+        # Configure window - check if it's CTk or regular Tk
+        try:
+            if isinstance(self.root, ctk.CTk):
+                self.root.configure(fg_color=("gray95", "gray10"))
+            else:
+                # For TkinterDnD.Tk(), use regular tkinter configuration
+                self.root.configure(bg='gray10')
+        except Exception as e:
+            print(f"Warning: Could not configure root window: {e}")
         
         # Set default font for the entire application
         try:
@@ -2458,13 +2465,23 @@ class FileCopierApp:
             # Try to enable drag & drop if available
             if DRAG_DROP_AVAILABLE and DND_FILES:
                 try:
-                    # Enable drag & drop
-                    widget.drop_target_register(DND_FILES)
-                    widget.dnd_bind('<<Drop>>', lambda e: self.handle_dropped_files_quick(e, destination_path))
-                    widget.dnd_bind('<<DragEnter>>', lambda e: self.on_drag_enter(widget))
-                    widget.dnd_bind('<<DragLeave>>', lambda e: self.on_drag_leave(widget))
+                    # Get the underlying tkinter widget for DnD registration
+                    tk_widget = widget
+                    if hasattr(widget, '_canvas') and widget._canvas:
+                        tk_widget = widget._canvas
+                    elif hasattr(widget, 'winfo_children'):
+                        children = widget.winfo_children()
+                        if children:
+                            tk_widget = children[0]
+                    
+                    # Enable drag & drop on the tkinter widget
+                    tk_widget.drop_target_register(DND_FILES)
+                    tk_widget.dnd_bind('<<Drop>>', lambda e: self.handle_dropped_files_quick(e, destination_path))
+                    tk_widget.dnd_bind('<<DragEnter>>', lambda e: self.on_drag_enter(widget))
+                    tk_widget.dnd_bind('<<DragLeave>>', lambda e: self.on_drag_leave(widget))
+                    print(f"✓ درگ اند دراپ فعال شد برای مقصد: {os.path.basename(destination_path)}")
                 except Exception as e:
-                    print(f"Could not enable drag & drop on widget: {e}")
+                    print(f"⚠ نتوانست درگ اند دراپ را فعال کند: {e}")
             
         except Exception as e:
             print(f"Error enabling quick copy on widget: {e}")
@@ -2654,7 +2671,7 @@ class FileCopierApp:
         """فعال کردن قابلیت درگ اند دراپ روی ویجت"""
         drag_drop_enabled = False
         
-        if DND_FILES and TkinterDnD:
+        if DRAG_DROP_AVAILABLE and DND_FILES:
             try:
                 # تبدیل widget به tkinter widget اصلی
                 tk_widget = widget
@@ -3014,22 +3031,20 @@ class FileCopierApp:
 def main():
     """Main entry point"""
     try:
-        # Initialize drag and drop root if available
+        # Always use CTk for consistent styling, enable DnD within the app
+        root = ctk.CTk()
+        
+        # Try to enable drag and drop support
         if DRAG_DROP_AVAILABLE and TkinterDnD:
             try:
-                root = TkinterDnD.Tk()
+                # Enable DnD on the CTk root
+                root.tk.call('package', 'require', 'tkdnd')
                 print("✓ سیستم درگ اند دراپ با TkinterDnD فعال شد")
             except Exception as e:
-                print(f"⚠ خطا در TkinterDnD: {e}")
-                root = ctk.CTk()
+                print(f"⚠ خطا در فعال‌سازی درگ اند دراپ: {e}")
+                print("⚠ از کلیک برای انتخاب فایل استفاده می‌شود")
         else:
-            root = ctk.CTk()
             print("⚠ درگ اند دراپ در دسترس نیست - از کلیک استفاده می‌شود")
-        
-        # Apply CTk styling to the root
-        if not isinstance(root, ctk.CTk):
-            # Convert TkinterDnD root to support CTk styling
-            root.configure(bg='gray10')
         
         app = FileCopierApp(root)
         app.run()
