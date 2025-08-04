@@ -312,10 +312,10 @@ class FileCopierApp:
         frame.pack(fill="both", expand=True, padx=20, pady=20)
         
         ctk.CTkLabel(frame, text="🔑 فعال‌سازی نرم‌افزار", 
-                    font=ctk.CTkFont(size=20, weight="bold")).pack(pady=20)
+                    font=ctk.CTkFont(family="B Nazanin", size=20, weight="bold")).pack(pady=20)
         
         ctk.CTkLabel(frame, text="برای استفاده از نرم‌افزار، لطفاً سریال نامبر خود را وارد کنید:",
-                    font=ctk.CTkFont(size=12)).pack(pady=10)
+                    font=ctk.CTkFont(family="B Nazanin", size=12)).pack(pady=10)
         
         serial_entry = ctk.CTkEntry(frame, width=300, placeholder_text="PFC-XXXX-XXXX-XXXX-XXXX")
         serial_entry.pack(pady=10)
@@ -706,7 +706,7 @@ class FileCopierApp:
             self.default_font = default_font
         except:
             # Fallback to system default if B Nazanin is not available
-            default_font = ctk.CTkFont(size=12)
+            default_font = ctk.CTkFont(family="B Nazanin", size=12)
             self.default_font = default_font
             print("B Nazanin font not found, using system default")
         
@@ -782,7 +782,7 @@ class FileCopierApp:
                     font=ctk.CTkFont(family="B Nazanin", size=24, weight="bold")).pack(pady=15)
         
         ctk.CTkLabel(header_frame, text="Persian File Technology Company", 
-                    font=ctk.CTkFont(size=16, weight="bold")).pack(pady=5)
+                    font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=5)
         
         # Company information
         info_frame = ctk.CTkFrame(main_container)
@@ -1268,7 +1268,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             perf_header, 
             text="⚡ Performance Settings", 
-            font=ctk.CTkFont(size=18, weight="bold"),
+            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold"),
             text_color=("gray10", "white")
         ).pack(side="left")
         
@@ -1293,7 +1293,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             buffer_header, 
             text="🔧 Buffer Size:", 
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(side="left")
         
         self.buffer_var = tk.StringVar(value=str(self.settings.get("buffer_size", 64 * 1024) // 1024))
@@ -1322,7 +1322,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         buffer_rec = ctk.CTkLabel(
             buffer_frame,
             text="💡 Recommended: SSD=256KB, HDD=64KB, Network=32KB",
-            font=ctk.CTkFont(size=10),
+            font=ctk.CTkFont(family="B Nazanin", size=10),
             text_color=("gray50", "gray60")
         )
         buffer_rec.pack(pady=(2, 0))
@@ -1337,7 +1337,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             threads_header, 
             text="👥 Max Threads:", 
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(side="left")
         
         self.threads_var = tk.StringVar(value=str(self.settings.get("max_threads", 4)))
@@ -1363,7 +1363,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         threads_rec = ctk.CTkLabel(
             threads_frame,
             text="💡 Recommended: Large files=1-2, Small files=4-6, Network=2-3",
-            font=ctk.CTkFont(size=10),
+            font=ctk.CTkFont(family="B Nazanin", size=10),
             text_color=("gray50", "gray60")
         )
         threads_rec.pack(pady=(2, 0))
@@ -1378,7 +1378,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             progress_header, 
             text="⏱ Update Interval:", 
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(side="left")
         
         self.progress_interval_var = tk.StringVar(value=str(self.settings.get("progress_update_interval", 0.5)))
@@ -1419,7 +1419,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             behavior_header, 
             text="🎯 Behavior Settings", 
-            font=ctk.CTkFont(size=18, weight="bold"),
+            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold"),
             text_color=("gray10", "white")
         ).pack(side="left")
         
@@ -1439,7 +1439,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             overwrite_frame, 
             text="📁 File Exists Policy:", 
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(side="left", padx=5)
         
         self.overwrite_var = tk.StringVar(value=self.settings.get("overwrite_policy", "prompt"))
@@ -1461,7 +1461,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             retry_frame,
             text="🔄 Auto Retry Failed Operations",
             variable=self.auto_retry_var,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         retry_checkbox.pack(side="left")
         
@@ -1479,7 +1479,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             verify_frame,
             text="✅ Verify Copy Integrity (slower but safer)",
             variable=self.verify_copy_var,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         verify_checkbox.pack(side="left")
         
@@ -1492,7 +1492,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             hidden_frame,
             text="🗂 Show Hidden Files and Folders",
             variable=self.show_hidden_var,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         hidden_checkbox.pack(side="left")
         
@@ -1505,7 +1505,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             backup_frame,
             text="💾 Create Backup Before Overwriting",
             variable=self.create_backup_var,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         backup_checkbox.pack(side="left")
         
@@ -1518,7 +1518,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             perm_frame,
             text="🔐 Preserve File Permissions",
             variable=self.preserve_permissions_var,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         perm_checkbox.pack(side="left")
         
@@ -1538,7 +1538,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             appearance_header, 
             text="🎨 Appearance Settings", 
-            font=ctk.CTkFont(size=18, weight="bold"),
+            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold"),
             text_color=("gray10", "white")
         ).pack(side="left")
         
@@ -1561,7 +1561,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             theme_header, 
             text="🎨 Theme:", 
-            font=ctk.CTkFont(size=14, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
         ).pack(side="left", padx=5)
         
         # Theme help button
@@ -1597,7 +1597,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             self.theme_preview,
             text="🎨 Theme Preview",
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(pady=20)
         
         # Additional appearance settings
@@ -1610,7 +1610,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             notification_frame,
             text="🔔 Play Completion Sound",
             variable=self.notification_sound_var,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         notification_checkbox.pack(side="left")
         
@@ -1623,7 +1623,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             graph_frame,
             text="📊 Show Speed Graph",
             variable=self.show_speed_graph_var,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         graph_checkbox.pack(side="left")
         
@@ -1636,7 +1636,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             auto_clear_frame,
             text="🗑 Auto Clear Completed Tasks",
             variable=self.auto_clear_completed_var,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         auto_clear_checkbox.pack(side="left")
         
@@ -1651,7 +1651,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             save_frame, 
             text="💾 Save All Settings", 
             command=self.save_settings_from_gui,
-            font=ctk.CTkFont(size=16, weight="bold"), 
+            font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"), 
             height=50,
             corner_radius=25,
             fg_color=("green", "darkgreen"),
@@ -1664,7 +1664,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             save_frame,
             text="🔄 Reset to Defaults",
             command=self.reset_settings_to_defaults,
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             height=35,
             corner_radius=17,
             fg_color=("orange", "darkorange"),
@@ -2533,7 +2533,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             ctk.CTkLabel(
                 success_window,
                 text="✅ Settings Saved Successfully!",
-                font=ctk.CTkFont(size=16, weight="bold")
+                font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")
             ).pack(pady=30)
             
             ctk.CTkButton(
@@ -2767,7 +2767,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             help_frame,
             text=help_text,
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             justify="left",
             wraplength=550
         ).pack(pady=10, padx=10, anchor="w")
@@ -2777,7 +2777,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             help_window,
             text="✅ Got it!",
             command=help_window.destroy,
-            font=ctk.CTkFont(weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", weight="bold")
         ).pack(pady=10)
     
     def update_buffer_from_slider(self, value):
@@ -2951,7 +2951,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             icon_label = ctk.CTkLabel(
                 top_frame,
                 text=icon,
-                font=ctk.CTkFont(size=20)
+                font=ctk.CTkFont(family="B Nazanin", size=20)
             )
             icon_label.pack(side="left", padx=(0, 10))
             
@@ -3120,14 +3120,14 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         name_label = ctk.CTkLabel(
             info_frame,
             text=f"📁 {folder_name}",
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")
         )
         name_label.pack(anchor="w")
         
         path_label = ctk.CTkLabel(
             info_frame,
             text=folder_path,
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             text_color="gray"
         )
         path_label.pack(anchor="w", pady=(0, 10))
@@ -3140,7 +3140,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         click_label = ctk.CTkLabel(
             controls_frame,
             text="🎯 فایل بکشید اینجا یا کلیک کنید",
-            font=ctk.CTkFont(size=12, weight="bold"),
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold"),
             text_color=("blue", "lightblue")
         )
         click_label.pack(side="left")
@@ -3209,7 +3209,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             ctk.CTkLabel(
                 choice_window,
                 text="چه چیزی می‌خواهید کپی کنید؟",
-                font=ctk.CTkFont(size=16, weight="bold")
+                font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")
             ).pack(pady=20)
             
             def select_files():

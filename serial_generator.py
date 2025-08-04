@@ -95,7 +95,7 @@ class SerialGeneratorGUI:
         
         # Title
         title_label = ctk.CTkLabel(main_frame, text="🔑 مولد سریال نامبر", 
-                                  font=ctk.CTkFont(size=24, weight="bold"))
+                                  font=ctk.CTkFont(family="B Nazanin", size=24, weight="bold"))
         title_label.pack(pady=20)
         
         # Customer information frame
@@ -103,7 +103,7 @@ class SerialGeneratorGUI:
         customer_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(customer_frame, text="اطلاعات مشتری", 
-                    font=ctk.CTkFont(size=16, weight="bold")).pack(pady=10)
+                    font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=10)
         
         # Customer name
         name_frame = ctk.CTkFrame(customer_frame)
@@ -134,7 +134,7 @@ class SerialGeneratorGUI:
         # Generate button
         generate_btn = ctk.CTkButton(customer_frame, text="🔄 تولید سریال نامبر", 
                                    command=self.generate_serial, height=40,
-                                   font=ctk.CTkFont(size=14, weight="bold"))
+                                   font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold"))
         generate_btn.pack(pady=15)
         
         # Generated serial display
@@ -142,10 +142,10 @@ class SerialGeneratorGUI:
         result_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(result_frame, text="سریال نامبر تولید شده", 
-                    font=ctk.CTkFont(size=16, weight="bold")).pack(pady=10)
+                    font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=10)
         
         self.serial_display = ctk.CTkEntry(result_frame, height=40, 
-                                          font=ctk.CTkFont(size=16, weight="bold"))
+                                          font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
         self.serial_display.pack(fill="x", padx=10, pady=5)
         
         # Action buttons
@@ -164,7 +164,7 @@ class SerialGeneratorGUI:
         list_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         ctk.CTkLabel(list_frame, text="سریال‌های تولید شده", 
-                    font=ctk.CTkFont(size=16, weight="bold")).pack(pady=10)
+                    font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=10)
         
         # Treeview for serials
         tree_container = tk.Frame(list_frame)
