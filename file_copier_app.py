@@ -2348,8 +2348,8 @@ class FileCopierApp:
             for i, dest_info in enumerate(self.destination_folders):
                 self.create_auto_destination_zone(dest_info, i)
                 
-                 except Exception as e:
-             print(f"Error updating destination display: {e}")
+        except Exception as e:
+            print(f"Error updating destination display: {e}")
 
     def create_auto_destination_zone(self, dest_info, index):
         """Create a destination zone for auto-detected folders"""
