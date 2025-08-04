@@ -17,10 +17,12 @@ from typing import Dict, List, Optional
 from datetime import datetime
 try:
     from tkinterdnd2 import DND_FILES, TkinterDnD
+    DRAG_DROP_AVAILABLE = True
 except ImportError:
     print("tkinterdnd2 not available, using click-to-select instead")
     DND_FILES = None
     TkinterDnD = None
+    DRAG_DROP_AVAILABLE = False
 
 # Enhanced drag & drop functionality with tkinterdnd2
 
@@ -46,8 +48,8 @@ class FileCopierApp:
     def __init__(self, root):
         self.root = root
         self.root.title("مدیریت فایل ایرانی پیشرفته - Persian File Copier Pro")
-        self.root.geometry("1100x700")
-        self.root.minsize(900, 600)
+        self.root.geometry("1200x800")
+        self.root.minsize(1000, 700)
         
         # Initialize variables
         self.copy_tasks = []
@@ -58,16 +60,19 @@ class FileCopierApp:
         self.current_dir = os.getcwd()
         self.settings = self.load_settings()
         self.file_cache = self.load_cache()
+        self.all_drives = []
+        self.destination_folders = []
         
         # Setup components
         self.setup_logging()
         self.setup_executor()
+        
+        # Start comprehensive system scan in background
+        self.update_status("Scanning system drives and files...")
+        threading.Thread(target=self.initial_system_scan, daemon=True).start()
+        
         self.setup_gui()
         self.setup_bindings()
-        
-        # Initial display
-        self.display_cache()
-        self.update_status("Ready")
 
     def setup_logging(self):
         """Setup logging configuration"""
@@ -148,6 +153,230 @@ class FileCopierApp:
         except Exception as e:
             self.logger.error(f"Failed to save cache: {e}")
 
+    def initial_system_scan(self):
+        """Comprehensive system scan for drives and files at startup"""
+        try:
+            print("🔍 Starting comprehensive system scan...")
+            
+            # 1. Scan all available drives and mount points
+            self.scan_all_drives()
+            
+            # 2. Scan files from all drives
+            self.scan_all_files()
+            
+            # 3. Auto-detect destination folders
+            self.auto_detect_destinations()
+            
+            # 4. Update GUI
+            self.root.after(0, self.on_scan_complete)
+            
+        except Exception as e:
+            self.logger.error(f"Error in system scan: {e}")
+            print(f"❌ System scan error: {e}")
+            self.root.after(0, lambda: self.update_status("Scan error - using fallback"))
+
+    def scan_all_drives(self):
+        """Scan and detect all available drives and mount points"""
+        try:
+            self.all_drives = []
+            
+            # Get all disk partitions
+            partitions = psutil.disk_partitions()
+            
+            for partition in partitions:
+                try:
+                    # Get partition info
+                    partition_info = {
+                        'device': partition.device,
+                        'mountpoint': partition.mountpoint,
+                        'fstype': partition.fstype,
+                        'opts': partition.opts
+                    }
+                    
+                    # Try to get disk usage
+                    try:
+                        usage = psutil.disk_usage(partition.mountpoint)
+                        partition_info.update({
+                            'total': usage.total,
+                            'used': usage.used,
+                            'free': usage.free,
+                            'accessible': True
+                        })
+                    except (PermissionError, OSError):
+                        partition_info.update({
+                            'total': 0,
+                            'used': 0,
+                            'free': 0,
+                            'accessible': False
+                        })
+                    
+                    self.all_drives.append(partition_info)
+                    print(f"✓ Found drive: {partition.device} -> {partition.mountpoint}")
+                    
+                except Exception as e:
+                    print(f"⚠ Could not access partition {partition.device}: {e}")
+                    continue
+            
+            print(f"✓ Total drives found: {len(self.all_drives)}")
+            
+        except Exception as e:
+            print(f"❌ Error scanning drives: {e}")
+            self.logger.error(f"Drive scan error: {e}")
+
+    def scan_all_files(self):
+        """Scan files from all accessible drives"""
+        try:
+            print("📁 Scanning files from all drives...")
+            all_files = {}
+            total_files = 0
+            
+            for drive in self.all_drives:
+                if not drive['accessible']:
+                    continue
+                    
+                mountpoint = drive['mountpoint']
+                print(f"🔍 Scanning {mountpoint}...")
+                
+                try:
+                    # Scan drive with depth limit for performance
+                    drive_files = self.scan_directory_recursive(mountpoint, max_depth=3)
+                    all_files.update(drive_files)
+                    drive_file_count = len(drive_files)
+                    total_files += drive_file_count
+                    print(f"✓ {mountpoint}: {drive_file_count} files")
+                    
+                except Exception as e:
+                    print(f"⚠ Could not scan {mountpoint}: {e}")
+                    continue
+            
+            # Update cache with all files
+            self.file_cache["files"] = all_files
+            self.file_cache["last_scan"] = time.time()
+            self.file_cache["total_files"] = total_files
+            self.save_cache()
+            
+            print(f"✓ Total files scanned: {total_files}")
+            
+        except Exception as e:
+            print(f"❌ Error scanning files: {e}")
+            self.logger.error(f"File scan error: {e}")
+
+    def scan_directory_recursive(self, directory, max_depth=3, current_depth=0):
+        """Recursively scan directory with depth limit"""
+        files_dict = {}
+        
+        if current_depth >= max_depth:
+            return files_dict
+            
+        try:
+            for item in os.listdir(directory):
+                if item.startswith('.'):  # Skip hidden files/folders
+                    continue
+                    
+                item_path = os.path.join(directory, item)
+                
+                try:
+                    if os.path.isfile(item_path):
+                        size = self.get_file_size(item_path)
+                        files_dict[item_path] = {
+                            "name": item,
+                            "type": "File",
+                            "size": self.format_size(size),
+                            "raw_size": size,
+                            "drive": directory.split(os.sep)[0] if os.sep in directory else directory
+                        }
+                    elif os.path.isdir(item_path) and current_depth < max_depth - 1:
+                        # Recursively scan subdirectories
+                        sub_files = self.scan_directory_recursive(item_path, max_depth, current_depth + 1)
+                        files_dict.update(sub_files)
+                        
+                        # Also add the directory itself
+                        files_dict[item_path] = {
+                            "name": item,
+                            "type": "Directory",
+                            "size": "",
+                            "raw_size": 0,
+                            "drive": directory.split(os.sep)[0] if os.sep in directory else directory
+                        }
+                        
+                except (OSError, PermissionError):
+                    continue
+                    
+        except (OSError, PermissionError):
+            pass
+            
+        return files_dict
+
+    def auto_detect_destinations(self):
+        """Automatically detect and set up destination folders from all drives"""
+        try:
+            self.destination_folders = []
+            
+            # Add all accessible drive root directories as destinations
+            for drive in self.all_drives:
+                if drive['accessible'] and drive['free'] > 0:
+                    dest_info = {
+                        'path': drive['mountpoint'],
+                        'name': f"{drive['device']} ({self.format_size(drive['free'])} free)",
+                        'type': 'drive',
+                        'free_space': drive['free'],
+                        'total_space': drive['total']
+                    }
+                    self.destination_folders.append(dest_info)
+            
+            # Add common user directories if they exist
+            common_dirs = [
+                ('Desktop', os.path.expanduser('~/Desktop')),
+                ('Documents', os.path.expanduser('~/Documents')),
+                ('Downloads', os.path.expanduser('~/Downloads')),
+                ('Pictures', os.path.expanduser('~/Pictures')),
+                ('Videos', os.path.expanduser('~/Videos')),
+                ('Music', os.path.expanduser('~/Music'))
+            ]
+            
+            for name, path in common_dirs:
+                if os.path.exists(path) and os.path.isdir(path):
+                    try:
+                        usage = psutil.disk_usage(path)
+                        dest_info = {
+                            'path': path,
+                            'name': f"{name} ({self.format_size(usage.free)} free)",
+                            'type': 'user_folder',
+                            'free_space': usage.free,
+                            'total_space': usage.total
+                        }
+                        # Avoid duplicates
+                        if not any(d['path'] == path for d in self.destination_folders):
+                            self.destination_folders.append(dest_info)
+                    except:
+                        continue
+            
+            print(f"✓ Auto-detected {len(self.destination_folders)} destination folders")
+            
+        except Exception as e:
+            print(f"❌ Error auto-detecting destinations: {e}")
+            self.logger.error(f"Destination detection error: {e}")
+
+    def on_scan_complete(self):
+        """Called when initial system scan is complete"""
+        try:
+            # Display cached files
+            self.display_cache()
+            
+            # Update destination folders in GUI
+            self.update_destination_folders_display()
+            
+            # Update status
+            total_files = self.file_cache.get("total_files", 0)
+            total_drives = len(self.all_drives)
+            self.update_status(f"Ready - {total_files} files from {total_drives} drives scanned")
+            
+            print("✅ System scan completed successfully")
+            
+        except Exception as e:
+            print(f"❌ Error completing scan: {e}")
+            self.update_status("Ready - scan completed with errors")
+
     def setup_gui(self):
         """Setup the main GUI"""
         # Apply theme
@@ -200,20 +429,15 @@ class FileCopierApp:
         
         self.notebook.pack(fill="both", expand=True, pady=(0, 10))
         
-        # تب مرورگر فایل - تم آبی
+        # تب مرورگر فایل با سایدبار کپی سریع - تم آبی
         self.explorer_frame = ctk.CTkFrame(self.notebook, fg_color=("#e3f2fd", "#1a237e"))
-        self.notebook.add(self.explorer_frame, text="📁 مرورگر فایل")
+        self.notebook.add(self.explorer_frame, text="📁 مرورگر فایل و کپی سریع")
         self.setup_explorer_tab()
         
         # تب کارهای کپی - تم سبز
         self.tasks_frame = ctk.CTkFrame(self.notebook, fg_color=("#e0f2f1", "#1b5e20"))
         self.notebook.add(self.tasks_frame, text="📋 کارهای کپی")
         self.setup_tasks_tab()
-        
-        # تب کپی سریع - تم صورتی
-        self.dragdrop_frame = ctk.CTkFrame(self.notebook, fg_color=("#fce4ec", "#880e4f"))
-        self.notebook.add(self.dragdrop_frame, text="🎯 کپی سریع")
-        self.setup_dragdrop_tab()
         
         # تب تنظیمات - تم نارنجی
         self.settings_frame = ctk.CTkFrame(self.notebook, fg_color=("#fff3e0", "#e65100"))
@@ -226,85 +450,38 @@ class FileCopierApp:
         # Status bar
         self.setup_status_bar()
 
-    def setup_dragdrop_tab(self):
-        """Setup the drag & drop quick copy tab"""
-        # Title and instructions
-        title_frame = ctk.CTkFrame(self.dragdrop_frame)
-        title_frame.pack(fill="x", padx=20, pady=20)
-        
+    def refresh_destinations(self):
+        """Refresh and re-scan destination folders"""
+        self.update_status("Refreshing destinations...")
+        threading.Thread(target=self._refresh_destinations_thread, daemon=True).start()
+    
+    def _refresh_destinations_thread(self):
+        """Thread function to refresh destinations"""
         try:
-            title_font = ctk.CTkFont(family="B Nazanin", size=24, weight="bold")
-        except:
-            title_font = ctk.CTkFont(size=24, weight="bold")
+            # Re-scan drives and destinations
+            self.scan_all_drives()
+            self.auto_detect_destinations()
             
-        title_label = ctk.CTkLabel(
-            title_frame,
-            text="🚀 کپی سریع - بکشید و رها کنید",
-            font=title_font
-        )
-        title_label.pack(pady=10)
-        
-        try:
-            instruction_font = ctk.CTkFont(family="B Nazanin", size=14)
-        except:
-            instruction_font = ctk.CTkFont(size=14)
+            # Update GUI
+            self.root.after(0, self.update_destination_folders_display)
+            self.root.after(0, lambda: self.update_status("Destinations refreshed"))
             
-        instruction_label = ctk.CTkLabel(
-            title_frame,
-            text="فایل‌ها را از Explorer بکشید و روی پوشه‌های مقصد رها کنید\nاگر کار نکرد، روی پوشه‌ها کلیک کنید تا فایل انتخاب کنید",
-            font=instruction_font,
-            wraplength=600
-        )
-        instruction_label.pack(pady=5)
-        
-        # Destination folders management
-        dest_mgmt_frame = ctk.CTkFrame(self.dragdrop_frame)
-        dest_mgmt_frame.pack(fill="x", padx=20, pady=(0, 20))
-        
-        dest_title = ctk.CTkLabel(
-            dest_mgmt_frame,
-            text="📁 پوشه‌های مقصد",
-            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")
-        )
-        dest_title.pack(pady=10)
-        
-        # Add destination folder controls
-        add_dest_frame = ctk.CTkFrame(dest_mgmt_frame)
-        add_dest_frame.pack(fill="x", padx=10, pady=5)
-        
-        self.new_dest_entry = ctk.CTkEntry(
-            add_dest_frame,
-            placeholder_text="انتخاب پوشه مقصد جدید...",
-            font=ctk.CTkFont(family="B Nazanin", size=12),
-            justify="right"
-        )
-        self.new_dest_entry.pack(side="left", fill="x", expand=True, padx=5)
-        
-        ctk.CTkButton(
-            add_dest_frame,
-            text="📂 انتخاب پوشه",
-            command=self.add_destination_folder,
-            width=120,
-            font=ctk.CTkFont(family="B Nazanin", size=12)
-        ).pack(side="right", padx=5)
-        
-        # Destination folders display
-        self.dest_folders_frame = ctk.CTkScrollableFrame(
-            self.dragdrop_frame,
-            label_text="🎯 نواحی کپی سریع - فایل بکشید یا کلیک کنید",
-            height=400,
-            label_font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
-        )
-        self.dest_folders_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        
-        # Load saved destination folders
-        self.destination_folders = self.settings.get("destination_folders", [])
-        self.update_destination_folders_display()
+        except Exception as e:
+            print(f"❌ Error refreshing destinations: {e}")
+            self.root.after(0, lambda: self.update_status("Destination refresh error"))
 
     def setup_explorer_tab(self):
-        """Setup the file explorer tab"""
+        """Setup the file explorer tab with integrated quick copy sidebar"""
+        # Main horizontal layout: file browser on left, quick copy sidebar on right
+        main_container = ctk.CTkFrame(self.explorer_frame)
+        main_container.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Left side: File Browser
+        browser_frame = ctk.CTkFrame(main_container)
+        browser_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
+        
         # Search and navigation frame
-        nav_frame = ctk.CTkFrame(self.explorer_frame)
+        nav_frame = ctk.CTkFrame(browser_frame)
         nav_frame.pack(fill="x", padx=10, pady=10)
         
         # Current directory display
@@ -326,11 +503,11 @@ class FileCopierApp:
         self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="نام فایل یا پسوند وارد کنید", font=ctk.CTkFont(family="B Nazanin"), justify="right")
         self.search_entry.pack(side="left", fill="x", expand=True, padx=5)
         
-        ctk.CTkButton(search_frame, text="🔄 بروزرسانی", command=self.refresh_files, width=100, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
+        ctk.CTkButton(search_frame, text="🔄 بروزرسانی لیست", command=self.refresh_files, width=100, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
         ctk.CTkButton(search_frame, text="🗑️ پاک کردن", command=self.clear_search, width=90, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
         
         # File tree with improved styling
-        tree_frame = ctk.CTkFrame(self.explorer_frame)
+        tree_frame = ctk.CTkFrame(browser_frame)
         tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
         # Create treeview with scrollbars
@@ -339,21 +516,23 @@ class FileCopierApp:
         
         self.file_tree = ttk.Treeview(
             tree_container,
-            columns=("Name", "Path", "Type", "Size"),
+            columns=("Name", "Path", "Type", "Size", "Drive"),
             show="headings",
             height=15
         )
         
         # Configure columns
-        self.file_tree.heading("Name", text="Name")
-        self.file_tree.heading("Path", text="Full Path")
-        self.file_tree.heading("Type", text="Type")
-        self.file_tree.heading("Size", text="Size")
+        self.file_tree.heading("Name", text="📁 نام فایل")
+        self.file_tree.heading("Path", text="📂 مسیر کامل")
+        self.file_tree.heading("Type", text="📄 نوع")
+        self.file_tree.heading("Size", text="💾 اندازه")
+        self.file_tree.heading("Drive", text="💿 درایو")
         
-        self.file_tree.column("Name", width=250, minwidth=150)
-        self.file_tree.column("Path", width=400, minwidth=200)
+        self.file_tree.column("Name", width=200, minwidth=150)
+        self.file_tree.column("Path", width=300, minwidth=200)
         self.file_tree.column("Type", width=80, minwidth=60)
         self.file_tree.column("Size", width=100, minwidth=80)
+        self.file_tree.column("Drive", width=80, minwidth=60)
         
         # Scrollbars
         v_scrollbar = ttk.Scrollbar(tree_container, orient="vertical", command=self.file_tree.yview)
@@ -370,22 +549,66 @@ class FileCopierApp:
         tree_container.grid_columnconfigure(0, weight=1)
         
         # Action buttons
-        action_frame = ctk.CTkFrame(self.explorer_frame)
+        action_frame = ctk.CTkFrame(browser_frame)
         action_frame.pack(fill="x", padx=10, pady=(0, 10))
         
-        ctk.CTkButton(action_frame, text="Add Selected to Queue", command=self.add_to_queue,
-                     font=ctk.CTkFont(weight="bold")).pack(side="left", padx=5)
-        ctk.CTkButton(action_frame, text="Select All", command=self.select_all_files).pack(side="left", padx=5)
-        ctk.CTkButton(action_frame, text="Clear Selection", command=self.clear_selection).pack(side="left", padx=5)
+        ctk.CTkButton(action_frame, text="➕ افزودن به صف", command=self.add_to_queue,
+                     font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="left", padx=5)
+        ctk.CTkButton(action_frame, text="✅ انتخاب همه", command=self.select_all_files, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
+        ctk.CTkButton(action_frame, text="❌ پاک کردن انتخاب", command=self.clear_selection, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
         
-        # Destination frame
-        dest_frame = ctk.CTkFrame(self.explorer_frame)
-        dest_frame.pack(fill="x", padx=10, pady=(0, 10))
+        # File count label
+        self.file_count_label = ctk.CTkLabel(browser_frame, text="Files: 0", font=ctk.CTkFont(family="B Nazanin"))
+        self.file_count_label.pack(pady=5)
         
-        ctk.CTkLabel(dest_frame, text="Destination:", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=5)
-        self.dest_entry = ctk.CTkEntry(dest_frame, placeholder_text="Select destination folder")
-        self.dest_entry.pack(side="left", fill="x", expand=True, padx=5)
-        ctk.CTkButton(dest_frame, text="Browse", command=self.browse_dest, width=80).pack(side="right", padx=5)
+        # Right side: Quick Copy Sidebar
+        self.setup_quick_copy_sidebar(main_container)
+
+    def setup_quick_copy_sidebar(self, parent):
+        """Setup the quick copy sidebar with auto-detected destinations"""
+        # Sidebar frame
+        sidebar_frame = ctk.CTkFrame(parent, width=350)
+        sidebar_frame.pack(side="right", fill="y", padx=(5, 0))
+        sidebar_frame.pack_propagate(False)  # Maintain fixed width
+        
+        # Sidebar title
+        title_label = ctk.CTkLabel(
+            sidebar_frame,
+            text="🎯 کپی سریع",
+            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")
+        )
+        title_label.pack(pady=(10, 5))
+        
+        # Instructions
+        instruction_label = ctk.CTkLabel(
+            sidebar_frame,
+            text="فایل‌ها را از لیست انتخاب کنید\nسپس روی پوشه مقصد کلیک کنید",
+            font=ctk.CTkFont(family="B Nazanin", size=12),
+            wraplength=300
+        )
+        instruction_label.pack(pady=5)
+        
+        # Auto-refresh destinations button
+        refresh_dest_btn = ctk.CTkButton(
+            sidebar_frame,
+            text="🔄 بروزرسانی مقاصد",
+            command=self.refresh_destinations,
+            font=ctk.CTkFont(family="B Nazanin", size=12),
+            width=200
+        )
+        refresh_dest_btn.pack(pady=5)
+        
+        # Destinations scrollable frame
+        self.dest_folders_frame = ctk.CTkScrollableFrame(
+            sidebar_frame,
+            label_text="📁 پوشه‌های مقصد (شناسایی خودکار)",
+            height=500,
+            label_font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
+        )
+        self.dest_folders_frame.pack(fill="both", expand=True, padx=10, pady=(10, 10))
+        
+        # Initialize with auto-detected destinations
+        self.update_destination_folders_display()
 
     def setup_tasks_tab(self):
         """راه‌اندازی تب مدیریت کارها"""
@@ -1029,28 +1252,47 @@ class FileCopierApp:
 
     def _update_file_tree(self, files_data: List, file_count: int):
         """Update file tree with new data"""
-        self.file_tree.delete(*self.file_tree.get_children())
-        
-        for name, path, file_type, size in files_data:
-            self.file_tree.insert("", "end", values=(name, path, file_type, size))
-        
-        self.file_count_label.configure(text=f"Files: {file_count}")
-        self.update_status("Ready")
+        try:
+            self.file_tree.delete(*self.file_tree.get_children())
+            
+            for file_info in files_data:
+                if len(file_info) == 4:
+                    # Old format: name, path, file_type, size
+                    name, path, file_type, size = file_info
+                    drive = ""
+                elif len(file_info) == 5:
+                    # New format: name, path, file_type, size, drive
+                    name, path, file_type, size, drive = file_info
+                else:
+                    continue
+                    
+                self.file_tree.insert("", "end", values=(name, path, file_type, size, drive))
+            
+            if hasattr(self, 'file_count_label'):
+                self.file_count_label.configure(text=f"Files: {file_count}")
+            self.update_status("Ready")
+        except Exception as e:
+            print(f"Error updating file tree: {e}")
 
     def display_cache(self):
         """Display cached files"""
-        self.file_tree.delete(*self.file_tree.get_children())
-        file_count = 0
-        
-        for item_path, data in self.file_cache.get("files", {}).items():
-            if os.path.exists(item_path):
-                size_str = data.get("size", "")
-                self.file_tree.insert("", "end", values=(
-                    data["name"], item_path, data["type"], size_str
-                ))
-                file_count += 1
-        
-        self.file_count_label.configure(text=f"Files: {file_count}")
+        try:
+            self.file_tree.delete(*self.file_tree.get_children())
+            file_count = 0
+            
+            for item_path, data in self.file_cache.get("files", {}).items():
+                if os.path.exists(item_path):
+                    size_str = data.get("size", "")
+                    drive_info = data.get("drive", "")
+                    self.file_tree.insert("", "end", values=(
+                        data["name"], item_path, data["type"], size_str, drive_info
+                    ))
+                    file_count += 1
+            
+            if hasattr(self, 'file_count_label'):
+                self.file_count_label.configure(text=f"Files: {file_count}")
+        except Exception as e:
+            print(f"Error displaying cache: {e}")
 
     def on_search_change(self, event):
         """Handle search entry changes"""
@@ -1078,7 +1320,8 @@ class FileCopierApp:
                 if (search_term in name or 
                     (search_term.startswith(".") and name.endswith(search_term))):
                     size_str = data.get("size", "")
-                    filtered_files.append((data["name"], item_path, data["type"], size_str))
+                    drive_info = data.get("drive", "")
+                    filtered_files.append((data["name"], item_path, data["type"], size_str, drive_info))
                     file_count += 1
             
             self.root.after(0, lambda: self._update_file_tree(filtered_files, file_count))
@@ -2081,25 +2324,253 @@ class FileCopierApp:
             self.update_destination_folders_display()
 
     def update_destination_folders_display(self):
-        """Update the display of destination folders"""
-        # Clear existing widgets
-        for widget in self.dest_folders_frame.winfo_children():
-            widget.destroy()
-        
-        if not self.destination_folders:
-            # Show message when no folders
-            no_folders_label = ctk.CTkLabel(
+        """Update the display of auto-detected destination folders"""
+        try:
+            if not hasattr(self, 'dest_folders_frame'):
+                return
+                
+            # Clear existing widgets
+            for widget in self.dest_folders_frame.winfo_children():
+                widget.destroy()
+            
+            if not self.destination_folders:
+                # Show message when no folders detected
+                no_folders_label = ctk.CTkLabel(
+                    self.dest_folders_frame,
+                    text="🔍 در حال شناسایی درایوها...\n\nاگر درایوی نمایش داده نمی‌شود،\nروی دکمه بروزرسانی مقاصد کلیک کنید",
+                    font=ctk.CTkFont(family="B Nazanin", size=12),
+                    text_color="gray"
+                )
+                no_folders_label.pack(pady=50)
+                return
+            
+            # Create drop zones for each auto-detected destination
+            for i, dest_info in enumerate(self.destination_folders):
+                self.create_auto_destination_zone(dest_info, i)
+                
+                 except Exception as e:
+             print(f"Error updating destination display: {e}")
+
+    def create_auto_destination_zone(self, dest_info, index):
+        """Create a destination zone for auto-detected folders"""
+        try:
+            folder_path = dest_info['path']
+            folder_name = dest_info['name']
+            folder_type = dest_info['type']
+            free_space = dest_info.get('free_space', 0)
+            
+            # Main drop zone frame with different colors for different types
+            if folder_type == 'drive':
+                border_color = ("blue", "lightblue")
+                bg_color = ("#e3f2fd", "#1a237e")
+            else:
+                border_color = ("green", "lightgreen")
+                bg_color = ("#e8f5e8", "#2e7d32")
+            
+            drop_frame = ctk.CTkFrame(
                 self.dest_folders_frame,
-                text="📂 هیچ پوشه مقصدی اضافه نشده است\n\nبرای اضافه کردن پوشه جدید از دکمه Browse استفاده کنید",
-                font=ctk.CTkFont(size=14),
+                height=100,
+                border_width=2,
+                border_color=border_color,
+                corner_radius=12,
+                fg_color=bg_color
+            )
+            drop_frame.pack(fill="x", padx=5, pady=5)
+            drop_frame.pack_propagate(False)
+            
+            # Main content frame
+            content_frame = ctk.CTkFrame(drop_frame, fg_color="transparent")
+            content_frame.pack(fill="both", expand=True, padx=10, pady=10)
+            
+            # Top row: Icon and name
+            top_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+            top_frame.pack(fill="x")
+            
+            # Icon based on type
+            icon = "💿" if folder_type == 'drive' else "📁"
+            icon_label = ctk.CTkLabel(
+                top_frame,
+                text=icon,
+                font=ctk.CTkFont(size=20)
+            )
+            icon_label.pack(side="left", padx=(0, 10))
+            
+            # Name and path
+            name_label = ctk.CTkLabel(
+                top_frame,
+                text=folder_name,
+                font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
+            )
+            name_label.pack(side="left", anchor="w")
+            
+            # Bottom row: Path and click instruction
+            bottom_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+            bottom_frame.pack(fill="x", pady=(5, 0))
+            
+            path_label = ctk.CTkLabel(
+                bottom_frame,
+                text=folder_path,
+                font=ctk.CTkFont(family="B Nazanin", size=10),
                 text_color="gray"
             )
-            no_folders_label.pack(pady=50)
-            return
-        
-        # Create drop zones for each destination folder
-        for i, folder_path in enumerate(self.destination_folders):
-            self.create_drop_zone(folder_path, i)
+            path_label.pack(side="left", anchor="w")
+            
+            # Click instruction
+            click_label = ctk.CTkLabel(
+                bottom_frame,
+                text="🎯 کلیک برای کپی فایل‌های انتخابی",
+                font=ctk.CTkFont(family="B Nazanin", size=10, weight="bold"),
+                text_color=("blue", "lightblue")
+            )
+            click_label.pack(side="right")
+            
+            # Enable drag & drop and click functionality
+            self.enable_quick_copy_on_widget(drop_frame, folder_path)
+            self.enable_quick_copy_on_widget(content_frame, folder_path)
+            self.enable_quick_copy_on_widget(name_label, folder_path)
+            self.enable_quick_copy_on_widget(path_label, folder_path)
+            self.enable_quick_copy_on_widget(click_label, folder_path)
+            
+        except Exception as e:
+            print(f"Error creating destination zone: {e}")
+
+    def enable_quick_copy_on_widget(self, widget, destination_path):
+        """Enable quick copy functionality on widget (drag & drop + click)"""
+        try:
+            # Click functionality - copy selected files from browser
+            def on_click(event=None):
+                self.quick_copy_selected_files(destination_path)
+            
+            widget.bind("<Button-1>", on_click)
+            
+            # Try to enable drag & drop if available
+            if DRAG_DROP_AVAILABLE and DND_FILES:
+                try:
+                    # Enable drag & drop
+                    widget.drop_target_register(DND_FILES)
+                    widget.dnd_bind('<<Drop>>', lambda e: self.handle_dropped_files_quick(e, destination_path))
+                    widget.dnd_bind('<<DragEnter>>', lambda e: self.on_drag_enter(widget))
+                    widget.dnd_bind('<<DragLeave>>', lambda e: self.on_drag_leave(widget))
+                except Exception as e:
+                    print(f"Could not enable drag & drop on widget: {e}")
+            
+        except Exception as e:
+            print(f"Error enabling quick copy on widget: {e}")
+
+    def quick_copy_selected_files(self, destination_path):
+        """Copy selected files from file browser to destination"""
+        try:
+            selected_items = self.file_tree.selection()
+            if not selected_items:
+                messagebox.showinfo("انتخاب فایل", "لطفاً فایل‌هایی را از لیست انتخاب کنید!")
+                return
+            
+            added_count = 0
+            for item_id in selected_items:
+                values = self.file_tree.item(item_id)['values']
+                if len(values) >= 2:
+                    file_path = values[1]  # Path column
+                    if os.path.exists(file_path):
+                        # Add to copy queue and start immediately
+                        self.add_task_and_start(file_path, destination_path)
+                        added_count += 1
+            
+            if added_count > 0:
+                messagebox.showinfo("کپی آغاز شد", f"{added_count} فایل به صف کپی اضافه شد و کپی آغاز شد!")
+            else:
+                messagebox.showwarning("خطا", "فایل‌های انتخابی معتبر نیستند!")
+                
+        except Exception as e:
+            print(f"Error in quick copy: {e}")
+            messagebox.showerror("خطا", f"خطا در کپی سریع: {e}")
+
+    def add_task_and_start(self, source_path, destination_path):
+        """Add a task to the queue and start it immediately"""
+        try:
+            if not os.path.exists(source_path):
+                return
+            
+            filename = os.path.basename(source_path)
+            dest_file = os.path.join(destination_path, filename)
+            
+            # Check if already exists in queue
+            if any(task["source"] == source_path and task["destination"] == dest_file 
+                   for task in self.copy_tasks):
+                return  # Already in queue
+            
+            # Create and add task
+            task_id = len(self.copy_tasks)
+            file_size = self.get_file_size(source_path)
+            
+            task = {
+                "id": task_id,
+                "source": source_path,
+                "destination": dest_file,
+                "filename": filename,
+                "size": file_size,
+                "copied": 0,
+                "progress": 0.0,
+                "speed": 0.0,
+                "status": "🚀 Auto-Starting",
+                "paused": False,
+                "cancelled": False,
+                "completed": False,
+                "start_time": time.time(),
+                "last_update": time.time(),
+                "retry_count": 0,
+                "error_message": "",
+                "future": None
+            }
+            
+            self.copy_tasks.append(task)
+            
+            # Add to task tree
+            self.task_tree.insert("", "end", iid=str(task_id), values=(
+                filename,
+                dest_file,
+                "0%",
+                self.format_size(file_size),
+                "0 B",
+                "0.0",
+                "🚀 Auto-Starting"
+            ))
+            
+            # Start immediately
+            task["status"] = "🔄 Running"
+            task["future"] = self.executor.submit(self.copy_task, task)
+            self.update_task_display(task)
+            
+        except Exception as e:
+            print(f"Error adding and starting task: {e}")
+
+    def handle_dropped_files_quick(self, event, destination_path):
+        """Handle files dropped from external applications"""
+        try:
+            # Get the dropped files
+            files_data = getattr(event, 'data', '')
+            if not files_data:
+                files_data = str(event)
+            
+            # Parse file paths
+            files = []
+            if isinstance(files_data, str):
+                import re
+                pattern = r'\{[^}]+\}|\S+'
+                raw_files = re.findall(pattern, files_data)
+                files = [f.strip('{}').strip() for f in raw_files if f.strip()]
+            
+            if files:
+                added_count = 0
+                for file_path in files:
+                    if os.path.exists(file_path):
+                        self.add_task_and_start(file_path, destination_path)
+                        added_count += 1
+                
+                if added_count > 0:
+                    messagebox.showinfo("کپی آغاز شد", f"{added_count} فایل از درگ و رها به صف کپی اضافه شد!")
+            
+        except Exception as e:
+            print(f"Error handling dropped files: {e}")
 
     def create_drop_zone(self, folder_path, index):
         """Create a drop zone for a destination folder"""
@@ -2530,21 +3001,22 @@ class FileCopierApp:
 def main():
     """Main entry point"""
     try:
-        # Use CTk for full CustomTkinter compatibility
-        root = ctk.CTk()
-        
-        # Apply drag and drop wrapper if available
-        if TkinterDnD:
+        # Initialize drag and drop root if available
+        if DRAG_DROP_AVAILABLE and TkinterDnD:
             try:
-                # Initialize tkdnd package
-                root.tk.call('package', 'require', 'tkdnd')
-                # Enable DnD for the root window
-                root.tk.call('tkdnd::drag_source', 'register', root, 'DND_Files')
-                root.tk.call('tkdnd::drop_target', 'register', root, 'DND_Files')
-                root._dnd_init = True
-                print("✓ سیستم درگ اند دراپ با موفقیت فعال شد")
+                root = TkinterDnD.Tk()
+                print("✓ سیستم درگ اند دراپ با TkinterDnD فعال شد")
             except Exception as e:
-                print(f"⚠ نتوانست درگ اند دراپ را فعال کند: {e}, از روش کلیک استفاده می‌شود")
+                print(f"⚠ خطا در TkinterDnD: {e}")
+                root = ctk.CTk()
+        else:
+            root = ctk.CTk()
+            print("⚠ درگ اند دراپ در دسترس نیست - از کلیک استفاده می‌شود")
+        
+        # Apply CTk styling to the root
+        if not isinstance(root, ctk.CTk):
+            # Convert TkinterDnD root to support CTk styling
+            root.configure(bg='gray10')
         
         app = FileCopierApp(root)
         app.run()
