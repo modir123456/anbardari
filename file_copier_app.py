@@ -1105,18 +1105,6 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         recent_container.grid_rowconfigure(0, weight=1)
         recent_container.grid_columnconfigure(0, weight=1)
-        
-        ctk.CTkButton(action_frame, text="➕ افزودن به صف", command=self.add_to_queue,
-                     font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="left", padx=5)
-        ctk.CTkButton(action_frame, text="✅ انتخاب همه", command=self.select_all_files, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
-        ctk.CTkButton(action_frame, text="❌ پاک کردن انتخاب", command=self.clear_selection, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
-        
-        # File count label
-        self.file_count_label = ctk.CTkLabel(browser_frame, text="Files: 0", font=ctk.CTkFont(family="B Nazanin"))
-        self.file_count_label.pack(pady=5)
-        
-        # Right side: Quick Copy Sidebar
-        self.setup_quick_copy_sidebar(main_container)
 
     def setup_quick_copy_sidebar(self, parent):
         """Setup the quick copy sidebar with auto-detected destinations"""
@@ -3015,26 +3003,9 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             
             widget.bind("<Button-1>", on_click)
             
-            # Try to enable drag & drop if available
-            if DRAG_DROP_AVAILABLE and DND_FILES:
-                try:
-                    # Get the underlying tkinter widget for DnD registration
-                    tk_widget = widget
-                    if hasattr(widget, '_canvas') and widget._canvas:
-                        tk_widget = widget._canvas
-                    elif hasattr(widget, 'winfo_children'):
-                        children = widget.winfo_children()
-                        if children:
-                            tk_widget = children[0]
-                    
-                    # Enable drag & drop on the tkinter widget
-                    tk_widget.drop_target_register(DND_FILES)
-                    tk_widget.dnd_bind('<<Drop>>', lambda e: self.handle_dropped_files_quick(e, destination_path))
-                    tk_widget.dnd_bind('<<DragEnter>>', lambda e: self.on_drag_enter(widget))
-                    tk_widget.dnd_bind('<<DragLeave>>', lambda e: self.on_drag_leave(widget))
-                    print(f"✓ درگ اند دراپ فعال شد برای مقصد: {os.path.basename(destination_path)}")
-                except Exception as e:
-                    print(f"⚠ نتوانست درگ اند دراپ را فعال کند: {e}")
+            # Native drag & drop is handled by the NativeDragDrop class
+            # No additional setup needed here
+            print(f"✓ کلیک سریع فعال شد برای مقصد: {os.path.basename(destination_path)}")
             
         except Exception as e:
             print(f"Error enabling quick copy on widget: {e}")
@@ -3125,78 +3096,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         except Exception as e:
             print(f"Error adding and starting task: {e}")
 
-    def handle_dropped_files_quick(self, event, destination_path):
-        """Handle files dropped from external applications"""
-        try:
-            print(f"🎯 Drop event received on destination: {destination_path}")
-            
-            # Get the dropped files - try multiple methods
-            files_data = None
-            if hasattr(event, 'data'):
-                files_data = event.data
-            elif hasattr(event, 'widget') and hasattr(event.widget, 'tk'):
-                # Try to get data from tkinter event
-                try:
-                    files_data = event.widget.tk.call('tkdnd::drop_target', 'get_data', event.widget, 'DND_Files')
-                except:
-                    pass
-            
-            if not files_data:
-                files_data = str(event)
-            
-            print(f"📁 Raw drop data: {files_data}")
-            
-            # Parse file paths with enhanced parsing
-            files = []
-            if isinstance(files_data, str):
-                # Handle different formats of file paths
-                import re
-                
-                # Method 1: Files wrapped in {}
-                if '{' in files_data and '}' in files_data:
-                    files = re.findall(r'\{([^}]+)\}', files_data)
-                # Method 2: Space-separated paths
-                elif ' ' in files_data:
-                    # Split by space but handle paths with spaces
-                    pattern = r'"([^"]+)"|(\S+)'
-                    matches = re.findall(pattern, files_data)
-                    files = [match[0] if match[0] else match[1] for match in matches]
-                # Method 3: Single file
-                else:
-                    files = [files_data.strip()]
-                
-                # Clean up file paths
-                files = [f.strip().strip('"').strip("'") for f in files if f.strip()]
-            elif isinstance(files_data, (list, tuple)):
-                files = [str(f).strip() for f in files_data]
-            
-            print(f"📋 Parsed files: {files}")
-            
-            if files:
-                added_count = 0
-                for file_path in files:
-                    # Convert to proper path format
-                    file_path = os.path.normpath(file_path)
-                    if os.path.exists(file_path):
-                        print(f"✓ Adding file: {file_path}")
-                        self.add_task_and_start(file_path, destination_path)
-                        added_count += 1
-                    else:
-                        print(f"⚠ File not found: {file_path}")
-                
-                if added_count > 0:
-                    messagebox.showinfo("کپی آغاز شد", f"{added_count} فایل از درگ و رها به صف کپی اضافه شد!")
-                else:
-                    messagebox.showwarning("خطا", "هیچ فایل معتبری پیدا نشد!")
-            else:
-                print("⚠ No files detected in drop data")
-                messagebox.showwarning("خطا", "فایلی برای کپی پیدا نشد!")
-            
-        except Exception as e:
-            print(f"❌ Error handling dropped files: {e}")
-            import traceback
-            traceback.print_exc()
-            messagebox.showerror("خطا", f"خطا در پردازش فایل‌های درگ شده: {e}")
+
 
     def create_drop_zone(self, folder_path, index):
         """Create a drop zone for a destination folder"""
@@ -3265,116 +3165,12 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         self.enable_drop_on_widget(click_label, folder_path)
 
     def enable_drop_on_widget(self, widget, destination_path):
-        """فعال کردن قابلیت درگ اند دراپ روی ویجت"""
-        drag_drop_enabled = False
-        
-        if DRAG_DROP_AVAILABLE and DND_FILES:
-            try:
-                # تبدیل widget به tkinter widget اصلی
-                tk_widget = widget
-                
-                # برای CustomTkinter widgets، widget اصلی tkinter را پیدا کن
-                if hasattr(widget, '_canvas') and widget._canvas:
-                    tk_widget = widget._canvas
-                elif hasattr(widget, 'winfo_children'):
-                    children = widget.winfo_children()
-                    if children:
-                        tk_widget = children[0]
-                
-                # روش مستقیم tkinter برای drag & drop
-                def handle_drop(event):
-                    """مدیریت drop event"""
-                    try:
-                        # دریافت فایل‌ها از event
-                        files_data = event.data if hasattr(event, 'data') else str(event)
-                        if files_data:
-                            # پارس کردن مسیر فایل‌ها
-                            files = []
-                            if '{' in files_data and '}' in files_data:
-                                # فایل‌های با space در نام
-                                import re
-                                files = re.findall(r'\{[^}]+\}', files_data)
-                                files = [f.strip('{}') for f in files]
-                            else:
-                                # فایل‌های عادی
-                                files = files_data.split()
-                            
-                            if files:
-                                print(f"📁 فایل‌های دریافتی: {files}")
-                                self.handle_dropped_files(files, destination_path)
-                            return 'copy'
-                    except Exception as e:
-                        print(f"❌ خطا در پردازش فایل: {e}")
-                    return 'none'
-                
-                def handle_enter(event):
-                    """ورود drag به منطقه"""
-                    print("🎯 فایل وارد منطقه درگ شد")
-                    self.on_drag_enter(widget)
-                    return 'copy'
-                
-                def handle_leave(event):
-                    """خروج drag از منطقه"""
-                    print("↩ فایل از منطقه درگ خارج شد")
-                    self.on_drag_leave(widget)
-                
-                # ثبت widget برای drop
-                tk_widget.drop_target_register(DND_FILES)
-                tk_widget.dnd_bind('<<Drop>>', handle_drop)
-                tk_widget.dnd_bind('<<DragEnter>>', handle_enter)
-                tk_widget.dnd_bind('<<DragLeave>>', handle_leave)
-                
-                # ثبت widget اصلی هم
-                widget.drop_target_register(DND_FILES)
-                widget.dnd_bind('<<Drop>>', handle_drop)
-                widget.dnd_bind('<<DragEnter>>', handle_enter)
-                widget.dnd_bind('<<DragLeave>>', handle_leave)
-                
-                drag_drop_enabled = True
-                print(f"✓ درگ اند دراپ فعال شد برای: {os.path.basename(destination_path)}")
-                
-            except Exception as e:
-                print(f"⚠ نتوانست درگ اند دراپ را فعال کند: {e}")
-        
-        # همیشه کلیک برای انتخاب فعال است
+        """فعال کردن قابلیت کلیک روی ویجت برای انتخاب فایل"""
+        # Native drag and drop is handled by the NativeDragDrop class on file tree
+        # Here we just enable click functionality for manual file selection
         self.setup_manual_file_selection(widget, destination_path)
-        
-        if not drag_drop_enabled:
-            print(f"→ استفاده از کلیک برای انتخاب: {os.path.basename(destination_path)}")
+        print(f"✓ کلیک برای انتخاب فعال شد برای: {os.path.basename(destination_path)}")
     
-    def handle_drop_event(self, event, destination_path):
-        """Handle drop events from tkinterdnd2"""
-        try:
-            # Get the dropped files - handle different formats
-            files_data = getattr(event, 'data', '')
-            if not files_data:
-                files_data = str(event)
-            
-            print(f"🎯 Drop event received: {files_data}")
-            
-            # Parse the file paths - handle different possible formats
-            files = []
-            if isinstance(files_data, str):
-                # Handle space-separated paths with potential {} wrapping
-                import re
-                # Split by space but keep paths with spaces together if wrapped in {}
-                pattern = r'\{[^}]+\}|\S+'
-                raw_files = re.findall(pattern, files_data)
-                files = [f.strip('{}').strip() for f in raw_files if f.strip()]
-            else:
-                files = [str(files_data)]
-            
-            print(f"📁 Parsed files: {files}")
-            
-            if files:
-                self.handle_dropped_files(files, destination_path)
-            else:
-                messagebox.showinfo("اطلاعات", "هیچ فایل معتبری دریافت نشد")
-                
-        except Exception as e:
-            self.logger.error(f"Error handling drop event: {e}")
-            print(f"❌ Drop error: {e}")
-            messagebox.showerror("خطا", f"خطا در پردازش فایل‌های انداخته شده: {e}")
     
     def on_drag_enter(self, widget):
         """Visual feedback when dragging over drop zone"""
@@ -3631,17 +3427,8 @@ def main():
         # Always use CTk for consistent styling, enable DnD within the app
         root = ctk.CTk()
         
-        # Try to enable drag and drop support
-        if DRAG_DROP_AVAILABLE and TkinterDnD:
-            try:
-                # Enable DnD on the CTk root
-                root.tk.call('package', 'require', 'tkdnd')
-                print("✓ سیستم درگ اند دراپ با TkinterDnD فعال شد")
-            except Exception as e:
-                print(f"⚠ خطا در فعال‌سازی درگ اند دراپ: {e}")
-                print("⚠ از کلیک برای انتخاب فایل استفاده می‌شود")
-        else:
-            print("⚠ درگ اند دراپ در دسترس نیست - از کلیک استفاده می‌شود")
+        # Native drag and drop support is built-in
+        print("✓ سیستم درگ اند دراپ بومی فعال شد")
         
         app = FileCopierApp(root)
         app.run()
