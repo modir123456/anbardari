@@ -42,6 +42,17 @@ def install_dependencies():
         print("⚠ Dependencies may already be installed, continuing...")
         return True
 
+def create_icon():
+    """Create application icon"""
+    print("🎨 Creating application icon...")
+    try:
+        subprocess.check_call([sys.executable, "create_icon.py"])
+        print("✓ Application icon created successfully")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"⚠ Could not create icon: {e}")
+        return False
+
 def create_spec_file():
     """Create PyInstaller spec file with custom configuration"""
     spec_content = '''# -*- mode: python ; coding: utf-8 -*-
@@ -56,9 +67,11 @@ a = Analysis(
     hiddenimports=[
         'customtkinter',
         'psutil',
-        'tkinterdnd2',
         'PIL',
-        'PIL._tkinter_finder'
+        'PIL._tkinter_finder',
+        'hashlib',
+        'base64',
+        'uuid'
     ],
     hookspath=[],
     hooksconfig={},
@@ -92,7 +105,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='app_icon.ico',
 )
 '''
     
@@ -253,6 +266,9 @@ def main():
     if not check_pyinstaller():
         if not install_pyinstaller():
             sys.exit(1)
+    
+    # Create application icon
+    create_icon()
     
     # Create spec file
     create_spec_file()

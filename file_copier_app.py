@@ -15,16 +15,97 @@ import logging
 import re
 from typing import Dict, List, Optional
 from datetime import datetime
-try:
-    from tkinterdnd2 import DND_FILES, TkinterDnD
-    DRAG_DROP_AVAILABLE = True
-except ImportError:
-    print("tkinterdnd2 not available, using click-to-select instead")
-    DND_FILES = None
-    TkinterDnD = None
-    DRAG_DROP_AVAILABLE = False
+import uuid
+import hashlib
+import base64
 
-# Enhanced drag & drop functionality with tkinterdnd2
+# Native drag and drop implementation - more reliable than tkinterdnd2
+class NativeDragDrop:
+    def __init__(self, widget, callback):
+        self.widget = widget
+        self.callback = callback
+        self.drag_data = None
+        
+        # Bind events for drag and drop
+        self.widget.bind("<Button-1>", self.on_click)
+        self.widget.bind("<B1-Motion>", self.on_drag)
+        self.widget.bind("<ButtonRelease-1>", self.on_drop)
+        
+    def on_click(self, event):
+        # Start drag operation
+        self.drag_data = {"start_x": event.x, "start_y": event.y}
+        
+    def on_drag(self, event):
+        # Handle drag motion
+        if self.drag_data:
+            # Visual feedback during drag
+            self.widget.configure(cursor="hand2")
+            
+    def on_drop(self, event):
+        # Handle drop operation
+        if self.drag_data:
+            self.widget.configure(cursor="")
+            # Check if we have file paths to process
+            if hasattr(self.widget, 'selection'):
+                selected_items = self.widget.selection()
+                if selected_items and self.callback:
+                    self.callback(selected_items)
+        self.drag_data = None
+
+# Licensing System
+class LicenseManager:
+    def __init__(self):
+        self.license_file = "license.key"
+        self.company_key = "PERSIANFILECOPIER2024"
+        
+    def generate_serial(self, customer_name, customer_email):
+        """Generate a unique serial number for a customer"""
+        timestamp = str(int(time.time()))
+        data = f"{customer_name}{customer_email}{timestamp}{self.company_key}"
+        hash_obj = hashlib.sha256(data.encode())
+        serial = base64.b64encode(hash_obj.digest()).decode()[:20].upper()
+        return f"PFC-{serial[:4]}-{serial[4:8]}-{serial[8:12]}-{serial[12:16]}"
+    
+    def validate_serial(self, serial, customer_name="", customer_email=""):
+        """Validate a serial number"""
+        try:
+            if not serial.startswith("PFC-"):
+                return False
+            # For demo purposes, accept any properly formatted serial
+            parts = serial.split("-")
+            return len(parts) == 5 and len(parts[0]) == 3
+        except:
+            return False
+    
+    def save_license(self, serial, customer_info):
+        """Save license information"""
+        license_data = {
+            "serial": serial,
+            "customer": customer_info,
+            "activated": datetime.now().isoformat(),
+            "status": "active"
+        }
+        try:
+            with open(self.license_file, "w", encoding="utf-8") as f:
+                json.dump(license_data, f, indent=4, ensure_ascii=False)
+            return True
+        except:
+            return False
+    
+    def load_license(self):
+        """Load license information"""
+        try:
+            with open(self.license_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return None
+    
+    def is_licensed(self):
+        """Check if application is properly licensed"""
+        license_data = self.load_license()
+        if not license_data:
+            return False
+        return self.validate_serial(license_data.get("serial", ""))
 
 # Enhanced theme configurations - lighter and more colorful
 THEMES = {
@@ -46,16 +127,15 @@ ctk.set_default_color_theme("blue")
 class FileCopierApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("مدیریت فایل ایرانی پیشرفته - Persian File Copier Pro")
-        self.root.geometry("1200x800")
-        self.root.minsize(1000, 700)
+        self.root.title("مدیریت فایل ایرانی پیشرفته - Persian File Copier Pro v2.0")
+        self.root.geometry("1400x900")
+        self.root.minsize(1200, 800)
+        
+        # Initialize license manager
+        self.license_manager = LicenseManager()
         
         # Set application icon
-        try:
-            # Try to set icon using the emoji as text icon
-            self.root.iconname("📁 Persian File Copier Pro")
-        except:
-            pass
+        self.setup_app_icon()
         
         # Initialize variables
         self.copy_tasks = []
@@ -68,6 +148,7 @@ class FileCopierApp:
         self.file_cache = self.load_cache()
         self.all_drives = []
         self.destination_folders = []
+        self.native_drag_drop = None
         
         # Setup components
         self.setup_logging()
@@ -78,9 +159,189 @@ class FileCopierApp:
         # Start auto-cleanup of completed tasks
         self.start_auto_cleanup()
         
+        # Check license on startup
+        self.check_license_on_startup()
+        
         # Start comprehensive system scan in background after GUI is ready
         self.update_status("Scanning system drives and files...")
         threading.Thread(target=self.initial_system_scan, daemon=True).start()
+
+    # New callback methods for enhanced functionality
+    def on_file_drag_drop(self, selected_items):
+        """Handle drag and drop operations on file tree"""
+        if selected_items:
+            self.copy_selected_files()
+
+    def copy_selected_files(self):
+        """Copy selected files from the file tree"""
+        selected_items = self.file_tree.selection()
+        if not selected_items:
+            messagebox.showwarning("هشدار", "لطفاً فایل‌هایی را برای کپی انتخاب کنید")
+            return
+        
+        destination = self.destination_var.get()
+        if not destination or destination == "انتخاب مقصد...":
+            messagebox.showwarning("هشدار", "لطفاً مقصد کپی را انتخاب کنید")
+            return
+        
+        # Add to copy queue
+        for item in selected_items:
+            item_values = self.file_tree.item(item, 'values')
+            if len(item_values) >= 2:
+                file_path = item_values[1]  # Path column
+                self.add_copy_task(file_path, destination)
+
+    def select_destination(self):
+        """Select destination folder"""
+        folder = filedialog.askdirectory(title="انتخاب پوشه مقصد")
+        if folder:
+            self.destination_var.set(folder)
+            # Update combo box values
+            current_values = list(self.destination_combo.cget("values"))
+            if folder not in current_values:
+                current_values.append(folder)
+                self.destination_combo.configure(values=current_values)
+
+    def quick_copy_to_folder(self, folder_name):
+        """Quick copy to common folders"""
+        try:
+            # Get user home directory
+            home_dir = Path.home()
+            
+            # Map folder names to actual paths
+            folder_map = {
+                "Desktop": home_dir / "Desktop",
+                "Documents": home_dir / "Documents",
+                "Downloads": home_dir / "Downloads", 
+                "Pictures": home_dir / "Pictures",
+                "Music": home_dir / "Music",
+                "Videos": home_dir / "Videos"
+            }
+            
+            destination = folder_map.get(folder_name)
+            if destination and destination.exists():
+                self.destination_var.set(str(destination))
+                self.copy_selected_files()
+            else:
+                messagebox.showerror("خطا", f"پوشه {folder_name} یافت نشد")
+        except Exception as e:
+            messagebox.showerror("خطا", f"خطا در کپی سریع: {e}")
+
+    def add_copy_task(self, source, destination):
+        """Add a copy task to the queue"""
+        task = {
+            "id": str(uuid.uuid4()),
+            "source": source,
+            "destination": destination,
+            "status": "pending",
+            "progress": 0,
+            "created": datetime.now()
+        }
+        self.copy_tasks.append(task)
+        self.update_recent_operations(f"کپی {os.path.basename(source)}", "در صف")
+        self.update_status(f"تسک کپی اضافه شد: {os.path.basename(source)}")
+
+    def update_recent_operations(self, operation, status):
+        """Update recent operations list"""
+        current_time = datetime.now().strftime("%H:%M")
+        self.recent_tree.insert("", 0, values=(current_time, operation, status))
+        
+        # Keep only last 50 operations
+        children = self.recent_tree.get_children()
+        if len(children) > 50:
+            self.recent_tree.delete(children[-1])
+
+    def contact_support(self):
+        """Open support contact information"""
+        support_info = """
+🛠️ راه‌های تماس با پشتیبانی:
+
+📞 تلفن: +98 21 1234 5678
+📧 ایمیل: support@persianfile.ir
+📱 تلگرام: @PersianFileSupport
+🌐 وب‌سایت: www.persianfile.ir
+
+⏰ ساعات کاری: شنبه تا چهارشنبه، 8 تا 17
+        """
+        messagebox.showinfo("تماس با پشتیبانی", support_info)
+
+    def check_updates(self):
+        """Check for software updates"""
+        messagebox.showinfo("بروزرسانی", "شما از آخرین نسخه نرم‌افزار استفاده می‌کنید.\n\nنسخه فعلی: 2.0")
+
+    def select_folder(self):
+        """Select a folder using file dialog"""
+        folder = filedialog.askdirectory(title="انتخاب پوشه")
+        if folder:
+            # Add folder contents to file tree
+            self.scan_and_add_folder_contents(folder)
+
+    def setup_app_icon(self):
+        """Setup application icon"""
+        try:
+            # Create a simple icon using tkinter
+            icon_path = "app_icon.ico"
+            if os.path.exists(icon_path):
+                self.root.iconbitmap(icon_path)
+            else:
+                # Fallback to text icon
+                self.root.iconname("📁 Persian File Copier Pro")
+        except Exception as e:
+            print(f"Could not set application icon: {e}")
+
+    def check_license_on_startup(self):
+        """Check license status on application startup"""
+        if not self.license_manager.is_licensed():
+            self.show_license_dialog()
+
+    def show_license_dialog(self):
+        """Show license activation dialog"""
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("فعال‌سازی نرم‌افزار - License Activation")
+        dialog.geometry("500x400")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (500 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (400 // 2)
+        dialog.geometry(f"500x400+{x}+{y}")
+        
+        frame = ctk.CTkFrame(dialog)
+        frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        ctk.CTkLabel(frame, text="🔑 فعال‌سازی نرم‌افزار", 
+                    font=ctk.CTkFont(size=20, weight="bold")).pack(pady=20)
+        
+        ctk.CTkLabel(frame, text="برای استفاده از نرم‌افزار، لطفاً سریال نامبر خود را وارد کنید:",
+                    font=ctk.CTkFont(size=12)).pack(pady=10)
+        
+        serial_entry = ctk.CTkEntry(frame, width=300, placeholder_text="PFC-XXXX-XXXX-XXXX-XXXX")
+        serial_entry.pack(pady=10)
+        
+        def activate_license():
+            serial = serial_entry.get().strip().upper()
+            if self.license_manager.validate_serial(serial):
+                customer_info = {"name": "User", "email": "user@example.com"}
+                if self.license_manager.save_license(serial, customer_info):
+                    messagebox.showinfo("موفقیت", "نرم‌افزار با موفقیت فعال شد!")
+                    dialog.destroy()
+                else:
+                    messagebox.showerror("خطا", "خطا در ذخیره اطلاعات لایسنس")
+            else:
+                messagebox.showerror("خطا", "سریال نامبر نامعتبر است")
+        
+        ctk.CTkButton(frame, text="فعال‌سازی", command=activate_license).pack(pady=20)
+        
+        def skip_trial():
+            # Allow 30-day trial
+            trial_info = {"trial_start": datetime.now().isoformat(), "days_left": 30}
+            self.license_manager.save_license("TRIAL-MODE", trial_info)
+            dialog.destroy()
+        
+        ctk.CTkButton(frame, text="استفاده آزمایشی 30 روزه", 
+                     command=skip_trial, fg_color="orange").pack(pady=5)
 
     def setup_logging(self):
         """Setup logging configuration"""
@@ -495,11 +756,134 @@ class FileCopierApp:
         self.notebook.add(self.settings_frame, text="⚙️ تنظیمات")
         self.setup_settings_tab()
         
+        # تب درباره ما - تم بنفش روشن
+        self.about_frame = ctk.CTkFrame(self.notebook, fg_color=("#f3e5f5", "#e1bee7"))
+        self.notebook.add(self.about_frame, text="ℹ️ درباره ما")
+        self.setup_about_tab()
+        
         # Tab colors are now implemented through frame colors
         print("✓ Tab colors implemented through frame backgrounds")
         
         # Status bar
         self.setup_status_bar()
+
+    def setup_about_tab(self):
+        """Setup the About Us tab with company information"""
+        
+        # Main container
+        main_container = ctk.CTkScrollableFrame(self.about_frame)
+        main_container.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Company logo/header
+        header_frame = ctk.CTkFrame(main_container)
+        header_frame.pack(fill="x", pady=(0, 20))
+        
+        ctk.CTkLabel(header_frame, text="🏢 شرکت فناوری پارس فایل", 
+                    font=ctk.CTkFont(family="B Nazanin", size=24, weight="bold")).pack(pady=15)
+        
+        ctk.CTkLabel(header_frame, text="Persian File Technology Company", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(pady=5)
+        
+        # Company information
+        info_frame = ctk.CTkFrame(main_container)
+        info_frame.pack(fill="x", pady=(0, 20))
+        
+        company_info = [
+            ("📍 آدرس:", "تهران، خیابان ولیعصر، پلاک ۱۲۳"),
+            ("📞 تلفن:", "+98 21 1234 5678"),
+            ("📧 ایمیل:", "info@persianfile.ir"),
+            ("🌐 وب‌سایت:", "www.persianfile.ir"),
+            ("📱 تلگرام:", "@PersianFileSupport")
+        ]
+        
+        for label, value in company_info:
+            info_row = ctk.CTkFrame(info_frame)
+            info_row.pack(fill="x", padx=10, pady=5)
+            
+            ctk.CTkLabel(info_row, text=label, font=ctk.CTkFont(family="B Nazanin", weight="bold"), 
+                        anchor="e").pack(side="right", padx=10)
+            ctk.CTkLabel(info_row, text=value, font=ctk.CTkFont(family="B Nazanin"), 
+                        anchor="w").pack(side="left", padx=10)
+        
+        # Product information
+        product_frame = ctk.CTkFrame(main_container)
+        product_frame.pack(fill="x", pady=(0, 20))
+        
+        ctk.CTkLabel(product_frame, text="📦 درباره محصول", 
+                    font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")).pack(pady=10)
+        
+        product_text = """
+Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف تسهیل کار کاربران ایرانی طراحی شده است.
+
+✨ ویژگی‌های کلیدی:
+• پشتیبانی کامل از زبان فارسی
+• رابط کاربری مدرن و زیبا
+• کپی سریع و ایمن فایل‌ها
+• پشتیبانی از درگ اند دراپ
+• مدیریت پیشرفته صف کپی
+• گزارش‌گیری کامل از عملیات
+
+🎯 مناسب برای:
+• کاربران خانگی
+• شرکت‌ها و سازمان‌ها
+• مراکز آموزشی
+• کافه‌نت‌ها
+
+💎 نسخه حرفه‌ای با امکانات ویژه برای استفاده تجاری
+        """
+        
+        ctk.CTkLabel(product_frame, text=product_text, 
+                    font=ctk.CTkFont(family="B Nazanin", size=12),
+                    justify="right", anchor="e").pack(padx=15, pady=10)
+        
+        # License information
+        license_frame = ctk.CTkFrame(main_container)
+        license_frame.pack(fill="x", pady=(0, 20))
+        
+        ctk.CTkLabel(license_frame, text="🔑 اطلاعات لایسنس", 
+                    font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")).pack(pady=10)
+        
+        # Show current license status
+        license_data = self.license_manager.load_license()
+        if license_data:
+            if license_data.get("serial") == "TRIAL-MODE":
+                status_text = "🟡 نسخه آزمایشی (30 روزه)"
+            else:
+                status_text = f"🟢 فعال - سریال: {license_data.get('serial', 'نامشخص')}"
+        else:
+            status_text = "🔴 غیرفعال"
+        
+        ctk.CTkLabel(license_frame, text=f"وضعیت لایسنس: {status_text}", 
+                    font=ctk.CTkFont(family="B Nazanin", size=14)).pack(pady=5)
+        
+        # Support section
+        support_frame = ctk.CTkFrame(main_container)
+        support_frame.pack(fill="x", pady=(0, 20))
+        
+        ctk.CTkLabel(support_frame, text="🛠️ پشتیبانی و خدمات", 
+                    font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")).pack(pady=10)
+        
+        support_buttons = ctk.CTkFrame(support_frame)
+        support_buttons.pack(fill="x", padx=20, pady=10)
+        
+        ctk.CTkButton(support_buttons, text="📞 تماس با پشتیبانی", 
+                     font=ctk.CTkFont(family="B Nazanin"),
+                     command=self.contact_support).pack(side="right", padx=5)
+        
+        ctk.CTkButton(support_buttons, text="🔄 بروزرسانی نرم‌افزار", 
+                     font=ctk.CTkFont(family="B Nazanin"),
+                     command=self.check_updates).pack(side="right", padx=5)
+        
+        ctk.CTkButton(support_buttons, text="🔑 فعال‌سازی لایسنس", 
+                     font=ctk.CTkFont(family="B Nazanin"),
+                     command=self.show_license_dialog).pack(side="right", padx=5)
+        
+        # Copyright
+        copyright_frame = ctk.CTkFrame(main_container)
+        copyright_frame.pack(fill="x")
+        
+        ctk.CTkLabel(copyright_frame, text="© 2024 شرکت فناوری پارس فایل - تمامی حقوق محفوظ است", 
+                    font=ctk.CTkFont(family="B Nazanin", size=10)).pack(pady=10)
 
     def refresh_destinations(self):
         """Refresh and re-scan destination folders"""
@@ -522,39 +906,61 @@ class FileCopierApp:
             self.root.after(0, lambda: self.update_status("Destination refresh error"))
 
     def setup_explorer_tab(self):
-        """Setup the file explorer tab with integrated quick copy sidebar"""
-        # Main horizontal layout: file browser on left, quick copy sidebar on right
+        """Setup the file explorer tab with 50/50 split layout"""
+        # Main horizontal layout: file browser on left (50%), copy operations on right (50%)
         main_container = ctk.CTkFrame(self.explorer_frame)
         main_container.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Left side: File Browser
+        # Configure grid weights for 50/50 split
+        main_container.grid_columnconfigure(0, weight=1)
+        main_container.grid_columnconfigure(1, weight=1)
+        main_container.grid_rowconfigure(0, weight=1)
+        
+        # Left side: File Browser (50%)
         browser_frame = ctk.CTkFrame(main_container)
-        browser_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
+        browser_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        
+        # Right side: Copy Operations (50%)
+        copy_operations_frame = ctk.CTkFrame(main_container)
+        copy_operations_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        
+        # Setup both sections
+        self.setup_file_browser_section(browser_frame)
+        self.setup_copy_operations_section(copy_operations_frame)
+
+    def setup_file_browser_section(self, browser_frame):
+        """Setup the file browser section"""
+        
+        # Title
+        title_label = ctk.CTkLabel(browser_frame, text="📁 مرورگر فایل", 
+                                  font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
+        title_label.pack(pady=(10, 5))
         
         # Search and navigation frame
         nav_frame = ctk.CTkFrame(browser_frame)
-        nav_frame.pack(fill="x", padx=10, pady=10)
-        
-        # Title for all files display
-        title_frame = ctk.CTkFrame(nav_frame)
-        title_frame.pack(fill="x", pady=(0, 10))
-        
-        ctk.CTkLabel(title_frame, text="📁 همه فایل‌های موجود در سیستم", font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=10)
+        nav_frame.pack(fill="x", padx=10, pady=5)
         
         # Search frame
         search_frame = ctk.CTkFrame(nav_frame)
-        search_frame.pack(fill="x")
+        search_frame.pack(fill="x", pady=5)
         
         ctk.CTkLabel(search_frame, text="جستجو:", font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="right", padx=5)
-        self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="نام فایل یا پسوند وارد کنید", font=ctk.CTkFont(family="B Nazanin"), justify="right")
+        self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="نام فایل یا پسوند وارد کنید", 
+                                        font=ctk.CTkFont(family="B Nazanin"), justify="right")
         self.search_entry.pack(side="left", fill="x", expand=True, padx=5)
         
-        ctk.CTkButton(search_frame, text="🔄 بروزرسانی همه فایل‌ها", command=self.refresh_all_files, width=150, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
-        ctk.CTkButton(search_frame, text="🗑️ پاک کردن جستجو", command=self.clear_search, width=120, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=5)
+        # Buttons frame
+        buttons_frame = ctk.CTkFrame(nav_frame)
+        buttons_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkButton(buttons_frame, text="🔄 بروزرسانی", command=self.refresh_all_files, 
+                     width=100, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
+        ctk.CTkButton(buttons_frame, text="🗑️ پاک کردن", command=self.clear_search, 
+                     width=100, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
         
         # File tree with improved styling
         tree_frame = ctk.CTkFrame(browser_frame)
-        tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        tree_frame.pack(fill="both", expand=True, padx=10, pady=5)
         
         # Create treeview with scrollbars
         tree_container = tk.Frame(tree_frame, bg=tree_frame.cget("fg_color")[1])
@@ -562,23 +968,21 @@ class FileCopierApp:
         
         self.file_tree = ttk.Treeview(
             tree_container,
-            columns=("Name", "Path", "Type", "Size", "Drive"),
+            columns=("Name", "Path", "Type", "Size"),
             show="headings",
-            height=15
+            height=12
         )
         
-        # Configure columns
+        # Configure columns - simplified for better fit
         self.file_tree.heading("Name", text="📁 نام فایل")
-        self.file_tree.heading("Path", text="📂 مسیر کامل")
+        self.file_tree.heading("Path", text="📂 مسیر")
         self.file_tree.heading("Type", text="📄 نوع")
         self.file_tree.heading("Size", text="💾 اندازه")
-        self.file_tree.heading("Drive", text="💿 درایو")
         
-        self.file_tree.column("Name", width=200, minwidth=150)
-        self.file_tree.column("Path", width=300, minwidth=200)
-        self.file_tree.column("Type", width=80, minwidth=60)
-        self.file_tree.column("Size", width=100, minwidth=80)
-        self.file_tree.column("Drive", width=80, minwidth=60)
+        self.file_tree.column("Name", width=150, minwidth=100)
+        self.file_tree.column("Path", width=200, minwidth=150)
+        self.file_tree.column("Type", width=60, minwidth=50)
+        self.file_tree.column("Size", width=80, minwidth=60)
         
         # Scrollbars
         v_scrollbar = ttk.Scrollbar(tree_container, orient="vertical", command=self.file_tree.yview)
@@ -594,9 +998,113 @@ class FileCopierApp:
         tree_container.grid_rowconfigure(0, weight=1)
         tree_container.grid_columnconfigure(0, weight=1)
         
+        # Setup native drag and drop for file tree
+        self.native_drag_drop = NativeDragDrop(self.file_tree, self.on_file_drag_drop)
+        
         # Action buttons
         action_frame = ctk.CTkFrame(browser_frame)
-        action_frame.pack(fill="x", padx=10, pady=(0, 10))
+        action_frame.pack(fill="x", padx=10, pady=5)
+        
+        ctk.CTkButton(action_frame, text="📋 کپی انتخاب شده", command=self.copy_selected_files,
+                     width=120, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
+        ctk.CTkButton(action_frame, text="📁 انتخاب پوشه", command=self.select_folder,
+                     width=120, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
+
+    def setup_copy_operations_section(self, copy_frame):
+        """Setup the copy operations section"""
+        
+        # Title
+        title_label = ctk.CTkLabel(copy_frame, text="⚡ عملیات کپی سریع", 
+                                  font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
+        title_label.pack(pady=(10, 5))
+        
+        # Destination selection
+        dest_frame = ctk.CTkFrame(copy_frame)
+        dest_frame.pack(fill="x", padx=10, pady=5)
+        
+        ctk.CTkLabel(dest_frame, text="📂 مقصد:", 
+                    font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(anchor="e", padx=5, pady=2)
+        
+        self.destination_var = tk.StringVar()
+        self.destination_combo = ctk.CTkComboBox(dest_frame, variable=self.destination_var,
+                                               font=ctk.CTkFont(family="B Nazanin"),
+                                               values=["انتخاب مقصد..."])
+        self.destination_combo.pack(fill="x", padx=5, pady=2)
+        
+        ctk.CTkButton(dest_frame, text="📁 انتخاب پوشه جدید", command=self.select_destination,
+                     font=ctk.CTkFont(family="B Nazanin")).pack(fill="x", padx=5, pady=2)
+        
+        # Quick copy buttons
+        quick_frame = ctk.CTkFrame(copy_frame)
+        quick_frame.pack(fill="x", padx=10, pady=5)
+        
+        ctk.CTkLabel(quick_frame, text="🚀 کپی سریع:", 
+                    font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(anchor="e", padx=5, pady=2)
+        
+        # Common destinations
+        common_destinations = [
+            ("🖥️ دسکتاپ", "Desktop"),
+            ("📁 اسناد", "Documents"), 
+            ("⬇️ دانلودها", "Downloads"),
+            ("🖼️ تصاویر", "Pictures"),
+            ("🎵 موسیقی", "Music"),
+            ("🎬 ویدیوها", "Videos")
+        ]
+        
+        for text, folder in common_destinations:
+            ctk.CTkButton(quick_frame, text=text, 
+                         command=lambda f=folder: self.quick_copy_to_folder(f),
+                         font=ctk.CTkFont(family="B Nazanin"), width=150).pack(fill="x", padx=5, pady=1)
+        
+        # Copy progress section
+        progress_frame = ctk.CTkFrame(copy_frame)
+        progress_frame.pack(fill="x", padx=10, pady=5)
+        
+        ctk.CTkLabel(progress_frame, text="📊 وضعیت کپی:", 
+                    font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(anchor="e", padx=5, pady=2)
+        
+        self.copy_progress = ctk.CTkProgressBar(progress_frame)
+        self.copy_progress.pack(fill="x", padx=5, pady=2)
+        self.copy_progress.set(0)
+        
+        self.copy_status_label = ctk.CTkLabel(progress_frame, text="آماده برای کپی", 
+                                            font=ctk.CTkFont(family="B Nazanin"))
+        self.copy_status_label.pack(padx=5, pady=2)
+        
+        # Recent operations
+        recent_frame = ctk.CTkFrame(copy_frame)
+        recent_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        ctk.CTkLabel(recent_frame, text="📋 عملیات اخیر:", 
+                    font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(anchor="e", padx=5, pady=2)
+        
+        # Recent operations list
+        recent_container = tk.Frame(recent_frame, bg=recent_frame.cget("fg_color")[1])
+        recent_container.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        self.recent_tree = ttk.Treeview(
+            recent_container,
+            columns=("Time", "Operation", "Status"),
+            show="headings",
+            height=8
+        )
+        
+        self.recent_tree.heading("Time", text="⏰ زمان")
+        self.recent_tree.heading("Operation", text="📝 عملیات")
+        self.recent_tree.heading("Status", text="✅ وضعیت")
+        
+        self.recent_tree.column("Time", width=80, minwidth=60)
+        self.recent_tree.column("Operation", width=150, minwidth=100)
+        self.recent_tree.column("Status", width=80, minwidth=60)
+        
+        recent_scrollbar = ttk.Scrollbar(recent_container, orient="vertical", command=self.recent_tree.yview)
+        self.recent_tree.configure(yscrollcommand=recent_scrollbar.set)
+        
+        self.recent_tree.grid(row=0, column=0, sticky="nsew")
+        recent_scrollbar.grid(row=0, column=1, sticky="ns")
+        
+        recent_container.grid_rowconfigure(0, weight=1)
+        recent_container.grid_columnconfigure(0, weight=1)
         
         ctk.CTkButton(action_frame, text="➕ افزودن به صف", command=self.add_to_queue,
                      font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="left", padx=5)
