@@ -66,13 +66,12 @@ class FileCopierApp:
         # Setup components
         self.setup_logging()
         self.setup_executor()
-        
-        # Start comprehensive system scan in background
-        self.update_status("Scanning system drives and files...")
-        threading.Thread(target=self.initial_system_scan, daemon=True).start()
-        
         self.setup_gui()
         self.setup_bindings()
+        
+        # Start comprehensive system scan in background after GUI is ready
+        self.update_status("Scanning system drives and files...")
+        threading.Thread(target=self.initial_system_scan, daemon=True).start()
 
     def setup_logging(self):
         """Setup logging configuration"""
@@ -1144,16 +1143,29 @@ class FileCopierApp:
 
     def setup_bindings(self):
         """Setup event bindings"""
-        self.search_entry.bind("<KeyRelease>", self.on_search_change)
-        self.file_tree.bind("<Double-1>", self.on_file_double_click)
-        self.task_tree.bind("<Double-1>", self.on_task_double_click)
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.root.bind("<Configure>", self.on_window_resize)
+        try:
+            if hasattr(self, 'search_entry') and self.search_entry:
+                self.search_entry.bind("<KeyRelease>", self.on_search_change)
+            if hasattr(self, 'file_tree') and self.file_tree:
+                self.file_tree.bind("<Double-1>", self.on_file_double_click)
+            if hasattr(self, 'task_tree') and self.task_tree:
+                self.task_tree.bind("<Double-1>", self.on_task_double_click)
+            self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+            self.root.bind("<Configure>", self.on_window_resize)
+        except Exception as e:
+            print(f"Error setting up bindings: {e}")
 
     def update_status(self, message: str):
         """Update status bar message"""
-        self.status_label.configure(text=message)
-        self.root.update_idletasks()
+        try:
+            if hasattr(self, 'status_label') and self.status_label:
+                self.status_label.configure(text=message)
+                self.root.update_idletasks()
+            else:
+                # If status label not ready yet, just print to console
+                print(f"Status: {message}")
+        except Exception as e:
+            print(f"Error updating status: {e}, Message: {message}")
 
     def format_size(self, size_bytes: int) -> str:
         """Format file size in human readable format"""
@@ -2986,7 +2998,8 @@ class FileCopierApp:
                     pass
                 elif sys.argv[1] == "paste" and len(sys.argv) > 2:
                     # Set destination and paste (for future implementation)
-                    self.dest_entry.insert(0, sys.argv[2])
+                    if hasattr(self, 'dest_entry') and self.dest_entry:
+                        self.dest_entry.insert(0, sys.argv[2])
             
             # Restore window geometry
             if "window_geometry" in self.settings:
