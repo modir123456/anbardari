@@ -913,15 +913,11 @@ class FileCopierApp:
         
         self.notebook.pack(fill="both", expand=True, pady=(0, 10))
         
-        # تب مرورگر فایل با سایدبار کپی سریع - تم آبی روشن
+        # تب اصلی - مرورگر فایل، انتخاب مقصد، کپی و مدیریت کارها
         self.explorer_frame = ctk.CTkFrame(self.notebook, fg_color=("#f3f9ff", "#e3f2fd"))
-        self.notebook.add(self.explorer_frame, text="📁 مرورگر فایل و کپی سریع")
+        self.notebook.add(self.explorer_frame, text="📁 مرورگر فایل و مدیریت کارها")
         self.setup_explorer_tab()
         
-        # تب کارهای کپی - تم سبز روشن
-        self.tasks_frame = ctk.CTkFrame(self.notebook, fg_color=("#f1f8e9", "#e8f5e8"))
-        self.notebook.add(self.tasks_frame, text="📋 کارهای کپی")
-        self.setup_tasks_tab()
         
         # تب تنظیمات - تم نارنجی روشن
         self.settings_frame = ctk.CTkFrame(self.notebook, fg_color=("#fff8e1", "#fff3e0"))
@@ -1078,31 +1074,37 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             self.root.after(0, lambda: self.update_status("Destination refresh error"))
 
     def setup_explorer_tab(self):
-        """Setup the file explorer tab with 3-column layout: File Browser, Copy Operations, Task Management"""
-        # Main horizontal layout: file browser (33%), copy operations (33%), task management (33%)
+        """Setup the file explorer tab with 4-column layout: File Browser, Drive List, Copy Operations, Task Management"""
+        # Main horizontal layout: file browser (25%), drive list (25%), copy operations (25%), task management (25%)
         main_container = ctk.CTkFrame(self.explorer_frame)
         main_container.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Configure grid weights for 3-column split
+        # Configure grid weights for 4-column split
         main_container.grid_columnconfigure(0, weight=1)
         main_container.grid_columnconfigure(1, weight=1)
         main_container.grid_columnconfigure(2, weight=1)
+        main_container.grid_columnconfigure(3, weight=1)
         main_container.grid_rowconfigure(0, weight=1)
         
-        # Left side: File Browser (33%)
+        # Column 1: File Browser (25%)
         browser_frame = ctk.CTkFrame(main_container)
-        browser_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 3))
+        browser_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 2))
         
-        # Middle: Copy Operations (33%)
+        # Column 2: Drive List for Destination (25%)
+        drive_list_frame = ctk.CTkFrame(main_container)
+        drive_list_frame.grid(row=0, column=1, sticky="nsew", padx=(2, 2))
+        
+        # Column 3: Copy Operations (25%)
         copy_operations_frame = ctk.CTkFrame(main_container)
-        copy_operations_frame.grid(row=0, column=1, sticky="nsew", padx=(3, 3))
+        copy_operations_frame.grid(row=0, column=2, sticky="nsew", padx=(2, 2))
         
-        # Right side: Task Management (33%)
+        # Column 4: Task Management (25%)
         task_management_frame = ctk.CTkFrame(main_container)
-        task_management_frame.grid(row=0, column=2, sticky="nsew", padx=(3, 0))
+        task_management_frame.grid(row=0, column=3, sticky="nsew", padx=(2, 0))
         
         # Setup all sections
         self.setup_file_browser_section(browser_frame)
+        self.setup_drive_destination_section(drive_list_frame)
         self.setup_copy_operations_section(copy_operations_frame)
         self.setup_task_management_section(task_management_frame)
 
@@ -1266,50 +1268,17 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
                                             font=ctk.CTkFont(family="B Nazanin"))
         self.copy_status_label.pack(padx=5, pady=2)
         
-        # Recent operations
-        recent_frame = ctk.CTkFrame(copy_frame)
-        recent_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        
-        ctk.CTkLabel(recent_frame, text="📋 عملیات اخیر:", 
-                    font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(anchor="e", padx=5, pady=2)
-        
-        # Recent operations list
-        recent_container = tk.Frame(recent_frame, bg=recent_frame.cget("fg_color")[1])
-        recent_container.pack(fill="both", expand=True, padx=5, pady=5)
-        
-        self.recent_tree = ttk.Treeview(
-            recent_container,
-            columns=("Time", "Operation", "Status"),
-            show="headings",
-            height=8
-        )
-        
-        self.recent_tree.heading("Time", text="⏰ زمان")
-        self.recent_tree.heading("Operation", text="📝 عملیات")
-        self.recent_tree.heading("Status", text="✅ وضعیت")
-        
-        self.recent_tree.column("Time", width=80, minwidth=60)
-        self.recent_tree.column("Operation", width=150, minwidth=100)
-        self.recent_tree.column("Status", width=80, minwidth=60)
-        
-        recent_scrollbar = ttk.Scrollbar(recent_container, orient="vertical", command=self.recent_tree.yview)
-        self.recent_tree.configure(yscrollcommand=recent_scrollbar.set)
-        
-        self.recent_tree.grid(row=0, column=0, sticky="nsew")
-        recent_scrollbar.grid(row=0, column=1, sticky="ns")
-        
-        recent_container.grid_rowconfigure(0, weight=1)
-        recent_container.grid_columnconfigure(0, weight=1)
+
 
     def setup_task_management_section(self, task_frame):
-        """Setup the task management section in the main explorer tab"""
+        """Setup the complete task management section in the main explorer tab"""
         
         # Title
         title_label = ctk.CTkLabel(task_frame, text="📋 مدیریت کارها", 
                                   font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
         title_label.pack(pady=(10, 5))
         
-        # Control buttons (compact version)
+        # Control buttons
         control_frame = ctk.CTkFrame(task_frame)
         control_frame.pack(fill="x", padx=5, pady=5)
         
@@ -1317,52 +1286,43 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         main_controls = ctk.CTkFrame(control_frame)
         main_controls.pack(fill="x", pady=(0, 2))
         
-        self.start_btn = ctk.CTkButton(main_controls, text="▶", command=self.start_selected_task,
+        self.start_btn = ctk.CTkButton(main_controls, text="▶ شروع", command=self.start_selected_task,
                                       fg_color="green", hover_color="darkgreen", 
-                                      font=ctk.CTkFont(family="B Nazanin"), width=40, height=25)
+                                      font=ctk.CTkFont(family="B Nazanin"), width=60, height=25)
         self.start_btn.pack(side="left", padx=1)
         
-        self.pause_btn = ctk.CTkButton(main_controls, text="⏸", command=self.pause_selected_task,
+        self.pause_btn = ctk.CTkButton(main_controls, text="⏸ توقف", command=self.pause_selected_task,
                                       fg_color="orange", hover_color="darkorange", 
-                                      font=ctk.CTkFont(family="B Nazanin"), width=40, height=25)
+                                      font=ctk.CTkFont(family="B Nazanin"), width=60, height=25)
         self.pause_btn.pack(side="left", padx=1)
         
-        self.cancel_btn = ctk.CTkButton(main_controls, text="⏹", command=self.cancel_selected_task,
+        self.cancel_btn = ctk.CTkButton(main_controls, text="⏹ لغو", command=self.cancel_selected_task,
                                        fg_color="red", hover_color="darkred", 
-                                       font=ctk.CTkFont(family="B Nazanin"), width=40, height=25)
+                                       font=ctk.CTkFont(family="B Nazanin"), width=60, height=25)
         self.cancel_btn.pack(side="left", padx=1)
-        
-        self.restart_btn = ctk.CTkButton(main_controls, text="🔄", command=self.restart_selected_task,
-                                        fg_color="blue", hover_color="darkblue", 
-                                        font=ctk.CTkFont(family="B Nazanin"), width=40, height=25)
-        self.restart_btn.pack(side="left", padx=1)
         
         # Task management buttons
         task_controls = ctk.CTkFrame(control_frame)
         task_controls.pack(fill="x")
         
-        ctk.CTkButton(task_controls, text="🗑", command=self.clear_all_tasks, 
-                     font=ctk.CTkFont(family="B Nazanin"), width=40, height=25).pack(side="left", padx=1)
-        ctk.CTkButton(task_controls, text="✓", command=self.clear_completed, 
-                     font=ctk.CTkFont(family="B Nazanin"), width=40, height=25).pack(side="left", padx=1)
-        ctk.CTkButton(task_controls, text="↓", command=self.move_task_down, 
-                     font=ctk.CTkFont(family="B Nazanin"), width=40, height=25).pack(side="left", padx=1)
-        ctk.CTkButton(task_controls, text="↑", command=self.move_task_up, 
-                     font=ctk.CTkFont(family="B Nazanin"), width=40, height=25).pack(side="left", padx=1)
+        ctk.CTkButton(task_controls, text="🗑 پاک همه", command=self.clear_all_tasks, 
+                     font=ctk.CTkFont(family="B Nazanin"), width=80, height=25).pack(side="left", padx=1)
+        ctk.CTkButton(task_controls, text="✓ تکمیل شده", command=self.clear_completed, 
+                     font=ctk.CTkFont(family="B Nazanin"), width=80, height=25).pack(side="left", padx=1)
         
-        # Progress overview (compact)
+        # Progress overview
         progress_frame = ctk.CTkFrame(task_frame)
         progress_frame.pack(fill="x", padx=5, pady=2)
         
-        self.overall_progress = ctk.CTkProgressBar(progress_frame, height=15)
+        self.overall_progress = ctk.CTkProgressBar(progress_frame, height=20)
         self.overall_progress.pack(fill="x", padx=5, pady=2)
         self.overall_progress.set(0)
         
-        self.progress_label = ctk.CTkLabel(progress_frame, text="آماده", 
-                                         font=ctk.CTkFont(family="B Nazanin", size=10))
-        self.progress_label.pack(pady=1)
+        self.progress_label = ctk.CTkLabel(progress_frame, text="هیچ کار فعالی موجود نیست", 
+                                         font=ctk.CTkFont(family="B Nazanin", size=11))
+        self.progress_label.pack(pady=2)
         
-        # Tasks tree (compact version)
+        # Tasks tree (full version)
         tasks_tree_frame = ctk.CTkFrame(task_frame)
         tasks_tree_frame.pack(fill="both", expand=True, padx=5, pady=2)
         
@@ -1371,29 +1331,75 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         self.task_tree = ttk.Treeview(
             tasks_container,
-            columns=("File", "Status", "Progress"),
+            columns=("File", "Destination", "Progress", "Size", "Status"),
             show="headings",
-            height=10
+            height=12
         )
         
-        # Configure compact task tree columns
+        # Configure task tree columns (optimized for smaller space)
         self.task_tree.heading("File", text="📁 فایل")
+        self.task_tree.heading("Destination", text="📂 مقصد")
+        self.task_tree.heading("Progress", text="📊 %")
+        self.task_tree.heading("Size", text="💾 حجم")
         self.task_tree.heading("Status", text="🔄 وضعیت")
-        self.task_tree.heading("Progress", text="📊 پیشرفت")
         
         self.task_tree.column("File", width=120, minwidth=80)
-        self.task_tree.column("Status", width=60, minwidth=50)
-        self.task_tree.column("Progress", width=60, minwidth=50)
+        self.task_tree.column("Destination", width=100, minwidth=80)
+        self.task_tree.column("Progress", width=50, minwidth=40)
+        self.task_tree.column("Size", width=70, minwidth=50)
+        self.task_tree.column("Status", width=80, minwidth=60)
         
-        # Task tree scrollbar
+        # Task tree scrollbars
         task_v_scrollbar = ttk.Scrollbar(tasks_container, orient="vertical", command=self.task_tree.yview)
-        self.task_tree.configure(yscrollcommand=task_v_scrollbar.set)
+        task_h_scrollbar = ttk.Scrollbar(tasks_container, orient="horizontal", command=self.task_tree.xview)
+        
+        self.task_tree.configure(yscrollcommand=task_v_scrollbar.set, xscrollcommand=task_h_scrollbar.set)
         
         self.task_tree.grid(row=0, column=0, sticky="nsew")
         task_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        task_h_scrollbar.grid(row=1, column=0, sticky="ew")
         
         tasks_container.grid_rowconfigure(0, weight=1)
         tasks_container.grid_columnconfigure(0, weight=1)
+
+    def setup_drive_destination_section(self, drive_frame):
+        """Setup the drive destination selection section"""
+        
+        # Title
+        title_label = ctk.CTkLabel(drive_frame, text="💿 انتخاب مقصد", 
+                                  font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
+        title_label.pack(pady=(10, 5))
+        
+        # Instructions
+        instruction_label = ctk.CTkLabel(
+            drive_frame,
+            text="درایو یا پوشه مقصد را انتخاب کنید",
+            font=ctk.CTkFont(family="B Nazanin", size=12),
+            wraplength=200
+        )
+        instruction_label.pack(pady=5)
+        
+        # Auto-refresh destinations button
+        refresh_dest_btn = ctk.CTkButton(
+            drive_frame,
+            text="🔄 بروزرسانی مقاصد",
+            command=self.refresh_destinations,
+            font=ctk.CTkFont(family="B Nazanin", size=12),
+            width=150
+        )
+        refresh_dest_btn.pack(pady=5)
+        
+        # Destinations scrollable frame
+        self.dest_folders_frame = ctk.CTkScrollableFrame(
+            drive_frame,
+            label_text="📁 پوشه‌های مقصد",
+            height=400,
+            label_font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
+        )
+        self.dest_folders_frame.pack(fill="both", expand=True, padx=5, pady=(10, 10))
+        
+        # Initialize with auto-detected destinations
+        self.update_destination_folders_display()
 
     def setup_quick_copy_sidebar(self, parent):
         """Setup the quick copy sidebar with auto-detected destinations"""
@@ -1441,93 +1447,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         # Initialize with auto-detected destinations
         self.update_destination_folders_display()
 
-    def setup_tasks_tab(self):
-        """راه‌اندازی تب مدیریت کارها"""
-        # دکمه‌های کنترل
-        control_frame = ctk.CTkFrame(self.tasks_frame)
-        control_frame.pack(fill="x", padx=10, pady=10)
-        
-        # کنترل‌های اصلی
-        main_controls = ctk.CTkFrame(control_frame)
-        main_controls.pack(fill="x", pady=(0, 5))
-        
-        self.start_btn = ctk.CTkButton(main_controls, text="▶ شروع انتخاب شده", command=self.start_selected_task,
-                                      fg_color="green", hover_color="darkgreen", font=ctk.CTkFont(family="B Nazanin"))
-        self.start_btn.pack(side="right", padx=5)
-        
-        self.pause_btn = ctk.CTkButton(main_controls, text="⏸ توقف انتخاب شده", command=self.pause_selected_task,
-                                      fg_color="orange", hover_color="darkorange", font=ctk.CTkFont(family="B Nazanin"))
-        self.pause_btn.pack(side="right", padx=5)
-        
-        self.cancel_btn = ctk.CTkButton(main_controls, text="⏹ لغو انتخاب شده", command=self.cancel_selected_task,
-                                       fg_color="red", hover_color="darkred", font=ctk.CTkFont(family="B Nazanin"))
-        self.cancel_btn.pack(side="right", padx=5)
-        
-        self.restart_btn = ctk.CTkButton(main_controls, text="🔄 شروع مجدد", command=self.restart_selected_task,
-                                        fg_color="blue", hover_color="darkblue", font=ctk.CTkFont(family="B Nazanin"))
-        self.restart_btn.pack(side="right", padx=5)
-        
-        # کنترل‌های مدیریت کار
-        task_controls = ctk.CTkFrame(control_frame)
-        task_controls.pack(fill="x")
-        
-        ctk.CTkButton(task_controls, text="📋 پاک کردن همه", command=self.clear_all_tasks, font=ctk.CTkFont(family="B Nazanin")).pack(side="right", padx=5)
-        ctk.CTkButton(task_controls, text="🗑 پاک کردن تکمیل شده", command=self.clear_completed, font=ctk.CTkFont(family="B Nazanin")).pack(side="right", padx=5)
-        ctk.CTkButton(task_controls, text="↓ پایین بردن", command=self.move_task_down, font=ctk.CTkFont(family="B Nazanin")).pack(side="right", padx=5)
-        ctk.CTkButton(task_controls, text="↑ بالا بردن", command=self.move_task_up, font=ctk.CTkFont(family="B Nazanin")).pack(side="right", padx=5)
-        
-        # Progress overview
-        progress_frame = ctk.CTkFrame(self.tasks_frame)
-        progress_frame.pack(fill="x", padx=10, pady=(0, 10))
-        
-        self.overall_progress = ctk.CTkProgressBar(progress_frame)
-        self.overall_progress.pack(fill="x", padx=10, pady=5)
-        self.overall_progress.set(0)
-        
-        self.progress_label = ctk.CTkLabel(progress_frame, text="هیچ کار فعالی موجود نیست", font=ctk.CTkFont(family="B Nazanin"))
-        self.progress_label.pack(pady=5)
-        
-        # Tasks tree
-        tasks_tree_frame = ctk.CTkFrame(self.tasks_frame)
-        tasks_tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-        
-        tasks_container = tk.Frame(tasks_tree_frame, bg=tasks_tree_frame.cget("fg_color")[1])
-        tasks_container.pack(fill="both", expand=True, padx=5, pady=5)
-        
-        self.task_tree = ttk.Treeview(
-            tasks_container,
-            columns=("File", "Destination", "Progress", "Size", "Copied", "Speed", "Status"),
-            show="headings",
-            height=15
-        )
-        
-        # Configure task tree columns
-        columns_config = [
-            ("File", 250, "📁 File Name", 150),
-            ("Destination", 300, "📂 Destination Path", 200),
-            ("Progress", 100, "📊 Progress %", 80),
-            ("Size", 100, "💾 Total Size", 80),
-            ("Copied", 100, "✅ Copied", 80),
-            ("Speed", 120, "⚡ Speed (MB/s)", 100),
-            ("Status", 150, "🔄 Status", 120)
-        ]
-        
-        for col, width, heading, minwidth in columns_config:
-            self.task_tree.heading(col, text=heading)
-            self.task_tree.column(col, width=width, minwidth=minwidth, anchor="center")
-        
-        # Task tree scrollbars
-        task_v_scrollbar = ttk.Scrollbar(tasks_container, orient="vertical", command=self.task_tree.yview)
-        task_h_scrollbar = ttk.Scrollbar(tasks_container, orient="horizontal", command=self.task_tree.xview)
-        
-        self.task_tree.configure(yscrollcommand=task_v_scrollbar.set, xscrollcommand=task_h_scrollbar.set)
-        
-        self.task_tree.grid(row=0, column=0, sticky="nsew")
-        task_v_scrollbar.grid(row=0, column=1, sticky="ns")
-        task_h_scrollbar.grid(row=1, column=0, sticky="ew")
-        
-        tasks_container.grid_rowconfigure(0, weight=1)
-        tasks_container.grid_columnconfigure(0, weight=1)
+
 
     def setup_settings_tab(self):
         """Setup the settings tab"""
