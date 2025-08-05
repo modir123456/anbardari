@@ -1703,17 +1703,17 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         # ستون 1: مرورگر فایل (40%) - ستون اصلی برای انتخاب فایل‌ها
         browser_frame = ctk.CTkFrame(self.main_paned, width=640, height=600)  # 40% از 1600px = 640px
         browser_frame.pack_propagate(False)  # جلوگیری از کوچک شدن خودکار
-        self.main_paned.add(browser_frame, weight=2, minsize=400)  # weight=2 برای 40%
+        self.main_paned.add(browser_frame, weight=2)  # weight=2 برای 40%
         
         # ستون 2: لیست درایوها و مقصد (20%) - ستون میانی برای انتخاب مقصد
         drive_list_frame = ctk.CTkFrame(self.main_paned, width=320, height=600)  # 20% از 1600px = 320px
         drive_list_frame.pack_propagate(False)  # حفظ اندازه ثابت
-        self.main_paned.add(drive_list_frame, weight=1, minsize=250)  # weight=1 برای 20%
+        self.main_paned.add(drive_list_frame, weight=1)  # weight=1 برای 20%
         
         # ستون 3: مدیریت تسک‌ها (40%) - ستون اصلی برای نمایش پیشرفت
         task_management_frame = ctk.CTkFrame(self.main_paned, width=640, height=600)  # 40% از 1600px = 640px
         task_management_frame.pack_propagate(False)  # جلوگیری از کوچک شدن خودکار
-        self.main_paned.add(task_management_frame, weight=2, minsize=400)  # weight=2 برای 40%
+        self.main_paned.add(task_management_frame, weight=2)  # weight=2 برای 40%
         
         # تنظیم نسبت‌های دقیق ستون‌ها
         self.root.after(100, lambda: self._configure_column_ratios())
@@ -1739,19 +1739,20 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
                 # محاسبه عرض هر ستون
                 left_width = int(total_width * 0.4)    # 40% برای مرورگر فایل
                 center_width = int(total_width * 0.2)  # 20% برای درایوها
-                right_width = int(total_width * 0.4)   # 40% برای تسک‌ها
                 
                 # تنظیم موقعیت‌های sash (تقسیم‌کننده‌ها)
-                self.main_paned.sash_place(0, left_width, 0)
-                self.main_paned.sash_place(1, left_width + center_width, 0)
+                try:
+                    self.main_paned.sash_place(0, left_width, 0)
+                    self.main_paned.sash_place(1, left_width + center_width, 0)
+                except:
+                    # اگر sash_place کار نکرد، از روش دیگری استفاده می‌کنیم
+                    pass
                 
-                # ثابت نگه داشتن ستون وسطی
-                self.main_paned.paneconfigure(0, minsize=left_width - 50)
-                self.main_paned.paneconfigure(1, minsize=center_width - 20)
-                self.main_paned.paneconfigure(2, minsize=right_width - 50)
-        except:
+                print(f"✓ تنظیم نسبت ستون‌ها: {left_width}-{center_width}-{total_width - left_width - center_width}")
+        except Exception as e:
             # در صورت خطا، بعداً دوباره تلاش می‌شود
-            self.root.after(200, lambda: self._configure_column_ratios())
+            print(f"خطا در تنظیم نسبت ستون‌ها: {e}")
+            self.root.after(500, lambda: self._configure_column_ratios())
 
     def setup_file_browser_section(self, browser_frame):
         """Setup the file browser section"""
