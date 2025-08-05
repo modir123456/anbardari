@@ -204,9 +204,10 @@ class FileCopierApp:
             if not self.enforce_license_restriction("bulk_copy"):
                 return
         
-        destination = self.destination_var.get()
-        if not destination or destination == "انتخاب مقصد...":
-            messagebox.showwarning("هشدار", "لطفاً مقصد کپی را انتخاب کنید")
+        # Get destination from drive list section
+        destination = self.get_selected_destination()
+        if not destination:
+            messagebox.showwarning("هشدار", "لطفاً از ستون انتخاب مقصد، یک پوشه مقصد انتخاب کنید")
             return
         
         # Add to copy queue
@@ -216,16 +217,27 @@ class FileCopierApp:
                 file_path = item_values[1]  # Path column
                 self.add_copy_task(file_path, destination)
 
+    def get_selected_destination(self):
+        """Get the currently selected destination from the drive list section"""
+        try:
+            # Check if there's a selected destination folder button
+            if hasattr(self, 'selected_destination_path'):
+                return self.selected_destination_path
+            return None
+        except:
+            return None
+    
     def select_destination(self):
         """Select destination folder"""
         folder = filedialog.askdirectory(title="انتخاب پوشه مقصد")
         if folder:
-            self.destination_var.set(folder)
-            # Update combo box values
-            current_values = list(self.destination_combo.cget("values"))
-            if folder not in current_values:
-                current_values.append(folder)
-                self.destination_combo.configure(values=current_values)
+            self.selected_destination_path = folder
+            # Update the destination label
+            if hasattr(self, 'current_dest_label'):
+                short_path = folder if len(folder) < 40 else f"...{folder[-37:]}"
+                self.current_dest_label.configure(text=f"مقصد: {short_path}")
+            return folder
+        return None
 
     def quick_copy_to_folder(self, folder_name):
         """Quick copy to common folders"""
@@ -1137,43 +1149,37 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             self.root.after(0, lambda: self.update_status("Destination refresh error"))
 
     def setup_explorer_tab(self):
-        """Setup the file explorer tab with resizable 4-column layout"""
+        """Setup the file explorer tab with resizable 3-column layout"""
         # Main container
         main_container = ctk.CTkFrame(self.explorer_frame)
         main_container.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Create a resizable PanedWindow for the 4 columns
+        # Create a resizable PanedWindow for the 3 columns
         self.main_paned = ttk.PanedWindow(main_container, orient="horizontal")
         self.main_paned.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # Column 1: File Browser (25%) - min enforced by width
-        browser_frame = ctk.CTkFrame(self.main_paned, width=350, height=600)
-        self.main_paned.add(browser_frame, weight=2)
+        # Column 1: File Browser (40%) - larger for better file visibility
+        browser_frame = ctk.CTkFrame(self.main_paned, width=500, height=600)
+        self.main_paned.add(browser_frame, weight=4)
         
-        # Column 2: Drive List for Destination (35% - increased) - min enforced by width
-        drive_list_frame = ctk.CTkFrame(self.main_paned, width=420, height=600)
+        # Column 2: Drive List for Destination (35%) - good size for destination selection
+        drive_list_frame = ctk.CTkFrame(self.main_paned, width=400, height=600)
         self.main_paned.add(drive_list_frame, weight=3)
         
-        # Column 3: Copy Operations (25%) - min enforced by width
-        copy_operations_frame = ctk.CTkFrame(self.main_paned, width=300, height=600)
-        self.main_paned.add(copy_operations_frame, weight=2)
-        
-        # Column 4: Task Management (15% - reduced) - min enforced by width
-        task_management_frame = ctk.CTkFrame(self.main_paned, width=200, height=600)
-        self.main_paned.add(task_management_frame, weight=1)
+        # Column 3: Task Management (25%) - adequate for task monitoring
+        task_management_frame = ctk.CTkFrame(self.main_paned, width=350, height=600)
+        self.main_paned.add(task_management_frame, weight=3)
         
         # Store frame references for potential future minsize handling
         self.column_frames = {
             'browser': browser_frame,
             'drive': drive_list_frame, 
-            'copy': copy_operations_frame,
             'task': task_management_frame
         }
         
         # Setup all sections
         self.setup_file_browser_section(browser_frame)
         self.setup_drive_destination_section(drive_list_frame)
-        self.setup_copy_operations_section(copy_operations_frame)
         self.setup_task_management_section(task_management_frame)
 
     def setup_file_browser_section(self, browser_frame):
@@ -1219,9 +1225,11 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         buttons_frame.pack(fill="x", pady=5)
         
         ctk.CTkButton(buttons_frame, text="🔄 بروزرسانی", command=self.refresh_all_files, 
-                     width=140, height=35, font=ctk.CTkFont(family="sans-serif", size=12)).pack(side="left", padx=3)
+                     width=120, height=35, font=ctk.CTkFont(family="sans-serif", size=12)).pack(side="left", padx=2)
         ctk.CTkButton(buttons_frame, text="🗑️ پاک کردن", command=self.clear_search, 
-                     width=140, height=35, font=ctk.CTkFont(family="sans-serif", size=12)).pack(side="left", padx=3)
+                     width=120, height=35, font=ctk.CTkFont(family="sans-serif", size=12)).pack(side="left", padx=2)
+        ctk.CTkButton(buttons_frame, text="📁 کپی فایل‌ها", command=self.copy_selected_files, 
+                     width=120, height=35, font=ctk.CTkFont(family="sans-serif", size=12)).pack(side="left", padx=2)
         
         # File tree with improved styling
         tree_frame = ctk.CTkFrame(browser_frame)
@@ -1276,66 +1284,10 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkButton(action_frame, text="📁 انتخاب پوشه", command=self.select_folder,
                      width=120, font=ctk.CTkFont(family="sans-serif")).pack(side="left", padx=2)
 
-    def setup_copy_operations_section(self, copy_frame):
-        """Setup the copy operations section"""
-        
-        # Title
-        title_label = ctk.CTkLabel(copy_frame, text="⚡ عملیات کپی سریع", 
-                                  font=ctk.CTkFont(family="sans-serif", size=16, weight="bold"))
-        title_label.pack(pady=(10, 5))
-        
-        # Destination selection
-        dest_frame = ctk.CTkFrame(copy_frame)
-        dest_frame.pack(fill="x", padx=10, pady=5)
-        
-        ctk.CTkLabel(dest_frame, text="📂 مقصد:", 
-                    font=ctk.CTkFont(family="sans-serif", weight="bold")).pack(anchor="e", padx=5, pady=2)
-        
-        self.destination_var = tk.StringVar()
-        self.destination_combo = ctk.CTkComboBox(dest_frame, variable=self.destination_var,
-                                               font=ctk.CTkFont(family="sans-serif"),
-                                               values=["انتخاب مقصد..."])
-        self.destination_combo.pack(fill="x", padx=5, pady=2)
-        
-        ctk.CTkButton(dest_frame, text="📁 انتخاب پوشه جدید", command=self.select_destination,
-                     font=ctk.CTkFont(family="sans-serif", size=12), height=35).pack(fill="x", padx=5, pady=3)
-        
-        # Quick copy buttons
-        quick_frame = ctk.CTkFrame(copy_frame)
-        quick_frame.pack(fill="x", padx=10, pady=5)
-        
-        ctk.CTkLabel(quick_frame, text="🚀 کپی سریع:", 
-                    font=ctk.CTkFont(family="sans-serif", weight="bold")).pack(anchor="e", padx=5, pady=2)
-        
-        # Common destinations
-        common_destinations = [
-            ("🖥️ دسکتاپ", "Desktop"),
-            ("📁 اسناد", "Documents"), 
-            ("⬇️ دانلودها", "Downloads"),
-            ("🖼️ تصاویر", "Pictures"),
-            ("🎵 موسیقی", "Music"),
-            ("🎬 ویدیوها", "Videos")
-        ]
-        
-        for text, folder in common_destinations:
-            ctk.CTkButton(quick_frame, text=text, 
-                         command=lambda f=folder: self.quick_copy_to_folder(f),
-                         font=ctk.CTkFont(family="sans-serif", size=12), width=180, height=32).pack(fill="x", padx=5, pady=2)
-        
-        # Copy progress section
-        progress_frame = ctk.CTkFrame(copy_frame)
-        progress_frame.pack(fill="x", padx=10, pady=5)
-        
-        ctk.CTkLabel(progress_frame, text="📊 وضعیت کپی:", 
-                    font=ctk.CTkFont(family="sans-serif", weight="bold")).pack(anchor="e", padx=5, pady=2)
-        
-        self.copy_progress = ctk.CTkProgressBar(progress_frame)
-        self.copy_progress.pack(fill="x", padx=5, pady=2)
-        self.copy_progress.set(0)
-        
-        self.copy_status_label = ctk.CTkLabel(progress_frame, text="آماده برای کپی", 
-                                            font=ctk.CTkFont(family="sans-serif"))
-        self.copy_status_label.pack(padx=5, pady=2)
+    # Removed copy operations section - functionality integrated into task management
+    # def setup_copy_operations_section(self, copy_frame):
+    #     """Setup the copy operations section - REMOVED"""
+    #     pass
         
 
 
@@ -1447,6 +1399,26 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             wraplength=200
         )
         instruction_label.pack(pady=5)
+        
+        # Destination selection button
+        select_dest_btn = ctk.CTkButton(
+            drive_frame,
+            text="📁 انتخاب پوشه مقصد",
+            command=self.select_destination,
+            font=ctk.CTkFont(family="sans-serif", size=12),
+            width=180,
+            height=35
+        )
+        select_dest_btn.pack(pady=5)
+        
+        # Current destination label
+        self.current_dest_label = ctk.CTkLabel(
+            drive_frame,
+            text="هیچ مقصدی انتخاب نشده",
+            font=ctk.CTkFont(family="sans-serif", size=10),
+            wraplength=200
+        )
+        self.current_dest_label.pack(pady=5)
         
         # Auto-refresh destinations button
         refresh_dest_btn = ctk.CTkButton(
