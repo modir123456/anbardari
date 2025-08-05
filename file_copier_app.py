@@ -1087,19 +1087,19 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         # Column 1: File Browser (25%)
         browser_frame = ctk.CTkFrame(self.main_paned, width=350)
-        self.main_paned.add(browser_frame, weight=1)
+        self.main_paned.add(browser_frame, weight=2)
         
         # Column 2: Drive List for Destination (35% - increased)
-        drive_list_frame = ctk.CTkFrame(self.main_paned, width=400)
-        self.main_paned.add(drive_list_frame, weight=1.4)
+        drive_list_frame = ctk.CTkFrame(self.main_paned, width=420)
+        self.main_paned.add(drive_list_frame, weight=3)
         
         # Column 3: Copy Operations (25%)
         copy_operations_frame = ctk.CTkFrame(self.main_paned, width=300)
-        self.main_paned.add(copy_operations_frame, weight=1)
+        self.main_paned.add(copy_operations_frame, weight=2)
         
         # Column 4: Task Management (15% - reduced)
-        task_management_frame = ctk.CTkFrame(self.main_paned, width=250)
-        self.main_paned.add(task_management_frame, weight=0.6)
+        task_management_frame = ctk.CTkFrame(self.main_paned, width=200)
+        self.main_paned.add(task_management_frame, weight=1)
         
         # Setup all sections
         self.setup_file_browser_section(browser_frame)
