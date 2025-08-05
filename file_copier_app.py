@@ -1456,7 +1456,7 @@ class FileCopierApp:
     def populate_drive_combo(self):
         """Populate the drive combo box with available drives"""
         try:
-            drive_options = []
+            drive_options = ["🌐 همه درایوها"]  # گزینه همه درایوها در ابتدا
             
             for drive in self.all_drives:
                 if drive['accessible']:
@@ -1465,9 +1465,9 @@ class FileCopierApp:
                     drive_label = f"{drive['device']} - {drive['mountpoint']} ({free_space}/{total_space})"
                     drive_options.append(drive_label)
             
-            if drive_options:
+            if len(drive_options) > 1:  # بیش از گزینه "همه درایوها"
                 self.drive_combo.configure(values=drive_options)
-                self.drive_var.set(drive_options[0])
+                self.drive_var.set(drive_options[0])  # پیش‌فرض "همه درایوها"
             else:
                 self.drive_combo.configure(values=["هیچ درایوی یافت نشد"])
                 self.drive_var.set("هیچ درایوی یافت نشد")
@@ -1542,6 +1542,11 @@ class FileCopierApp:
         try:
             if not selected_drive or selected_drive in ["در حال بارگذاری...", "هیچ درایوی یافت نشد", "خطا در بارگذاری درایوها"]:
                 return
+            
+            # اگر گزینه "همه درایوها" انتخاب شده است
+            if selected_drive == "🌐 همه درایوها":
+                self.browse_all_drives()
+                return
                 
             # Extract mountpoint from the selected drive string
             # Format is "Device - Mountpoint (free/total)"
@@ -1591,6 +1596,132 @@ class FileCopierApp:
         except Exception as e:
             print(f"Error browsing drive: {e}")
             self.update_status(f"خطا در تصفح درایو: {e}")
+    
+    def browse_all_drives(self):
+        """Browse files from all accessible drives"""
+        try:
+            print("🌐 Browsing all drives...")
+            
+            # Clear current file tree
+            for item in self.file_tree.get_children():
+                self.file_tree.delete(item)
+            
+            total_files = 0
+            
+            # اسکن همه درایوهای قابل دسترسی
+            for drive in self.all_drives:
+                if not drive['accessible']:
+                    continue
+                    
+                mountpoint = drive['mountpoint']
+                print(f"📁 Scanning {mountpoint}...")
+                
+                try:
+                    # اسکن فایل‌های درایو با عمق محدود برای کارایی بهتر
+                    drive_files = self.scan_directory_recursive(mountpoint, max_depth=2)
+                    
+                    # اضافه کردن فایل‌ها به tree
+                    for file_path, file_info in drive_files.items():
+                        try:
+                            name = file_info.get("name", os.path.basename(file_path))
+                            file_type = file_info.get("type", "file")
+                            size = self.format_size(file_info.get("size", 0))
+                            
+                            # اضافه کردن prefix درایو برای تشخیص بهتر
+                            display_name = f"[{mountpoint}] {name}"
+                            
+                            self.file_tree.insert("", "end", values=(display_name, file_path, file_type, size))
+                            total_files += 1
+                            
+                        except Exception as e:
+                            print(f"Error adding file to tree: {e}")
+                    
+                    print(f"✓ {mountpoint}: {len(drive_files)} files")
+                    
+                    # به‌روزرسانی UI در هر درایو
+                    self.root.update_idletasks()
+                    
+                except Exception as e:
+                    print(f"⚠ Could not scan {mountpoint}: {e}")
+                    continue
+            
+            self.update_status(f"🌐 همه درایوها - {total_files} فایل یافت شد")
+            print(f"✓ Total files from all drives: {total_files}")
+            
+        except Exception as e:
+            print(f"Error browsing all drives: {e}")
+            self.update_status(f"خطا در تصفح همه درایوها: {e}")
+    
+    def scan_directory_recursive(self, directory, max_depth=3, current_depth=0):
+        """اسکن بازگشتی پوشه‌ها و فایل‌ها با محدودیت عمق"""
+        files_info = {}
+        
+        if current_depth >= max_depth:
+            return files_info
+            
+        try:
+            # بررسی دسترسی به پوشه
+            if not os.path.exists(directory) or not os.access(directory, os.R_OK):
+                return files_info
+                
+            # اسکن فایل‌ها و پوشه‌ها
+            for item in os.listdir(directory):
+                if current_depth == 0 and len(files_info) > 1000:  # محدودیت تعداد فایل
+                    break
+                    
+                try:
+                    item_path = os.path.join(directory, item)
+                    
+                    # رد کردن فایل‌های سیستم و مخفی
+                    if item.startswith('.') or item.startswith('$'):
+                        continue
+                        
+                    if os.path.isfile(item_path):
+                        # فایل معمولی
+                        try:
+                            stat_info = os.stat(item_path)
+                            files_info[item_path] = {
+                                "name": item,
+                                "type": "file",
+                                "size": stat_info.st_size,
+                                "modified": stat_info.st_mtime,
+                                "extension": os.path.splitext(item)[1].lower()
+                            }
+                        except (OSError, PermissionError):
+                            # در صورت عدم دسترسی، فایل را نادیده می‌گیریم
+                            continue
+                            
+                    elif os.path.isdir(item_path):
+                        # پوشه
+                        try:
+                            stat_info = os.stat(item_path)
+                            files_info[item_path] = {
+                                "name": item,
+                                "type": "directory", 
+                                "size": 0,
+                                "modified": stat_info.st_mtime,
+                                "extension": ""
+                            }
+                            
+                            # اسکن بازگشتی پوشه (فقط تا عمق مشخص)
+                            if current_depth < max_depth - 1:
+                                sub_files = self.scan_directory_recursive(
+                                    item_path, max_depth, current_depth + 1
+                                )
+                                files_info.update(sub_files)
+                                
+                        except (OSError, PermissionError):
+                            # پوشه‌های بدون دسترسی نادیده گرفته می‌شوند
+                            continue
+                            
+                except (OSError, PermissionError, UnicodeDecodeError):
+                    # رد کردن فایل‌هایی که قابل دسترسی نیستند
+                    continue
+                    
+        except (OSError, PermissionError) as e:
+            print(f"خطا در اسکن پوشه {directory}: {e}")
+            
+        return files_info
 
     def setup_gui(self):
         """Setup the main GUI"""
