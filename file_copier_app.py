@@ -1528,32 +1528,29 @@ class FileCopierApp:
     def setup_html_viewer(self, parent_frame):
         """تنظیم نمایشگر HTML برای فایل درباره ما"""
         try:
-            # Try to import webview module (this will usually fail)
-            import tkinter.html as html  # This module doesn't exist, will go to except
-        except:
-            try:
-                # Alternative: use tkinter text with basic HTML parsing
-                import webbrowser
-                
-                # Create frame with buttons
-                button_frame = ctk.CTkFrame(parent_frame)
-                button_frame.pack(fill="x", padx=10, pady=5)
-                
-                ctk.CTkButton(
-                    button_frame,
-                    text="📖 مشاهده در مرورگر",
-                    command=self.open_about_in_browser,
-                    width=200,
-                    height=40,
-                    font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
-                    fg_color=("blue", "darkblue")
-                ).pack(side="top", pady=10)
-                
-                # Text display of content
-                self.setup_text_about_display(parent_frame)
-                
-            except:
-                self.setup_text_about_display(parent_frame)
+            # استفاده از webbrowser برای نمایش فایل HTML
+            import webbrowser
+            
+            # Create frame with buttons
+            button_frame = ctk.CTkFrame(parent_frame)
+            button_frame.pack(fill="x", padx=10, pady=5)
+            
+            ctk.CTkButton(
+                button_frame,
+                text="📖 مشاهده در مرورگر",
+                command=self.open_about_in_browser,
+                width=200,
+                height=40,
+                font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
+                fg_color=("blue", "darkblue")
+            ).pack(side="top", pady=10)
+            
+            # Text display of content
+            self.setup_text_about_display(parent_frame)
+            
+        except Exception as e:
+            print(f"خطا در تنظیم HTML viewer: {e}")
+            self.setup_text_about_display(parent_frame)
 
     def setup_text_about_display(self, parent_frame):
         """نمایش اطلاعات درباره ما به صورت متنی"""
