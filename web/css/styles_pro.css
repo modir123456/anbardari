@@ -1233,6 +1233,207 @@ body {
     }
 }
 
+/* Modern Settings Layout */
+.settings-main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border-radius: var(--radius-lg);
+    color: white;
+    box-shadow: 0 8px 32px rgba(74, 144, 226, 0.3);
+}
+
+.settings-title h2 {
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.settings-title p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1rem;
+}
+
+.status-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+}
+
+/* Modern Navigation */
+.settings-nav-modern {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(74, 144, 226, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.nav-item:hover::before {
+    left: 100%;
+}
+
+.nav-item:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px var(--shadow-medium);
+}
+
+.nav-item.active {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color), rgba(74, 144, 226, 0.8));
+    color: white;
+    box-shadow: 0 8px 24px rgba(74, 144, 226, 0.4);
+}
+
+.nav-icon {
+    font-size: 1.5rem;
+    margin-left: var(--spacing-md);
+    width: 40px;
+    text-align: center;
+}
+
+.nav-content {
+    flex: 1;
+}
+
+.nav-title {
+    display: block;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: var(--spacing-xs);
+}
+
+.nav-desc {
+    display: block;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.nav-item.active .nav-desc {
+    opacity: 0.9;
+}
+
+/* Settings Content */
+.settings-content {
+    max-width: 100%;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+}
+
+.section-header h3 {
+    margin: 0 0 var(--spacing-sm) 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.section-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+/* Settings Cards Grid */
+.settings-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* Range Input */
+.range-input {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.modern-range {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-quaternary);
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.modern-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.4);
+    transition: all 0.3s ease;
+}
+
+.modern-range::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 16px rgba(74, 144, 226, 0.6);
+}
+
+.modern-range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.4);
+}
+
+.range-value {
+    min-width: 50px;
+    text-align: center;
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.9rem;
+    background: var(--bg-tertiary);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
 /* Advanced Settings Styles */
 .settings-header {
     margin-bottom: var(--spacing-xl);
@@ -1482,7 +1683,46 @@ input:focus + .slider {
 }
 
 /* Responsive Design for Settings */
+@media (max-width: 1200px) {
+    .settings-nav-modern {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+    
+    .settings-cards-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 900px) {
+    .settings-main-header {
+        flex-direction: column;
+        gap: var(--spacing-md);
+        text-align: center;
+    }
+    
+    .settings-nav-modern {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--spacing-sm);
+    }
+    
+    .nav-item {
+        padding: var(--spacing-sm);
+    }
+    
+    .nav-icon {
+        font-size: 1.2rem;
+        margin-left: var(--spacing-sm);
+        width: 30px;
+    }
+    
+    .nav-title {
+        font-size: 0.9rem;
+    }
+    
+    .nav-desc {
+        font-size: 0.75rem;
+    }
+    
     .settings-grid {
         grid-template-columns: 1fr;
     }
@@ -1507,6 +1747,43 @@ input:focus + .slider {
 }
 
 @media (max-width: 600px) {
+    .settings-main-header {
+        padding: var(--spacing-md);
+    }
+    
+    .settings-title h2 {
+        font-size: 1.4rem;
+    }
+    
+    .settings-title p {
+        font-size: 0.9rem;
+    }
+    
+    .status-badge {
+        font-size: 0.8rem;
+        padding: var(--spacing-xs);
+    }
+    
+    .settings-nav-modern {
+        grid-template-columns: 1fr;
+    }
+    
+    .nav-item {
+        padding: var(--spacing-md);
+    }
+    
+    .section-header {
+        padding: var(--spacing-md);
+    }
+    
+    .section-header h3 {
+        font-size: 1.2rem;
+    }
+    
+    .section-header p {
+        font-size: 0.9rem;
+    }
+    
     .settings-header {
         padding: var(--spacing-md);
     }
@@ -1517,5 +1794,15 @@ input:focus + .slider {
     
     .card-body {
         padding: var(--spacing-md);
+    }
+    
+    .range-input {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+    
+    .range-value {
+        align-self: center;
     }
 }

@@ -299,94 +299,220 @@
         <!-- Settings Tab -->
         <div id="settings-tab" class="tab-content">
             <div class="settings-container">
-                <h2>⚙️ تنظیمات پیشرفته</h2>
+                <!-- Settings Header -->
+                <div class="settings-main-header">
+                    <div class="settings-title">
+                        <h2>⚙️ تنظیمات پیشرفته</h2>
+                        <p>شخصی‌سازی کامل برنامه طبق نیازهای شما</p>
+                    </div>
+                    <div class="settings-status">
+                        <span class="status-badge">🔓 نسخه پرو</span>
+                    </div>
+                </div>
                 
-                <!-- Settings Navigation -->
-                <div class="settings-nav">
-                    <button class="settings-nav-btn active" data-section="ui">🎨 رابط کاربری</button>
-                    <button class="settings-nav-btn" data-section="file-ops">📁 عملیات فایل</button>
-                    <button class="settings-nav-btn" data-section="indexing">🔍 ایندکس‌گذاری</button>
-                    <button class="settings-nav-btn" data-section="notifications">🔔 اعلان‌ها</button>
-                    <button class="settings-nav-btn" data-section="advanced">⚙️ پیشرفته</button>
-                    <button class="settings-nav-btn" data-section="license">🔐 لایسنس</button>
+                <!-- Modern Settings Navigation -->
+                <div class="settings-nav-modern">
+                    <div class="nav-item active" data-section="ui">
+                        <div class="nav-icon">🎨</div>
+                        <div class="nav-content">
+                            <span class="nav-title">رابط کاربری</span>
+                            <span class="nav-desc">تم، فونت و ظاهر</span>
+                        </div>
+                    </div>
+                    <div class="nav-item" data-section="file-ops">
+                        <div class="nav-icon">📁</div>
+                        <div class="nav-content">
+                            <span class="nav-title">عملیات فایل</span>
+                            <span class="nav-desc">کپی، انتقال و عملکرد</span>
+                        </div>
+                    </div>
+                    <div class="nav-item" data-section="indexing">
+                        <div class="nav-icon">🔍</div>
+                        <div class="nav-content">
+                            <span class="nav-title">ایندکس‌گذاری</span>
+                            <span class="nav-desc">جستجو و ذخیره‌سازی</span>
+                        </div>
+                    </div>
+                    <div class="nav-item" data-section="notifications">
+                        <div class="nav-icon">🔔</div>
+                        <div class="nav-content">
+                            <span class="nav-title">اعلان‌ها</span>
+                            <span class="nav-desc">Toast و صداها</span>
+                        </div>
+                    </div>
+                    <div class="nav-item" data-section="advanced">
+                        <div class="nav-icon">⚙️</div>
+                        <div class="nav-content">
+                            <span class="nav-title">پیشرفته</span>
+                            <span class="nav-desc">سیستم و پایگاه داده</span>
+                        </div>
+                    </div>
+                    <div class="nav-item" data-section="license">
+                        <div class="nav-icon">🔐</div>
+                        <div class="nav-content">
+                            <span class="nav-title">لایسنس</span>
+                            <span class="nav-desc">فعال‌سازی و خرید</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- UI Settings -->
                 <div id="ui-settings" class="settings-section active">
-                    <h3>🎨 تنظیمات رابط کاربری</h3>
-                    
-                    <div class="settings-group">
-                        <h4>🔤 فونت و متن</h4>
-                        <div class="setting-row">
-                            <label>خانواده فونت:</label>
-                            <select id="font-family-select">
-                                <option value="Vazirmatn">Vazirmatn</option>
-                                <option value="B Nazanin">B Nazanin</option>
-                                <option value="Tahoma">Tahoma</option>
-                                <option value="Arial">Arial</option>
-                                <option value="IRANSans">IRANSans</option>
-                            </select>
+                    <div class="settings-content">
+                        <div class="section-header">
+                            <h3>🎨 تنظیمات رابط کاربری</h3>
+                            <p>شخصی‌سازی ظاهر و احساس برنامه</p>
                         </div>
-                        <div class="setting-row">
-                            <label>اندازه فونت:</label>
-                            <input type="range" id="font-size-slider" min="10" max="24" value="14" />
-                            <span id="font-size-value">14px</span>
-                        </div>
-                        <div class="setting-row">
-                            <label>وزن فونت:</label>
-                            <select id="font-weight-select">
-                                <option value="normal">عادی</option>
-                                <option value="500">متوسط</option>
-                                <option value="600">نیمه‌ضخیم</option>
-                                <option value="700">ضخیم</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>🎨 ظاهر و تم</h4>
-                        <div class="setting-row">
-                            <label>تم رنگی:</label>
-                            <select id="theme-select">
-                                <option value="dark">🌙 تیره</option>
-                                <option value="light">☀️ روشن</option>
-                                <option value="blue">🔵 آبی</option>
-                                <option value="green">🟢 سبز</option>
-                                <option value="purple">🟣 بنفش</option>
-                                <option value="orange">🟠 نارنجی</option>
-                            </select>
-                        </div>
-                        <div class="setting-row">
-                            <label>جهت رابط:</label>
-                            <select id="direction-select">
-                                <option value="rtl">راست به چپ (فارسی)</option>
-                                <option value="ltr">چپ به راست (انگلیسی)</option>
-                            </select>
-                        </div>
-                        <div class="setting-row">
-                            <label>حالت فشرده:</label>
-                            <input type="checkbox" id="compact-mode">
-                        </div>
-                        <div class="setting-row">
-                            <label>شروع در حالت ماکسیمم:</label>
-                            <input type="checkbox" id="startup-maximized" checked>
-                        </div>
-                        <div class="setting-row">
-                            <label>نمایش راهنما:</label>
-                            <input type="checkbox" id="show-tooltips" checked>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>⚡ انیمیشن و عملکرد</h4>
-                        <div class="setting-row">
-                            <label>سرعت انیمیشن:</label>
-                            <select id="animation-speed">
-                                <option value="slow">آهسته</option>
-                                <option value="normal">عادی</option>
-                                <option value="fast">سریع</option>
-                                <option value="none">بدون انیمیشن</option>
-                            </select>
+                        
+                        <div class="settings-cards-grid">
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>🔤 فونت و متن</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>📝 خانواده فونت</label>
+                                            <small>انتخاب فونت اصلی برنامه</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <select id="font-family-select" class="modern-select">
+                                                <option value="Vazirmatn">وزیرمتن</option>
+                                                <option value="B Nazanin">ب نازنین</option>
+                                                <option value="Tahoma">تاهوما</option>
+                                                <option value="Arial">ایریال</option>
+                                                <option value="IRANSans">ایران‌سنس</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>📏 اندازه فونت</label>
+                                            <small>تنظیم اندازه متن در برنامه</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <div class="range-input">
+                                                <input type="range" id="font-size-slider" min="10" max="24" value="14" class="modern-range">
+                                                <span id="font-size-value" class="range-value">14px</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>💪 وزن فونت</label>
+                                            <small>ضخامت و وزن نمایش متن</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <select id="font-weight-select" class="modern-select">
+                                                <option value="normal">عادی</option>
+                                                <option value="500">متوسط</option>
+                                                <option value="600">نیمه‌ضخیم</option>
+                                                <option value="700">ضخیم</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>🎨 ظاهر و تم</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🌈 تم رنگی</label>
+                                            <small>انتخاب پالت رنگ اصلی</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <select id="theme-select" class="modern-select">
+                                                <option value="dark">🌙 تیره</option>
+                                                <option value="light">☀️ روشن</option>
+                                                <option value="blue">🔵 آبی</option>
+                                                <option value="green">🟢 سبز</option>
+                                                <option value="purple">🟣 بنفش</option>
+                                                <option value="orange">🟠 نارنجی</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🔄 جهت رابط</label>
+                                            <small>راست به چپ یا چپ به راست</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <select id="direction-select" class="modern-select">
+                                                <option value="rtl">راست به چپ (فارسی)</option>
+                                                <option value="ltr">چپ به راست (انگلیسی)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>📱 حالت فشرده</label>
+                                            <small>نمایش فشرده برای صفحات کوچک</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="compact-mode">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🖥️ شروع ماکسیمم</label>
+                                            <small>باز شدن در حالت تمام صفحه</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="startup-maximized" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>💡 نمایش راهنما</label>
+                                            <small>نمایش tooltip ها و راهنماها</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="show-tooltips" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>⚡ انیمیشن و عملکرد</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🎬 سرعت انیمیشن</label>
+                                            <small>تنظیم سرعت انیمیشن‌های رابط</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <select id="animation-speed" class="modern-select">
+                                                <option value="slow">🐌 آهسته</option>
+                                                <option value="normal">🚶 عادی</option>
+                                                <option value="fast">🏃 سریع</option>
+                                                <option value="none">🚫 بدون انیمیشن</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
