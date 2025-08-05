@@ -392,6 +392,8 @@ async function scanCurrentDirectory() {
     try {
         const offset = (currentPage - 1) * itemsPerPage;
         
+        console.log(`🔍 Scanning: drive=${currentDrive}, search="${searchTerm}", format=${currentFormatFilter}`);
+        
         const files = await eel.scan_directory(
             currentDrive,
             searchTerm,
@@ -401,10 +403,17 @@ async function scanCurrentDirectory() {
             offset
         )();
         
+        console.log(`📄 Found ${files.length} files`);
+        
         currentFiles = files;
         updateFileList(files);
         updateFileCount(files.length);
         updatePagination();
+        
+        // Show helpful message if no files found
+        if (files.length === 0 && (searchTerm || currentFormatFilter !== 'همه فرمت‌ها' || currentSizeFilter !== 'همه اندازه‌ها')) {
+            showToast('🔍 هیچ فایلی یافت نشد. فیلترها را پاک کنید یا تغییر دهید', 'info', 5000);
+        }
         
     } catch (error) {
         console.error('❌ Error scanning directory:', error);
@@ -669,6 +678,39 @@ function sortFiles(criteria) {
     });
     
     updateFileList(currentFiles);
+}
+
+/**
+ * Reset all filters and search
+ */
+function resetFilters() {
+    // Reset search
+    searchTerm = '';
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    // Reset filters
+    currentFormatFilter = 'همه فرمت‌ها';
+    currentSizeFilter = 'همه اندازه‌ها';
+    currentDateFilter = 'همه تاریخ‌ها';
+    
+    const formatFilter = document.getElementById('format-filter');
+    const sizeFilter = document.getElementById('size-filter');
+    const dateFilter = document.getElementById('date-filter');
+    
+    if (formatFilter) formatFilter.value = currentFormatFilter;
+    if (sizeFilter) sizeFilter.value = currentSizeFilter;
+    if (dateFilter) dateFilter.value = currentDateFilter;
+    
+    // Reset pagination
+    currentPage = 1;
+    
+    // Refresh results
+    scanCurrentDirectory();
+    
+    showToast('🔄 فیلترها پاک شدند', 'success');
 }
 
 /**
@@ -1441,3 +1483,6 @@ window.confirmDatabaseReset = confirmDatabaseReset;
 window.resetDatabase = resetDatabase;
 window.loadAdvancedSettings = loadAdvancedSettings;
 window.saveAdvancedSettings = saveAdvancedSettings;
+
+// Utility functions
+window.resetFilters = resetFilters;

@@ -742,7 +742,34 @@ class FileManager:
                     except (PermissionError, OSError):
                         continue
             
-            # Add MTP devices and common folders
+            # If no main drives found, add essential directories
+            if not drives:
+                essential_dirs = [
+                    ('/workspace', '💼 ورک‌اسپیس', '📁'),
+                    (os.path.expanduser('~'), '🏠 خانه', '🏠'),
+                ]
+                
+                for dir_path, name, icon in essential_dirs:
+                    if os.path.exists(dir_path) and os.access(dir_path, os.R_OK):
+                        try:
+                            usage = psutil.disk_usage(dir_path)
+                            drives.append({
+                                'path': dir_path,
+                                'name': name,
+                                'free_space': self.format_size(usage.free),
+                                'total_space': self.format_size(usage.total),
+                                'free_space_bytes': usage.free,
+                                'total_space_bytes': usage.total,
+                                'usage_percent': round((usage.used / usage.total) * 100, 1),
+                                'icon': icon,
+                                'type': 'directory',
+                                'file_system': 'directory',
+                                'auto_index': True
+                            })
+                        except:
+                            pass
+            
+            # Add MTP devices and common folders  
             drives.extend(self.scan_mtp_devices())
             drives.extend(self.get_quick_access_folders())
             
@@ -1000,6 +1027,109 @@ class FileManager:
             logger.error(f"Error getting quick access folders: {e}")
         
         return folders
+    
+    def scan_directory_direct(self, path, search="", format_filter="همه فرمت‌ها", size_filter="همه اندازه‌ها", limit=2000, offset=0):
+        """اسکن مستقیم دایرکتوری از سیستم فایل"""
+        files = []
+        
+        try:
+            # If path is 'all', scan common directories
+            if path == 'all':
+                # Add current workspace files as example
+                scan_paths = ['/workspace', os.path.expanduser('~')]
+            else:
+                scan_paths = [path] if os.path.isdir(path) else []
+            
+            for scan_path in scan_paths:
+                if not os.path.exists(scan_path):
+                    continue
+                    
+                try:
+                    for root, dirs, filenames in os.walk(scan_path):
+                        # Limit depth to avoid too deep scanning
+                        depth = root.replace(scan_path, '').count(os.sep)
+                        if depth > 3:
+                            dirs[:] = []  # Don't recurse deeper
+                            continue
+                        
+                        for filename in filenames:
+                            if len(files) >= limit:
+                                break
+                                
+                            file_path = os.path.join(root, filename)
+                            
+                            # Apply search filter
+                            if search and search.lower() not in filename.lower():
+                                continue
+                            
+                            try:
+                                stat = os.stat(file_path)
+                                file_info = {
+                                    'path': file_path,
+                                    'name': filename,
+                                    'size': stat.st_size,
+                                    'modified': int(stat.st_mtime),
+                                    'drive': scan_path,
+                                    'extension': os.path.splitext(filename)[1].lower(),
+                                    'type': self.get_file_type(filename),
+                                    'is_directory': False,
+                                    'selected': False
+                                }
+                                
+                                # Apply format filter
+                                if format_filter != "همه فرمت‌ها":
+                                    extensions = self.db_manager.get_format_extensions(format_filter)
+                                    if extensions and file_info['extension'] not in extensions:
+                                        continue
+                                
+                                # Apply size filter
+                                if size_filter != "همه اندازه‌ها":
+                                    size_range = self.db_manager.get_size_range(size_filter)
+                                    if size_range and not (size_range[0] <= stat.st_size <= size_range[1]):
+                                        continue
+                                
+                                files.append(file_info)
+                                
+                            except (OSError, PermissionError):
+                                continue
+                        
+                        if len(files) >= limit:
+                            break
+                            
+                except (OSError, PermissionError):
+                    continue
+                    
+        except Exception as e:
+            logger.error(f"Error in direct directory scan: {e}")
+        
+        # Apply offset
+        return files[offset:offset + limit]
+    
+    def get_file_type(self, filename):
+        """تشخیص نوع فایل"""
+        ext = os.path.splitext(filename)[1].lower()
+        
+        image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'}
+        video_exts = {'.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm'}
+        audio_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma'}
+        doc_exts = {'.pdf', '.doc', '.docx', '.txt', '.rtf', '.md'}
+        archive_exts = {'.zip', '.rar', '.7z', '.tar', '.gz'}
+        code_exts = {'.py', '.js', '.html', '.css', '.json', '.xml', '.yml', '.yaml'}
+        
+        if ext in image_exts:
+            return '🖼️ تصویر'
+        elif ext in video_exts:
+            return '🎬 ویدیو'
+        elif ext in audio_exts:
+            return '🎵 صوتی'
+        elif ext in doc_exts:
+            return '📄 سند'
+        elif ext in archive_exts:
+            return '📦 فشرده'
+        elif ext in code_exts:
+            return '💻 کد'
+        else:
+            return '📄 فایل'
     
     def get_file_info(self, file_path):
         """دریافت اطلاعات کامل فایل"""
@@ -1294,8 +1424,15 @@ def get_drives():
 
 @eel.expose
 def scan_directory(path, search="", format_filter="همه فرمت‌ها", size_filter="همه اندازه‌ها", limit=2000, offset=0):
-    """اسکن دایرکتوری از دیتابیس"""
-    return db_manager.get_files(path, search, format_filter, size_filter, limit, offset)
+    """اسکن دایرکتوری از دیتابیس یا مستقیم از سیستم فایل"""
+    # First try from database
+    db_files = db_manager.get_files(path, search, format_filter, size_filter, limit, offset)
+    
+    # If database is empty or path is specific directory, try direct file system scan
+    if not db_files or (path != 'all' and os.path.isdir(path)):
+        return file_manager.scan_directory_direct(path, search, format_filter, size_filter, limit, offset)
+    
+    return db_files
 
 @eel.expose
 def start_copy(source_files, destination):
