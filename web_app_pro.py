@@ -416,24 +416,36 @@ class BackgroundIndexer:
                 file_info = self.file_manager.get_file_info(update[1])
                 if file_info:
                     self.db_manager.add_file(file_info)
-                    eel.on_file_added(file_info)
+                    try:
+                        eel.on_file_added(file_info)
+                    except AttributeError:
+                        pass  # Function not exposed yet
             
             elif update[0] == 'deleted':
                 self.db_manager.remove_file(update[1])
-                eel.on_file_removed(update[1])
+                try:
+                    eel.on_file_removed(update[1])
+                except AttributeError:
+                    pass  # Function not exposed yet
             
             elif update[0] == 'modified':
                 file_info = self.file_manager.get_file_info(update[1])
                 if file_info:
                     self.db_manager.add_file(file_info)
-                    eel.on_file_modified(file_info)
+                    try:
+                        eel.on_file_modified(file_info)
+                    except AttributeError:
+                        pass  # Function not exposed yet
             
             elif update[0] == 'moved':
                 self.db_manager.remove_file(update[1])
                 file_info = self.file_manager.get_file_info(update[2])
                 if file_info:
                     self.db_manager.add_file(file_info)
-                    eel.on_file_moved(update[1], file_info)
+                    try:
+                        eel.on_file_moved(update[1], file_info)
+                    except AttributeError:
+                        pass  # Function not exposed yet
         
         except Exception as e:
             logger.error(f"Error processing file update: {e}")
