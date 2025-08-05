@@ -173,6 +173,15 @@ class FileCopierApp:
         # Setup components
         self.setup_logging()
         self.setup_executor()
+        
+        # Show loading screen before setting up GUI
+        self.show_loading_screen()
+        
+        # Perform initial drive scan BEFORE setting up GUI to prevent layout issues
+        self.update_status("Scanning system drives...")
+        self.scan_all_drives()  # Synchronous drive scan first
+        
+        # Now setup GUI with pre-scanned drive data
         self.setup_gui()
         self.setup_bindings()
         
@@ -182,9 +191,9 @@ class FileCopierApp:
         # Check license on startup
         self.check_license_on_startup()
         
-        # Start comprehensive system scan in background after GUI is ready
-        self.update_status("Scanning system drives and files...")
-        threading.Thread(target=self.initial_system_scan, daemon=True).start()
+        # Continue with file scanning in background after GUI is ready
+        self.update_status("Scanning files...")
+        threading.Thread(target=self.complete_system_scan, daemon=True).start()
 
     # New callback methods for enhanced functionality
     def on_file_drag_drop(self, selected_items):
@@ -498,8 +507,70 @@ class FileCopierApp:
         except Exception as e:
             self.logger.error(f"Failed to save cache: {e}")
 
+    def show_loading_screen(self):
+        """Show a loading screen while scanning drives"""
+        try:
+            # Create a simple loading window
+            self.loading_window = ctk.CTkToplevel(self.root)
+            self.loading_window.title("Loading...")
+            self.loading_window.geometry("400x200")
+            self.loading_window.transient(self.root)
+            self.loading_window.grab_set()
+            
+            # Center the loading window
+            self.loading_window.geometry("+{}+{}".format(
+                int(self.root.winfo_screenwidth()/2 - 200),
+                int(self.root.winfo_screenheight()/2 - 100)
+            ))
+            
+            # Loading content
+            loading_frame = ctk.CTkFrame(self.loading_window)
+            loading_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            
+            ctk.CTkLabel(loading_frame, text="🔍 در حال اسکن درایوها...", 
+                        font=ctk.CTkFont(family="sans-serif", size=16, weight="bold")).pack(pady=10)
+            
+            self.loading_progress = ctk.CTkProgressBar(loading_frame)
+            self.loading_progress.pack(fill="x", padx=20, pady=10)
+            self.loading_progress.set(0.3)  # Show some progress
+            
+            self.loading_status = ctk.CTkLabel(loading_frame, text="در حال شناسایی درایوها...", 
+                                              font=ctk.CTkFont(family="sans-serif", size=12))
+            self.loading_status.pack(pady=5)
+            
+            self.root.update()
+        except Exception as e:
+            print(f"Could not show loading screen: {e}")
+    
+    def hide_loading_screen(self):
+        """Hide the loading screen"""
+        try:
+            if hasattr(self, 'loading_window'):
+                self.loading_window.destroy()
+        except Exception as e:
+            print(f"Could not hide loading screen: {e}")
+
+    def complete_system_scan(self):
+        """Complete file scanning after GUI is ready"""
+        try:
+            print("📁 Starting file scanning...")
+            
+            # 1. Scan files from all drives
+            self.scan_all_files()
+            
+            # 2. Auto-detect destination folders
+            self.auto_detect_destinations()
+            
+            # 3. Update GUI
+            self.root.after(0, self.on_scan_complete)
+            
+        except Exception as e:
+            self.logger.error(f"Error in file scan: {e}")
+            print(f"❌ File scan error: {e}")
+            self.root.after(0, lambda: self.update_status("File scan error - using fallback"))
+
     def initial_system_scan(self):
-        """Comprehensive system scan for drives and files at startup"""
+        """Comprehensive system scan for drives and files at startup - DEPRECATED, split into parts"""
         try:
             print("🔍 Starting comprehensive system scan...")
             
@@ -769,6 +840,9 @@ class FileCopierApp:
     def on_scan_complete(self):
         """Called when initial system scan is complete"""
         try:
+            # Hide loading screen
+            self.hide_loading_screen()
+            
             # Display cached files
             self.display_cache()
             
@@ -789,6 +863,30 @@ class FileCopierApp:
         except Exception as e:
             print(f"❌ Error completing scan: {e}")
             self.update_status("Ready - scan completed with errors")
+            # Make sure to hide loading screen even on error
+            self.hide_loading_screen()
+
+    def get_drive_values(self):
+        """Get formatted drive values for combo box"""
+        try:
+            if not hasattr(self, 'all_drives') or not self.all_drives:
+                return ["هیچ درایوی یافت نشد"]
+            
+            drive_values = []
+            for drive in self.all_drives:
+                if drive['accessible']:
+                    try:
+                        # Format: "C:\ (120 GB free)"
+                        free_gb = drive['free'] / (1024**3) if drive['free'] > 0 else 0
+                        label = f"{drive['device']} ({free_gb:.1f} GB آزاد)"
+                        drive_values.append(label)
+                    except:
+                        drive_values.append(drive['device'])
+                        
+            return drive_values if drive_values else ["هیچ درایو قابل دسترسی یافت نشد"]
+        except Exception as e:
+            print(f"Error getting drive values: {e}")
+            return ["خطا در بارگذاری درایوها"]
 
     def populate_drive_combo(self):
         """Populate the drive combo box with available drives"""
@@ -1158,17 +1256,17 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         self.main_paned = ttk.PanedWindow(main_container, orient="horizontal")
         self.main_paned.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # Column 1: File Browser (40%) - larger for better file visibility
-        browser_frame = ctk.CTkFrame(self.main_paned, width=500, height=600)
-        self.main_paned.add(browser_frame, weight=4)
+        # Column 1: File Browser (33.33%) - equal size for better balance
+        browser_frame = ctk.CTkFrame(self.main_paned, width=450, height=600)
+        self.main_paned.add(browser_frame, weight=1)
         
-        # Column 2: Drive List for Destination (35%) - good size for destination selection
-        drive_list_frame = ctk.CTkFrame(self.main_paned, width=400, height=600)
-        self.main_paned.add(drive_list_frame, weight=3)
+        # Column 2: Drive List for Destination (33.33%) - equal size for better balance
+        drive_list_frame = ctk.CTkFrame(self.main_paned, width=450, height=600)
+        self.main_paned.add(drive_list_frame, weight=1)
         
-        # Column 3: Task Management (25%) - adequate for task monitoring
-        task_management_frame = ctk.CTkFrame(self.main_paned, width=350, height=600)
-        self.main_paned.add(task_management_frame, weight=3)
+        # Column 3: Task Management (33.33%) - equal size for better balance
+        task_management_frame = ctk.CTkFrame(self.main_paned, width=450, height=600)
+        self.main_paned.add(task_management_frame, weight=1)
         
         # Store frame references for potential future minsize handling
         self.column_frames = {
@@ -1198,9 +1296,11 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
                     font=ctk.CTkFont(family="sans-serif", weight="bold")).pack(side="right", padx=5)
         
         self.drive_var = tk.StringVar()
+        # Initialize with pre-scanned drives if available
+        drive_values = self.get_drive_values() if hasattr(self, 'all_drives') and self.all_drives else ["در حال بارگذاری..."]
         self.drive_combo = ctk.CTkComboBox(drive_frame, variable=self.drive_var,
                                          font=ctk.CTkFont(family="sans-serif"),
-                                         values=["در حال بارگذاری..."],
+                                         values=drive_values,
                                          command=self.on_drive_selected)
         self.drive_combo.pack(side="left", fill="x", expand=True, padx=5)
         
