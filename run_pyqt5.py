@@ -26,11 +26,18 @@ def check_dependencies():
     
     # Check PyQt5
     try:
-        import PyQt5
-        print(f"✓ PyQt5 {PyQt5.Qt.PYQT_VERSION_STR}")
+        from PyQt5.QtCore import QT_VERSION_STR, PYQT_VERSION_STR
+        print(f"✓ PyQt5 {PYQT_VERSION_STR} (Qt {QT_VERSION_STR})")
     except ImportError:
         print("❌ PyQt5 یافت نشد")
         missing_deps.append("PyQt5")
+    except Exception:
+        try:
+            import PyQt5
+            print("✓ PyQt5 نصب شده")
+        except ImportError:
+            print("❌ PyQt5 یافت نشد")
+            missing_deps.append("PyQt5")
     
     # Check psutil
     try:
