@@ -675,6 +675,11 @@ class FileCopierApp:
 • بروزرسانی رایگان مادام‌العمر
 • امکانات پیشرفته کپی
 
+📋 مراحل خرید:
+1. کلیک روی "بله" برای انتقال به درگاه پرداخت
+2. پرداخت را انجام دهید
+3. بعد از پرداخت، رسید را به آی دی تلگرام شرکت ارسال نمایید: @PersianFileSupport
+
 آیا می‌خواهید به سایت فروش منتقل شوید؟
             """
             
@@ -1304,9 +1309,8 @@ class FileCopierApp:
                             batch_files.append(file_data)
                             total_files += 1
                             
-                            # Add to cache (limited to prevent memory issues)
-                            if len(self.file_cache["files"]) < 10000:  # Limit cache size
-                                self.file_cache["files"][item_path] = file_data
+                            # Add to cache (no limit - handle all files)
+                            self.file_cache["files"][item_path] = file_data
                             
                             # Update UI in batches
                             if len(batch_files) >= max_files_per_batch:
@@ -1497,11 +1501,29 @@ class FileCopierApp:
                 
                 # Remove completed tasks from list and tree
                 for i in reversed(tasks_to_remove):
-                    task_id = self.copy_tasks[i]["id"]
+                    task = self.copy_tasks[i]
+                    task_id = task["id"]
                     try:
-                        self.task_tree.delete(str(task_id))
-                    except:
-                        pass
+                        # Find and delete the correct tree item
+                        for tree_item in self.task_tree.get_children():
+                            tree_values = self.task_tree.item(tree_item, 'values')
+                            if tree_values and len(tree_values) > 0:
+                                # Check if this is the matching task by comparing task details
+                                tree_source = tree_values[0] if len(tree_values) > 0 else ""
+                                tree_dest = tree_values[1] if len(tree_values) > 1 else ""
+                                if (tree_source == task.get("source", "") and 
+                                    tree_dest == task.get("destination", "")):
+                                    self.task_tree.delete(tree_item)
+                                    break
+                        # Alternative: try direct ID deletion
+                        try:
+                            self.task_tree.delete(str(task_id))
+                        except:
+                            pass
+                    except Exception as e:
+                        print(f"Error deleting task {task_id}: {e}")
+                    
+                    # Remove from tasks list
                     self.copy_tasks.pop(i)
                 
                 if tasks_to_remove:
