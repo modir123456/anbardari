@@ -22,6 +22,64 @@ import base64  # برای تبدیل داده‌ها به فرمت base64
 import tkinter.messagebox  # برای نمایش پیام‌های سیستمی
 from tkinter import BOTH, TOP, BOTTOM, LEFT, RIGHT  # ثابت‌های جهت‌دهی ویجت‌ها
 
+class ConfigManager:
+    """مدیریت تنظیمات نرم‌افزار از فایل config.json"""
+    
+    def __init__(self, config_file="config.json"):
+        self.config_file = config_file
+        self.config = self.load_config()
+    
+    def load_config(self):
+        """بارگذاری تنظیمات از فایل"""
+        try:
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"خطا در بارگذاری فایل تنظیمات: {e}")
+            return self.get_default_config()
+    
+    def get_default_config(self):
+        """تنظیمات پیش‌فرض در صورت عدم وجود فایل"""
+        return {
+            "app_settings": {
+                "version": "2.0",
+                "app_name": "Persian File Copier Pro",
+                "window_title": "Persian File Copier Pro v2.0",
+                "default_theme": "dark",
+                "auto_maximize": True,
+                "toast_duration": 10000
+            },
+            "font_settings": {
+                "default_family": "B Nazanin",
+                "default_size": 12,
+                "fallback_font": "Tahoma"
+            },
+            "zarinpal_settings": {
+                "merchant_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                "sandbox_mode": True
+            }
+        }
+    
+    def get(self, section, key, default=None):
+        """دریافت مقدار تنظیمات"""
+        return self.config.get(section, {}).get(key, default)
+    
+    def set(self, section, key, value):
+        """تنظیم مقدار جدید"""
+        if section not in self.config:
+            self.config[section] = {}
+        self.config[section][key] = value
+    
+    def save_config(self):
+        """ذخیره تنظیمات در فایل"""
+        try:
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, ensure_ascii=False, indent=2)
+            return True
+        except Exception as e:
+            print(f"خطا در ذخیره تنظیمات: {e}")
+            return False
+
 # سیستم اعلانات شبیه SweetAlert که خودکار ناپدید می‌شوند
 class ToastNotification:
     def __init__(self, parent, message, toast_type="info", duration=10000):
@@ -429,7 +487,7 @@ class FileCopierApp:
         except Exception as e:
             # در صورت خطا، از messagebox معمولی استفاده می‌شود
             print(f"خطا در نمایش اعلان: {e}")
-            messagebox.showinfo("اطلاع", message)
+            self.show_toast(message, "info")
     
     def rearrange_toasts(self):
         """بازآرایی موقعیت اعلانات فعال"""
@@ -650,6 +708,32 @@ class FileCopierApp:
         
         self.show_toast("راهنمای تفصیلی در کنسول نمایش داده شد", "info")
         print(help_text)
+    
+    def paste_license_from_clipboard(self):
+        """چسباندن لایسنس از کلیپ‌بورد"""
+        try:
+            # دریافت محتوای کلیپ‌بورد
+            clipboard_text = self.root.clipboard_get()
+            
+            if clipboard_text:
+                # پاک کردن محتوای فعلی
+                self.license_key_entry.delete(0, 'end')
+                # درج متن جدید
+                self.license_key_entry.insert(0, clipboard_text.strip())
+                self.show_toast("کد لایسنس از کلیپ‌بورد چسبانده شد", "success")
+            else:
+                self.show_toast("کلیپ‌بورد خالی است", "warning")
+                
+        except tk.TclError:
+            self.show_toast("خطا در دسترسی به کلیپ‌بورد", "error")
+        except Exception as e:
+            self.show_toast(f"خطا در چسباندن: {e}", "error")
+    
+    def paste_license_event(self, event):
+        """رویداد کلیدهای میانبر برای paste"""
+        # اجرای paste با تأخیر کوتاه برای اجازه دادن به عملیات پیش‌فرض
+        self.root.after(10, self.paste_license_from_clipboard)
+        return "break"  # جلوگیری از اجرای عملیات پیش‌فرض
 
     # New callback methods for enhanced functionality
     def on_file_drag_drop(self, selected_items):
@@ -727,9 +811,9 @@ class FileCopierApp:
                 self.destination_var.set(str(destination))
                 self.copy_selected_files()
             else:
-                messagebox.showerror("خطا", f"پوشه {folder_name} یافت نشد")
+                self.show_toast(f"پوشه {folder_name} یافت نشد", "error")
         except Exception as e:
-            messagebox.showerror("خطا", f"خطا در کپی سریع: {e}")
+            self.show_toast(f"خطا در کپی سریع: {e}", "error")
 
     def add_copy_task(self, source, destination):
         """Add a copy task to the queue"""
@@ -1601,41 +1685,121 @@ class FileCopierApp:
         self.setup_status_bar()
 
     def setup_about_tab(self):
-        """تنظیم تب درباره ما با بارگذاری اطلاعات از فایل HTML"""
+        """تنظیم تب درباره ما با طراحی زیبا و حرفه‌ای"""
         
-        # Main container
-        main_container = ctk.CTkFrame(self.about_frame)
-        main_container.pack(fill="both", expand=True, padx=20, pady=20)
+        # Main scrollable container with gradient-like background
+        main_scroll = ctk.CTkScrollableFrame(
+            self.about_frame,
+            fg_color=("gray96", "gray10"),
+            corner_radius=15,
+            scrollbar_button_color=("gray70", "gray30"),
+            scrollbar_button_hover_color=("gray60", "gray40")
+        )
+        main_scroll.pack(fill="both", expand=True, padx=15, pady=15)
         
-        # Header with reload button
-        header_frame = ctk.CTkFrame(main_container)
-        header_frame.pack(fill="x", pady=(0, 10))
+        # Hero section with app logo and title
+        hero_frame = ctk.CTkFrame(
+            main_scroll,
+            fg_color=("white", "gray20"),
+            corner_radius=20,
+            border_width=2,
+            border_color=("blue", "lightblue")
+        )
+        hero_frame.pack(fill="x", pady=(0, 20), padx=5)
+        
+        # App icon and title section
+        title_frame = ctk.CTkFrame(hero_frame, fg_color="transparent")
+        title_frame.pack(fill="x", padx=30, pady=25)
+        
+        # Large app icon/logo
+        app_icon_label = ctk.CTkLabel(
+            title_frame,
+            text="📁",
+            font=ctk.CTkFont(size=60),
+            text_color=("blue", "lightblue")
+        )
+        app_icon_label.pack(pady=(0, 10))
+        
+        # App name
+        app_name_label = ctk.CTkLabel(
+            title_frame,
+            text="Persian File Copier Pro",
+            font=ctk.CTkFont(family=self.current_font_family, size=28, weight="bold"),
+            text_color=("gray20", "white")
+        )
+        app_name_label.pack(pady=(0, 5))
+        
+        # Version and subtitle
+        version_label = ctk.CTkLabel(
+            title_frame,
+            text="نسخه ۲.۰ - کپی کننده فایل حرفه‌ای",
+            font=ctk.CTkFont(family=self.current_font_family, size=16),
+            text_color=("gray50", "gray70")
+        )
+        version_label.pack(pady=(0, 15))
+        
+        # Action buttons row
+        button_row = ctk.CTkFrame(hero_frame, fg_color="transparent")
+        button_row.pack(fill="x", padx=30, pady=(0, 20))
+        
+        # Open in browser button
+        browser_btn = ctk.CTkButton(
+            button_row,
+            text="🌐 مشاهده کامل در مرورگر",
+            command=self.open_about_in_browser,
+            width=180,
+            height=45,
+            font=ctk.CTkFont(family=self.current_font_family, size=13, weight="bold"),
+            fg_color=("blue", "darkblue"),
+            hover_color=("darkblue", "lightblue"),
+            corner_radius=15
+        )
+        browser_btn.pack(side="left", padx=(0, 10))
+        
+        # Reload button
+        reload_btn = ctk.CTkButton(
+            button_row,
+            text="🔄 بازخوانی محتوا",
+            command=self.reload_about_content,
+            width=130,
+            height=45,
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
+            fg_color=("green", "darkgreen"),
+            hover_color=("darkgreen", "lightgreen"),
+            corner_radius=15
+        )
+        reload_btn.pack(side="left", padx=5)
+        
+        # Information cards section
+        cards_frame = ctk.CTkFrame(main_scroll, fg_color="transparent")
+        cards_frame.pack(fill="x", pady=10, padx=5)
+        
+        # Create information cards
+        self.create_info_cards(cards_frame)
+        
+        # Content display section
+        content_section = ctk.CTkFrame(
+            main_scroll,
+            fg_color=("white", "gray20"),
+            corner_radius=15,
+            border_width=1,
+            border_color=("gray80", "gray40")
+        )
+        content_section.pack(fill="both", expand=True, pady=15, padx=5)
+        
+        # Content header
+        content_header = ctk.CTkFrame(content_section, fg_color="transparent")
+        content_header.pack(fill="x", padx=20, pady=(20, 10))
         
         ctk.CTkLabel(
-            header_frame, 
-            text="📄 درباره شرکت و محصول", 
-            font=ctk.CTkFont(family=self.current_font_family, size=18, weight="bold")
-        ).pack(side="left", padx=10, pady=10)
+            content_header,
+            text="📋 اطلاعات تفصیلی شرکت",
+            font=ctk.CTkFont(family=self.current_font_family, size=18, weight="bold"),
+            text_color=("gray20", "white")
+        ).pack()
         
-        ctk.CTkButton(
-            header_frame,
-            text="🔄 بازخوانی",
-            command=self.reload_about_content,
-            width=100,
-            height=30,
-            font=ctk.CTkFont(family=self.current_font_family, size=11)
-        ).pack(side="right", padx=10, pady=10)
-        
-        # Content frame for HTML display
-        content_frame = ctk.CTkFrame(main_container)
-        content_frame.pack(fill="both", expand=True, pady=5)
-        
-        try:
-            # Try to use webview if available, otherwise use text display
-            self.setup_html_viewer(content_frame)
-        except:
-            # Fallback to text-based display
-            self.setup_text_about_display(content_frame)
+        # Setup beautiful text display
+        self.setup_beautiful_text_display(content_section)
 
     def setup_html_viewer(self, parent_frame):
         """تنظیم نمایشگر HTML برای فایل درباره ما"""
@@ -2373,12 +2537,29 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         self.license_key_entry = ctk.CTkEntry(
             license_input_frame,
-            placeholder_text="PFC-XXXX-XXXX-XXXX-XXXX",
+            placeholder_text="PFC-XXXX-XXXX-XXXX-XXXX یا Ctrl+V برای چسباندن",
             font=ctk.CTkFont(family=self.current_font_family, size=11),
             width=250,
             height=35
         )
         self.license_key_entry.pack(side="left", fill="x", expand=True, padx=5)
+        
+        # دکمه paste برای چسباندن لایسنس از کلیپ‌بورد
+        paste_button = ctk.CTkButton(
+            license_input_frame,
+            text="📋",
+            command=self.paste_license_from_clipboard,
+            width=40,
+            height=35,
+            font=ctk.CTkFont(family=self.current_font_family, size=12),
+            fg_color=("gray70", "gray30"),
+            hover_color=("gray60", "gray40")
+        )
+        paste_button.pack(side="left", padx=5)
+        
+        # فعال‌سازی کلیدهای میانبر برای paste
+        self.license_key_entry.bind('<Control-v>', self.paste_license_event)
+        self.license_key_entry.bind('<Control-V>', self.paste_license_event)
         
         # License action buttons
         license_buttons_frame = ctk.CTkFrame(license_frame, fg_color="transparent")

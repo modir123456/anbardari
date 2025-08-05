@@ -1,0 +1,124 @@
+{
+  "app_settings": {
+    "version": "2.0",
+    "app_name": "Persian File Copier Pro",
+    "window_title": "Persian File Copier Pro v2.0 - کپی کننده فایل پارسیان",
+    "default_theme": "dark",
+    "auto_maximize": true,
+    "toast_duration": 10000,
+    "language": "persian"
+  },
+  
+  "font_settings": {
+    "default_family": "B Nazanin",
+    "default_size": 12,
+    "persian_fonts": ["B Nazanin", "Tahoma", "Arial Unicode MS", "IRANSans", "Yekan"],
+    "fallback_font": "Tahoma"
+  },
+  
+  "performance_settings": {
+    "default_buffer_size": 8192,
+    "max_concurrent_copies": 3,
+    "enable_smart_copy": true,
+    "auto_retry_on_error": true,
+    "max_retry_attempts": 3
+  },
+  
+  "ui_settings": {
+    "enable_animations": true,
+    "show_progress_details": true,
+    "auto_refresh_drives": true,
+    "refresh_interval": 30,
+    "show_file_thumbnails": false,
+    "compact_view": false
+  },
+  
+  "license_settings": {
+    "trial_duration_days": 30,
+    "allow_trial_reset": false,
+    "feature_restrictions": {
+      "max_files_per_copy": 100,
+      "max_file_size_mb": 500,
+      "advanced_features": false
+    }
+  },
+  
+  "zarinpal_settings": {
+    "merchant_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "sandbox_mode": true,
+    "callback_url": "http://localhost:8080/payment/callback",
+    "success_redirect": "payment_success.html",
+    "error_redirect": "payment_error.html"
+  },
+  
+  "themes": {
+    "آبی کلاسیک": {
+      "id": "blue",
+      "mode": "dark",
+      "fg_color": ["#3B8ED0", "#1F6AA5"],
+      "hover_color": ["#0C7CD5", "#106BA3"]
+    },
+    "سبز طبیعت": {
+      "id": "green", 
+      "mode": "dark",
+      "fg_color": ["#2FA572", "#106A43"],
+      "hover_color": ["#107C41", "#0D5A31"]
+    },
+    "فرش ایرانی": {
+      "id": "persian_carpet",
+      "mode": "dark", 
+      "fg_color": ["#8B4513", "#5D2E09"],
+      "hover_color": ["#A0522D", "#654321"]
+    },
+    "آسمان تهران": {
+      "id": "tehran_sky",
+      "mode": "light",
+      "fg_color": ["#87CEEB", "#4682B4"], 
+      "hover_color": ["#6495ED", "#1E90FF"]
+    },
+    "طلایی شاهانه": {
+      "id": "royal_gold",
+      "mode": "dark",
+      "fg_color": ["#DAA520", "#B8860B"],
+      "hover_color": ["#FFD700", "#FFA500"]
+    }
+  },
+  
+  "copy_destinations": {
+    "common_folders": [
+      "Desktop",
+      "Documents", 
+      "Downloads",
+      "Pictures",
+      "Videos",
+      "Music"
+    ],
+    "auto_detect_usb": true,
+    "show_hidden_folders": false,
+    "remember_last_destination": true
+  },
+  
+  "security_settings": {
+    "encrypt_license_file": true,
+    "validate_file_integrity": true,
+    "secure_deletion": false,
+    "backup_settings": true
+  },
+  
+  "notification_settings": {
+    "enable_sound": true,
+    "enable_system_notifications": true,
+    "toast_position": "top_right",
+    "auto_dismiss_success": true,
+    "keep_error_messages": true
+  },
+  
+  "advanced_settings": {
+    "debug_mode": false,
+    "log_level": "info",
+    "max_log_file_size_mb": 10,
+    "enable_crash_reporting": true,
+    "check_for_updates": true,
+    "update_channel": "stable"
+  }
+}
