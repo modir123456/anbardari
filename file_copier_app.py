@@ -2380,6 +2380,64 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
                                         font=ctk.CTkFont(family="B Nazanin"), justify="right")
         self.search_entry.pack(side="left", fill="x", expand=True, padx=5)
         
+        # Filter frame for file formats
+        filter_frame = ctk.CTkFrame(nav_frame)
+        filter_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(filter_frame, text="فیلتر فرمت:", font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="right", padx=5)
+        
+        # File format filter dropdown
+        format_options = [
+            "همه فرمت‌ها",
+            "تصاویر (.jpg, .png, .gif, .bmp, .tiff)",
+            "ویدیوها (.mp4, .avi, .mkv, .mov, .wmv)",
+            "صوتی (.mp3, .wav, .flac, .aac, .ogg)",
+            "اسناد (.pdf, .doc, .docx, .txt, .rtf)",
+            "جداول (.xls, .xlsx, .csv, .ods)",
+            "ارائه (.ppt, .pptx, .odp)",
+            "آرشیو (.zip, .rar, .7z, .tar, .gz)",
+            "برنامه (.exe, .msi, .deb, .dmg, .app)",
+            "کد (.py, .js, .html, .css, .cpp, .java)",
+            "فونت (.ttf, .otf, .woff, .eot)",
+            "دیتابیس (.db, .sqlite, .mdb, .sql)"
+        ]
+        
+        self.format_filter = ctk.CTkComboBox(
+            filter_frame,
+            values=format_options,
+            font=ctk.CTkFont(family="B Nazanin"),
+            command=self.on_format_filter_change,
+            state="readonly",
+            width=300
+        )
+        self.format_filter.set("همه فرمت‌ها")
+        self.format_filter.pack(side="left", padx=5)
+        
+        # Size filter frame
+        size_filter_frame = ctk.CTkFrame(filter_frame)
+        size_filter_frame.pack(side="left", padx=10)
+        
+        ctk.CTkLabel(size_filter_frame, text="فیلتر اندازه:", font=ctk.CTkFont(family="B Nazanin", size=10)).pack(side="top")
+        
+        size_options = [
+            "همه اندازه‌ها",
+            "کوچک (< 1 MB)",
+            "متوسط (1-10 MB)",
+            "بزرگ (10-100 MB)",
+            "خیلی بزرگ (> 100 MB)"
+        ]
+        
+        self.size_filter = ctk.CTkComboBox(
+            size_filter_frame,
+            values=size_options,
+            font=ctk.CTkFont(family="B Nazanin", size=10),
+            command=self.on_size_filter_change,
+            state="readonly",
+            width=150
+        )
+        self.size_filter.set("همه اندازه‌ها")
+        self.size_filter.pack(side="bottom")
+        
         # Buttons frame
         buttons_frame = ctk.CTkFrame(nav_frame)
         buttons_frame.pack(fill="x", pady=5)
@@ -3510,15 +3568,82 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
     def on_search_change(self, event):
         """Handle search entry changes"""
         search_term = self.search_entry.get().lower().strip()
-        if not search_term:
+        if not search_term and self.format_filter.get() == "همه فرمت‌ها" and self.size_filter.get() == "همه اندازه‌ها":
             self.display_cache()
             return
         
-        self.update_status("Searching...")
-        threading.Thread(target=self._search_files_thread, args=(search_term,), daemon=True).start()
+        self.apply_filters()
 
-    def _search_files_thread(self, search_term: str):
-        """Thread function to search files"""
+
+
+    def clear_search(self):
+        """Clear search and show all files"""
+        self.search_entry.delete(0, tk.END)
+        self.format_filter.set("همه فرمت‌ها")
+        self.size_filter.set("همه اندازه‌ها")
+        self.display_cache()
+    
+    def on_format_filter_change(self, selection):
+        """Handle format filter changes"""
+        self.apply_filters()
+    
+    def on_size_filter_change(self, selection):
+        """Handle size filter changes"""
+        self.apply_filters()
+    
+    def get_file_extension_category(self, filename):
+        """Get the category of a file based on its extension"""
+        ext = os.path.splitext(filename.lower())[1]
+        
+        # File category mappings
+        categories = {
+            'تصاویر': ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.webp', '.svg', '.ico'],
+            'ویدیوها': ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.3gp', '.mpg', '.mpeg'],
+            'صوتی': ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.opus', '.aiff'],
+            'اسناد': ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.pages', '.tex', '.md'],
+            'جداول': ['.xls', '.xlsx', '.csv', '.ods', '.numbers', '.tsv'],
+            'ارائه': ['.ppt', '.pptx', '.odp', '.key'],
+            'آرشیو': ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.tgz', '.tbz2'],
+            'برنامه': ['.exe', '.msi', '.deb', '.dmg', '.app', '.pkg', '.rpm', '.apk'],
+            'کد': ['.py', '.js', '.html', '.css', '.cpp', '.java', '.c', '.php', '.rb', '.go', '.rs', '.swift'],
+            'فونت': ['.ttf', '.otf', '.woff', '.woff2', '.eot'],
+            'دیتابیس': ['.db', '.sqlite', '.mdb', '.sql', '.dbf']
+        }
+        
+        for category, extensions in categories.items():
+            if ext in extensions:
+                return category
+        return 'سایر'
+    
+    def matches_size_filter(self, raw_size, size_filter):
+        """Check if file size matches the selected filter"""
+        if size_filter == "همه اندازه‌ها":
+            return True
+        
+        size_mb = raw_size / (1024 * 1024) if raw_size > 0 else 0
+        
+        if size_filter == "کوچک (< 1 MB)":
+            return size_mb < 1
+        elif size_filter == "متوسط (1-10 MB)":
+            return 1 <= size_mb <= 10
+        elif size_filter == "بزرگ (10-100 MB)":
+            return 10 < size_mb <= 100
+        elif size_filter == "خیلی بزرگ (> 100 MB)":
+            return size_mb > 100
+        
+        return True
+    
+    def apply_filters(self):
+        """Apply all active filters"""
+        search_term = self.search_entry.get().lower().strip()
+        format_filter = self.format_filter.get()
+        size_filter = self.size_filter.get()
+        
+        self.update_status("Applying filters...")
+        threading.Thread(target=self._filter_files_thread, args=(search_term, format_filter, size_filter), daemon=True).start()
+    
+    def _filter_files_thread(self, search_term, format_filter, size_filter):
+        """Thread function to filter files with all criteria"""
         try:
             filtered_files = []
             file_count = 0
@@ -3529,9 +3654,46 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
                 
                 name = data["name"].lower()
                 
-                # Check if search term matches name or extension
-                if (search_term in name or 
-                    (search_term.startswith(".") and name.endswith(search_term))):
+                # Apply search filter
+                search_match = True
+                if search_term:
+                    search_match = (search_term in name or 
+                                   (search_term.startswith(".") and name.endswith(search_term)))
+                
+                # Apply format filter
+                format_match = True
+                if format_filter != "همه فرمت‌ها":
+                    file_category = self.get_file_extension_category(data["name"])
+                    if format_filter.startswith("تصاویر"):
+                        format_match = file_category == "تصاویر"
+                    elif format_filter.startswith("ویدیوها"):
+                        format_match = file_category == "ویدیوها"
+                    elif format_filter.startswith("صوتی"):
+                        format_match = file_category == "صوتی"
+                    elif format_filter.startswith("اسناد"):
+                        format_match = file_category == "اسناد"
+                    elif format_filter.startswith("جداول"):
+                        format_match = file_category == "جداول"
+                    elif format_filter.startswith("ارائه"):
+                        format_match = file_category == "ارائه"
+                    elif format_filter.startswith("آرشیو"):
+                        format_match = file_category == "آرشیو"
+                    elif format_filter.startswith("برنامه"):
+                        format_match = file_category == "برنامه"
+                    elif format_filter.startswith("کد"):
+                        format_match = file_category == "کد"
+                    elif format_filter.startswith("فونت"):
+                        format_match = file_category == "فونت"
+                    elif format_filter.startswith("دیتابیس"):
+                        format_match = file_category == "دیتابیس"
+                    else:
+                        format_match = False
+                
+                # Apply size filter
+                size_match = self.matches_size_filter(data.get("raw_size", 0), size_filter)
+                
+                # Include file if all filters match
+                if search_match and format_match and size_match:
                     size_str = data.get("size", "")
                     drive_info = data.get("drive", "")
                     filtered_files.append((data["name"], item_path, data["type"], size_str, drive_info))
@@ -3540,13 +3702,8 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             self.root.after(0, lambda: self._update_file_tree(filtered_files, file_count))
             
         except Exception as e:
-            self.logger.error(f"Error searching files: {e}")
-            self.root.after(0, lambda: self.update_status("Search error"))
-
-    def clear_search(self):
-        """Clear search and show all files"""
-        self.search_entry.delete(0, tk.END)
-        self.display_cache()
+            self.logger.error(f"Error filtering files: {e}")
+            self.root.after(0, lambda: self.update_status("Filter error"))
 
     def select_all_files(self):
         """Select all files in the tree"""
