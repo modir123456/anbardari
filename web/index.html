@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persian File Copier Pro - شرکت فناوری نوآئران مثبت سبز</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/components.css">
+    
+    <!-- Eel -->
+    <script type="text/javascript" src="/eel.js"></script>
+</head>
+<body class="theme-dark">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="app-icon">📁</div>
+                <div class="app-title">
+                    <h1>Persian File Copier Pro</h1>
+                    <p>شرکت فناوری نوآئران مثبت سبز</p>
+                </div>
+            </div>
+            
+            <div class="header-controls">
+                <button class="btn btn-secondary" onclick="showSettings()">
+                    ⚙️ تنظیمات
+                </button>
+                <button class="btn btn-primary" onclick="showAbout()">
+                    ℹ️ درباره ما
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Navigation Tabs -->
+        <nav class="tab-navigation">
+            <button class="tab-btn active" data-tab="files">📁 مدیریت فایل‌ها</button>
+            <button class="tab-btn" data-tab="settings">⚙️ تنظیمات</button>
+            <button class="tab-btn" data-tab="about">ℹ️ درباره ما</button>
+        </nav>
+
+        <!-- Files Tab -->
+        <div id="files-tab" class="tab-content active">
+            <div class="main-layout">
+                <!-- Left Section: File Browser -->
+                <div class="left-section">
+                    <div class="section-header">
+                        <h3>📁 مرورگر فایل‌ها</h3>
+                        <div class="header-controls">
+                            <button class="btn btn-small" onclick="refreshFiles()">🔄</button>
+                            <button class="btn btn-small" onclick="selectAllFiles()">☑️</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Search and Filters -->
+                    <div class="search-filters">
+                        <div class="search-row">
+                            <div class="search-box">
+                                <input type="text" id="search-input" placeholder="جستجو در فایل‌ها..." />
+                                <span class="search-icon">🔍</span>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-row">
+                            <select id="format-filter" class="filter-select">
+                                <option value="همه فرمت‌ها">همه فرمت‌ها</option>
+                                <option value="📷 تصاویر">📷 تصاویر</option>
+                                <option value="🎬 ویدیوها">🎬 ویدیوها</option>
+                                <option value="🎵 صوتی">🎵 صوتی</option>
+                                <option value="📄 اسناد">📄 اسناد</option>
+                                <option value="📊 جداول">📊 جداول</option>
+                                <option value="📋 ارائه">📋 ارائه</option>
+                                <option value="📦 آرشیو">📦 آرشیو</option>
+                                <option value="⚙️ برنامه">⚙️ برنامه</option>
+                                <option value="💻 کد">💻 کد</option>
+                            </select>
+                            
+                            <select id="size-filter" class="filter-select">
+                                <option value="همه اندازه‌ها">همه اندازه‌ها</option>
+                                <option value="🟢 کوچک">🟢 کوچک (&lt; 1MB)</option>
+                                <option value="🟡 متوسط">🟡 متوسط (1-100MB)</option>
+                                <option value="🟠 بزرگ">🟠 بزرگ (100MB-1GB)</option>
+                                <option value="🔴 خیلی بزرگ">🔴 خیلی بزرگ (&gt; 1GB)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- File Count -->
+                    <div class="file-count">
+                        <span id="file-count-text">تعداد فایل‌ها: 0</span>
+                    </div>
+                    
+                    <!-- File List -->
+                    <div class="file-list-container">
+                        <div class="file-list-header">
+                            <div class="file-col-name">📁 نام</div>
+                            <div class="file-col-path">📂 مسیر</div>
+                            <div class="file-col-type">📄 نوع</div>
+                            <div class="file-col-size">💾 اندازه</div>
+                        </div>
+                        <div id="file-list" class="file-list">
+                            <div class="loading-indicator">
+                                <div class="spinner"></div>
+                                <p>در حال بارگذاری فایل‌ها...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Section: Drives & Tasks -->
+                <div class="right-section">
+                    <!-- Drives Section -->
+                    <div class="drives-section">
+                        <div class="section-header">
+                            <h3>🖥️ درایوها و مقصدها</h3>
+                            <button class="btn btn-small" onclick="refreshDrives()">🔄</button>
+                        </div>
+                        
+                        <div id="drives-list" class="drives-list">
+                            <div class="loading-indicator">
+                                <div class="spinner"></div>
+                                <p>در حال اسکن درایوها...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tasks Section -->
+                    <div class="tasks-section">
+                        <div class="section-header">
+                            <h3>📊 تسک‌های کپی</h3>
+                            <div class="task-controls">
+                                <button class="btn btn-small" onclick="pauseAllTasks()">⏸️</button>
+                                <button class="btn btn-small" onclick="resumeAllTasks()">▶️</button>
+                                <button class="btn btn-small" onclick="cancelAllTasks()">❌</button>
+                                <button class="btn btn-small" onclick="clearCompletedTasks()">🧹</button>
+                            </div>
+                        </div>
+                        
+                        <div id="tasks-list" class="tasks-list">
+                            <div class="empty-state">
+                                <p>هیچ تسک فعالی وجود ندارد</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <div class="settings-container">
+                <h2>⚙️ تنظیمات برنامه</h2>
+                
+                <!-- Font Settings -->
+                <div class="settings-section">
+                    <h3>🔤 تنظیمات فونت</h3>
+                    <div class="setting-row">
+                        <label>خانواده فونت:</label>
+                        <select id="font-family-select">
+                            <option value="Vazirmatn">Vazirmatn</option>
+                            <option value="B Nazanin">B Nazanin</option>
+                            <option value="Tahoma">Tahoma</option>
+                            <option value="Arial">Arial</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>اندازه فونت:</label>
+                        <input type="range" id="font-size-slider" min="10" max="20" value="14" />
+                        <span id="font-size-value">14px</span>
+                    </div>
+                </div>
+
+                <!-- Theme Settings -->
+                <div class="settings-section">
+                    <h3>🎨 تنظیمات تم</h3>
+                    <div class="setting-row">
+                        <label>تم رنگی:</label>
+                        <select id="theme-select">
+                            <option value="dark">🌙 تیره</option>
+                            <option value="light">☀️ روشن</option>
+                            <option value="blue">🔵 آبی</option>
+                            <option value="green">🟢 سبز</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- File Operations -->
+                <div class="settings-section">
+                    <h3>📁 عملیات فایل</h3>
+                    <div class="setting-row">
+                        <label>حداکثر تسک همزمان:</label>
+                        <input type="number" id="max-tasks" min="1" max="10" value="3" />
+                    </div>
+                    <div class="setting-row">
+                        <label>تأیید کپی:</label>
+                        <input type="checkbox" id="verify-copy" checked />
+                    </div>
+                </div>
+
+                <!-- License Settings -->
+                <div class="settings-section">
+                    <h3>🔐 مدیریت لایسنس</h3>
+                    <div class="license-info">
+                        <p id="license-status">وضعیت: نسخه آزمایشی</p>
+                    </div>
+                    <div class="setting-row">
+                        <label>کلید لایسنس:</label>
+                        <input type="text" id="license-key" placeholder="کلید لایسنس را وارد کنید..." />
+                        <button class="btn btn-primary" onclick="activateLicense()">فعال‌سازی</button>
+                    </div>
+                    <div class="setting-row">
+                        <button class="btn btn-success" onclick="purchaseLicense()">🛒 خرید نسخه کامل</button>
+                    </div>
+                </div>
+
+                <!-- Apply Settings -->
+                <div class="settings-actions">
+                    <button class="btn btn-primary btn-large" onclick="applySettings()">✅ اعمال تغییرات</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Tab -->
+        <div id="about-tab" class="tab-content">
+            <div class="about-container">
+                <div class="about-hero">
+                    <div class="app-logo">📁</div>
+                    <h1>Persian File Copier Pro</h1>
+                    <p class="version">نسخه 2.0 - Web Edition</p>
+                    <p class="company">شرکت فناوری نوآئران مثبت سبز</p>
+                </div>
+                
+                <div class="about-content">
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">⚡</div>
+                            <h3>کپی سریع</h3>
+                            <p>کپی فایل‌ها با سرعت بالا و قابلیت مکث/ادامه</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🔍</div>
+                            <h3>جستجوی پیشرفته</h3>
+                            <p>فیلتر بر اساس نوع، اندازه و نام فایل</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">📱</div>
+                            <h3>پشتیبانی MTP</h3>
+                            <p>تشخیص خودکار گوشی‌ها و دستگاه‌های قابل حمل</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🎨</div>
+                            <h3>رابط زیبا</h3>
+                            <p>طراحی مدرن با پشتیبانی از تم‌های مختلف</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-info">
+                        <h3>اطلاعات تماس</h3>
+                        <p>پشتیبانی: @PersianFileSupport</p>
+                        <p>وب‌سایت: persianfile.ir</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="context-menu">
+        <div class="context-item" onclick="copyFilePath()">📋 کپی مسیر</div>
+        <div class="context-item" onclick="openFile()">📂 باز کردن</div>
+        <div class="context-item" onclick="showFileProperties()">🔍 ویژگی‌ها</div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/app.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/file-manager.js"></script>
+    <script src="js/task-manager.js"></script>
+</body>
+</html>
