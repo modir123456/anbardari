@@ -597,6 +597,10 @@ class ConfigManager:
         """دریافت تنظیم"""
         return self.config.get(section, {}).get(key, default)
     
+    def get_section(self, section):
+        """دریافت کل بخش"""
+        return self.config.get(section, {})
+    
     def set(self, section, key, value):
         """تنظیم مقدار"""
         if section not in self.config:
@@ -1445,8 +1449,10 @@ def control_task(task_id, action):
     return False
 
 @eel.expose
-def get_config():
+def get_config(section=None):
     """دریافت تنظیمات"""
+    if section:
+        return config_manager.get_section(section)
     return config_manager.config
 
 @eel.expose
@@ -1566,6 +1572,8 @@ def save_ui_settings(settings):
     except Exception as e:
         logger.error(f"Error saving UI settings: {e}")
         return {'success': False, 'message': str(e)}
+
+
 
 @eel.expose
 def get_license_info():

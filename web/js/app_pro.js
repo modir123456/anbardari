@@ -1620,31 +1620,53 @@ window.saveUISettings = saveUISettings;
  */
 async function loadSettingsData() {
     try {
+        console.log('📋 Loading settings data...');
+        
         // Load UI settings
-        const uiSettings = await eel.get_config('ui_settings')();
-        if (uiSettings) {
-            updateUISettingsForm(uiSettings);
+        try {
+            const uiSettings = await eel.get_config('ui_settings')();
+            if (uiSettings && Object.keys(uiSettings).length > 0) {
+                updateUISettingsForm(uiSettings);
+                console.log('✅ UI settings loaded');
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not load UI settings:', error);
         }
         
         // Load file operation settings
-        const fileOpSettings = await eel.get_config('file_operations')();
-        if (fileOpSettings) {
-            updateFileOperationSettingsForm(fileOpSettings);
+        try {
+            const fileOpSettings = await eel.get_config('file_operations')();
+            if (fileOpSettings && Object.keys(fileOpSettings).length > 0) {
+                updateFileOperationSettingsForm(fileOpSettings);
+                console.log('✅ File operation settings loaded');
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not load file operation settings:', error);
         }
         
         // Load advanced settings
-        const advancedSettings = await eel.get_config('advanced')();
-        if (advancedSettings) {
-            updateAdvancedSettingsForm(advancedSettings);
+        try {
+            const advancedSettings = await eel.get_config('advanced')();
+            if (advancedSettings && Object.keys(advancedSettings).length > 0) {
+                updateAdvancedSettingsForm(advancedSettings);
+                console.log('✅ Advanced settings loaded');
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not load advanced settings:', error);
         }
         
         // Load license info
-        const licenseInfo = await eel.get_license_info()();
-        if (licenseInfo) {
-            updateLicenseInfo(licenseInfo);
+        try {
+            const licenseInfo = await eel.get_license_info()();
+            if (licenseInfo) {
+                updateLicenseInfo(licenseInfo);
+                console.log('✅ License info loaded');
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not load license info:', error);
         }
         
-        console.log('⚙️ Settings data loaded');
+        console.log('⚙️ Settings data loading completed');
     } catch (error) {
         console.error('❌ Error loading settings data:', error);
         showToast('خطا در بارگزاری تنظیمات', 'error');
@@ -1666,11 +1688,15 @@ function updateUISettingsForm(settings) {
     
     for (const [id, value] of Object.entries(elements)) {
         const element = document.getElementById(id);
-        if (element) {
-            if (element.type === 'checkbox') {
-                element.checked = value;
-            } else {
-                element.value = value;
+        if (element && value !== undefined) {
+            try {
+                if (element.type === 'checkbox') {
+                    element.checked = Boolean(value);
+                } else {
+                    element.value = value;
+                }
+            } catch (error) {
+                console.warn(`Could not update element ${id}:`, error);
             }
         }
     }
@@ -1685,7 +1711,7 @@ function updateUISettingsForm(settings) {
 function updateFileOperationSettingsForm(settings) {
     const elements = {
         'max-tasks': settings.max_concurrent_tasks,
-        'chunk-size': Math.floor(settings.chunk_size / 1024), // Convert bytes to KB
+        'chunk-size': settings.chunk_size ? Math.floor(settings.chunk_size / 1024) : 64,
         'verify-copy': settings.verify_copy,
         'auto-retry': settings.auto_retry,
         'max-retry': settings.retry_attempts,
@@ -1697,11 +1723,15 @@ function updateFileOperationSettingsForm(settings) {
     
     for (const [id, value] of Object.entries(elements)) {
         const element = document.getElementById(id);
-        if (element) {
-            if (element.type === 'checkbox') {
-                element.checked = value;
-            } else {
-                element.value = value;
+        if (element && value !== undefined) {
+            try {
+                if (element.type === 'checkbox') {
+                    element.checked = Boolean(value);
+                } else {
+                    element.value = value;
+                }
+            } catch (error) {
+                console.warn(`Could not update element ${id}:`, error);
             }
         }
     }
@@ -1718,30 +1748,38 @@ function updateAdvancedSettingsForm(settings) {
     
     for (const [id, value] of Object.entries(elements)) {
         const element = document.getElementById(id);
-        if (element) {
-            if (element.type === 'checkbox') {
-                element.checked = value;
-            } else {
-                element.value = value;
+        if (element && value !== undefined) {
+            try {
+                if (element.type === 'checkbox') {
+                    element.checked = Boolean(value);
+                } else {
+                    element.value = value;
+                }
+            } catch (error) {
+                console.warn(`Could not update element ${id}:`, error);
             }
         }
     }
 }
 
 function updateLicenseInfo(info) {
-    const statusElement = document.querySelector('.license-status');
-    const keyElement = document.getElementById('license-key');
-    
-    if (statusElement) {
-        statusElement.innerHTML = `
-            <div class="status-badge ${info.status === 'active' ? 'status-active' : 'status-inactive'}">
-                ${info.status === 'active' ? '✅ فعال' : '❌ غیرفعال'}
-            </div>
-        `;
-    }
-    
-    if (keyElement && info.key) {
-        keyElement.value = info.key;
+    try {
+        const statusElement = document.querySelector('.license-status');
+        const keyElement = document.getElementById('license-key');
+        
+        if (statusElement && info.status) {
+            statusElement.innerHTML = `
+                <div class="status-badge ${info.status === 'active' ? 'status-active' : 'status-inactive'}">
+                    ${info.status === 'active' ? '✅ فعال' : '❌ غیرفعال'}
+                </div>
+            `;
+        }
+        
+        if (keyElement && info.key) {
+            keyElement.value = info.key;
+        }
+    } catch (error) {
+        console.warn('Could not update license info:', error);
     }
 }
 
