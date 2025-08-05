@@ -1717,6 +1717,250 @@ input:focus + .slider {
     margin: var(--spacing-sm) 0;
 }
 
+/* License Management Styles */
+.license-status-card {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(129, 199, 132, 0.05));
+    border: 2px solid rgba(76, 175, 80, 0.3);
+}
+
+.license-status-display {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+.license-icon-large {
+    font-size: 4rem;
+    color: var(--success-color);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.license-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+    flex: 1;
+}
+
+.license-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.license-info-item label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.license-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.license-input-group {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: stretch;
+}
+
+.license-input {
+    flex: 1;
+    min-width: 300px;
+}
+
+.license-activate-btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+.btn-purchase {
+    background: linear-gradient(135deg, var(--success-color), #43a047);
+    color: white;
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+}
+
+.btn-purchase:hover {
+    background: linear-gradient(135deg, #43a047, #388e3c);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+}
+
+/* Purchase Guide */
+.purchase-guide {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.guide-step {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    background: rgba(var(--primary-rgb), 0.05);
+    border: 1px solid rgba(var(--primary-rgb), 0.1);
+}
+
+.step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.step-content h5 {
+    margin: 0 0 var(--spacing-xs) 0;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.step-content p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.step-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.step-content a:hover {
+    text-decoration: underline;
+}
+
+/* Modern Input Styles */
+.modern-input {
+    background: var(--bg-primary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.modern-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+.modern-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+/* Settings Actions */
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-xl);
+    background: rgba(var(--primary-rgb), 0.02);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(var(--primary-rgb), 0.1);
+}
+
+.primary-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+}
+
+.secondary-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+}
+
+.action-btn-primary,
+.action-btn-secondary {
+    flex: 1;
+    max-width: 300px;
+    min-height: 60px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    transition: all 0.3s ease;
+}
+
+.action-btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), #1565c0);
+    color: white;
+    border: none;
+}
+
+.action-btn-primary:hover {
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(25, 118, 210, 0.3);
+}
+
+.action-btn-secondary {
+    background: linear-gradient(135deg, var(--text-secondary), #757575);
+    color: white;
+    border: none;
+}
+
+.action-btn-secondary:hover {
+    background: linear-gradient(135deg, #757575, #616161);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(117, 117, 117, 0.3);
+}
+
+.action-btn {
+    flex: 1;
+    max-width: 180px;
+    min-height: 50px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    transition: all 0.3s ease;
+}
+
+.btn-icon {
+    font-size: 1.2em;
+}
+
+.btn-text {
+    font-weight: inherit;
+}
+
 /* Context Menu Override */
 .context-menu {
     display: none !important;

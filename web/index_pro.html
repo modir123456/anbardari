@@ -651,48 +651,118 @@
                 
                 <!-- Indexing Settings -->
                 <div id="indexing-settings" class="settings-section">
-                    <h3>🔍 تنظیمات ایندکس‌گذاری</h3>
-                    
-                    <div class="settings-group">
-                        <h4>🖥️ درایوها</h4>
-                        <div class="setting-row">
-                            <label>ایندکس خودکار درایوهای جدید:</label>
-                            <input type="checkbox" id="auto-index-new" checked />
+                    <div class="settings-content">
+                        <div class="section-header">
+                            <h3>🔍 تنظیمات ایندکس‌گذاری</h3>
+                            <p>تنظیمات مدیریت و نمایه‌سازی فایل‌ها</p>
                         </div>
-                        <div class="setting-row">
-                            <label>ایندکس درایو سیستم (C:):</label>
-                            <input type="checkbox" id="index-system" />
-                            <small>⚠️ ممکن است سرعت سیستم را کاهش دهد</small>
-                        </div>
-                        <div class="setting-row">
-                            <label>ایندکس‌گذاری پس‌زمینه:</label>
-                            <input type="checkbox" id="background-indexing" checked />
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>📊 محدودیت‌ها</h4>
-                        <div class="setting-row">
-                            <label>حداکثر فایل‌های کش:</label>
-                            <input type="number" id="max-cache" min="10000" max="10000000" value="1000000" />
-                        </div>
-                        <div class="setting-row">
-                            <label>عمق اسکن:</label>
-                            <input type="number" id="scan-depth" min="1" max="50" value="10" />
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>🚫 استثناها</h4>
-                        <div class="setting-row">
-                            <label>پسوندهای استثنا:</label>
-                            <input type="text" id="exclude-extensions" value=".tmp,.cache,.log" />
-                            <small>با کاما جدا کنید</small>
-                        </div>
-                        <div class="setting-row">
-                            <label>پوشه‌های استثنا:</label>
-                            <input type="text" id="exclude-folders" value="$Recycle.Bin,System Volume Information" />
-                            <small>با کاما جدا کنید</small>
+                        
+                        <div class="settings-cards-grid">
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>🖥️ مدیریت درایوها</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🔄 ایندکس خودکار درایوهای جدید</label>
+                                            <small>شروع خودکار ایندکس‌گذاری درایوهای جدید</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="auto-index-new" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>⚠️ ایندکس درایو سیستم</label>
+                                            <small>ایندکس‌گذاری درایو C (ممکن است سرعت کاهش یابد)</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="index-system">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>⚡ ایندکس‌گذاری پس‌زمینه</label>
+                                            <small>ایندکس‌گذاری در پس‌زمینه بدون قطع کار</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="background-indexing" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>📊 محدودیت‌ها و عملکرد</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🗄️ حداکثر فایل‌های کش</label>
+                                            <small>حداکثر تعداد فایل‌های ذخیره در کش</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <div class="number-input">
+                                                <input type="number" id="max-cache" min="10000" max="10000000" value="1000000">
+                                                <span class="input-suffix">فایل</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>📏 عمق اسکن</label>
+                                            <small>حداکثر عمق جستجو در زیرپوشه‌ها</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <div class="number-input">
+                                                <input type="number" id="scan-depth" min="1" max="50" value="10">
+                                                <span class="input-suffix">سطح</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>🚫 استثناها و فیلترها</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>📝 پسوندهای استثنا</label>
+                                            <small>پسوندهایی که ایندکس نمی‌شوند (با کاما جدا کنید)</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <input type="text" id="exclude-extensions" value=".tmp,.cache,.log" class="modern-input" placeholder=".tmp,.cache,.log">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>📁 پوشه‌های استثنا</label>
+                                            <small>پوشه‌هایی که ایندکس نمی‌شوند (با کاما جدا کنید)</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <input type="text" id="exclude-folders" value="$Recycle.Bin,System Volume Information" class="modern-input" placeholder="فولدرها">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -843,56 +913,135 @@
                 
                 <!-- License Settings -->
                 <div id="license-settings" class="settings-section">
-                    <h3>🔐 مدیریت لایسنس</h3>
-                    
-                    <div class="license-info-card">
-                        <div class="license-icon">🏆</div>
-                        <div class="license-details">
-                            <h4 id="license-type">نسخه آزمایشی</h4>
-                            <p id="license-status">وضعیت: فعال</p>
-                            <p id="license-limits">محدودیت: 100 فایل</p>
-                            <p id="license-machine">شناسه دستگاه: ...</p>
+                    <div class="settings-content">
+                        <div class="section-header">
+                            <h3>🔐 مدیریت لایسنس</h3>
+                            <p>مدیریت لایسنس و فعال‌سازی نسخه حرفه‌ای</p>
                         </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>🔑 فعال‌سازی لایسنس</h4>
-                        <div class="setting-row">
-                            <label>کلید لایسنس:</label>
-                            <input type="text" id="license-key" placeholder="PFC-PRO-XXXX-XXXX-XXXX-XXXX" />
-                            <button class="btn btn-primary" onclick="activateLicense()">فعال‌سازی</button>
-                        </div>
-                        <div class="setting-row">
-                            <button class="btn btn-success btn-large" onclick="purchaseLicense()">
-                                🛒 خرید نسخه کامل
-                            </button>
-                        </div>
-                        <div class="purchase-info">
-                            <h5>📋 راهنمای خرید:</h5>
-                            <ol>
-                                <li>روی دکمه "خرید نسخه کامل" کلیک کنید</li>
-                                <li>پرداخت را در درگاه زرین‌پال انجام دهید</li>
-                                <li>رسید پرداخت را به <a href="https://t.me/PersianFileSupport" target="_blank">@PersianFileSupport</a> ارسال کنید</li>
-                                <li>کلید لایسنس دریافتی را در کادر بالا وارد و فعال کنید</li>
-                            </ol>
+                        
+                        <div class="settings-cards-grid">
+                            <div class="settings-card license-status-card">
+                                <div class="card-header">
+                                    <h4>🏆 وضعیت لایسنس</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="license-status-display">
+                                        <div class="license-icon-large">🏆</div>
+                                        <div class="license-info-grid">
+                                            <div class="license-info-item">
+                                                <label>📋 نوع لایسنس</label>
+                                                <span id="license-type" class="license-value">نسخه حرفه‌ای</span>
+                                            </div>
+                                            <div class="license-info-item">
+                                                <label>✅ وضعیت</label>
+                                                <div class="license-status">
+                                                    <div class="status-badge status-active">فعال</div>
+                                                </div>
+                                            </div>
+                                            <div class="license-info-item">
+                                                <label>🔓 محدودیت</label>
+                                                <span id="license-limits" class="license-value">بدون محدودیت</span>
+                                            </div>
+                                            <div class="license-info-item">
+                                                <label>🖥️ شناسه دستگاه</label>
+                                                <span id="license-machine" class="license-value">default-pro-machine</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>🔑 فعال‌سازی لایسنس</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🗝️ کلید لایسنس</label>
+                                            <small>کلید لایسنس خریداری شده خود را وارد کنید</small>
+                                        </div>
+                                        <div class="setting-control license-input-group">
+                                            <input type="text" id="license-key" class="modern-input license-input" placeholder="PFC-PRO-UNLIMITED-1754433649983-N6103H22">
+                                            <button class="btn btn-primary license-activate-btn" onclick="activateLicense()">
+                                                🔓 فعال‌سازی
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-actions">
+                                            <button class="btn btn-success btn-purchase" onclick="purchaseLicense()">
+                                                🛒 خرید نسخه کامل
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>📋 راهنمای خرید</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="purchase-guide">
+                                        <div class="guide-step">
+                                            <div class="step-number">1</div>
+                                            <div class="step-content">
+                                                <h5>🛒 خرید لایسنس</h5>
+                                                <p>روی دکمه "خرید نسخه کامل" کلیک کنید</p>
+                                            </div>
+                                        </div>
+                                        <div class="guide-step">
+                                            <div class="step-number">2</div>
+                                            <div class="step-content">
+                                                <h5>💳 پرداخت</h5>
+                                                <p>در درگاه زرین‌پال پرداخت کنید</p>
+                                            </div>
+                                        </div>
+                                        <div class="guide-step">
+                                            <div class="step-number">3</div>
+                                            <div class="step-content">
+                                                <h5>📞 پشتیبانی</h5>
+                                                <p>رسید پرداخت را به <a href="https://t.me/PersianFileSupport" target="_blank">@PersianFileSupport</a> ارسال کنید</p>
+                                            </div>
+                                        </div>
+                                        <div class="guide-step">
+                                            <div class="step-number">4</div>
+                                            <div class="step-content">
+                                                <h5>🔑 فعال‌سازی</h5>
+                                                <p>کلید لایسنس دریافتی را وارد و فعال کنید</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Apply Settings -->
                 <div class="settings-actions">
-                    <button class="btn btn-primary btn-large" onclick="applyAllSettings()">
-                        ✅ اعمال همه تغییرات
-                    </button>
-                    <button class="btn btn-secondary" onclick="resetSettings()">
-                        🔄 بازگردانی به پیش‌فرض
-                    </button>
-                    <button class="btn btn-success" onclick="exportSettings()">
-                        💾 صادر کردن تنظیمات
-                    </button>
-                    <button class="btn btn-warning" onclick="importSettings()">
-                        📥 وارد کردن تنظیمات
-                    </button>
+                    <div class="primary-actions">
+                        <button class="btn btn-primary btn-large action-btn-primary" onclick="applyAllSettings()">
+                            <span class="btn-icon">✅</span>
+                            <span class="btn-text">اعمال همه تغییرات</span>
+                        </button>
+                        <button class="btn btn-secondary btn-large action-btn-secondary" onclick="resetSettings()">
+                            <span class="btn-icon">🔄</span>
+                            <span class="btn-text">بازگردانی پیش‌فرض</span>
+                        </button>
+                    </div>
+                    <div class="secondary-actions">
+                        <button class="btn btn-success action-btn" onclick="exportSettings()">
+                            <span class="btn-icon">💾</span>
+                            <span class="btn-text">صادر کردن</span>
+                        </button>
+                        <button class="btn btn-warning action-btn" onclick="importSettings()">
+                            <span class="btn-icon">📥</span>
+                            <span class="btn-text">وارد کردن</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
