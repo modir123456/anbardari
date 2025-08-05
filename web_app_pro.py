@@ -718,7 +718,7 @@ class FileManager:
         drives = []
         try:
             for partition in psutil.disk_partitions():
-                if partition.mountpoint:
+                if partition.mountpoint and self.is_valid_drive(partition):
                     try:
                         usage = psutil.disk_usage(partition.mountpoint)
                         drive_info = {
@@ -750,6 +750,57 @@ class FileManager:
             logger.error(f"Error scanning drives: {e}")
         
         return drives
+    
+    def is_valid_drive(self, partition):
+        """بررسی معتبر بودن درایو برای نمایش"""
+        mountpoint = partition.mountpoint
+        fstype = partition.fstype.lower() if partition.fstype else ""
+        
+        # System-specific filters
+        if platform.system() == "Windows":
+            # Skip system reserved partitions
+            if len(mountpoint) < 3 or not mountpoint.endswith('\\'):
+                return False
+            # Skip network drives and virtual drives
+            if mountpoint.startswith('\\\\'):
+                return False
+        else:  # Linux/Unix
+            # Skip system and virtual filesystems
+            system_mounts = {
+                '/dev', '/proc', '/sys', '/run', '/tmp', '/var/run',
+                '/dev/pts', '/dev/shm', '/dev/mqueue', '/sys/fs',
+                '/proc/sys/fs/binfmt_misc', '/sys/kernel/debug',
+                '/sys/kernel/security', '/sys/fs/cgroup', '/sys/fs/pstore',
+                '/sys/fs/fuse/connections', '/sys/kernel/config'
+            }
+            
+            # Skip if it's a system mount
+            if any(mountpoint.startswith(sm) for sm in system_mounts):
+                return False
+            
+            # Skip virtual filesystems
+            virtual_fs = {
+                'proc', 'sysfs', 'devtmpfs', 'tmpfs', 'devpts', 
+                'securityfs', 'cgroup', 'pstore', 'configfs',
+                'debugfs', 'tracefs', 'fusectl', 'fuse.gvfsd-fuse'
+            }
+            if fstype in virtual_fs:
+                return False
+            
+            # Skip small temporary filesystems (less than 100MB)
+            try:
+                usage = psutil.disk_usage(mountpoint)
+                if usage.total < 100 * 1024 * 1024:  # 100MB
+                    return False
+            except:
+                return False
+        
+        # Check if mountpoint is accessible
+        try:
+            os.listdir(mountpoint)
+            return True
+        except (PermissionError, OSError, FileNotFoundError):
+            return False
     
     def get_drive_name(self, partition):
         """دریافت نام درایو"""
@@ -898,8 +949,9 @@ class FileManager:
         """دریافت پوشه‌های دسترسی سریع"""
         folders = []
         try:
+            import os
+            
             if platform.system() == "Windows":
-                import os
                 user_profile = os.environ.get('USERPROFILE', '')
                 if user_profile:
                     quick_folders = [

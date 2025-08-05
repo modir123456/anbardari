@@ -306,6 +306,12 @@ function updateQuickDrives(drives) {
  * Select a drive and scan its files
  */
 async function selectDrive(drivePath) {
+    // If files are selected, start copy operation instead
+    if (selectedFiles.length > 0) {
+        await startCopyOperation(drivePath);
+        return;
+    }
+    
     currentDrive = drivePath;
     currentPage = 1;
     
@@ -523,6 +529,11 @@ function updateSelectionInfo() {
     if (bulkControls) {
         bulkControls.style.display = selectedCount > 0 ? 'flex' : 'none';
     }
+    
+    // Show instruction for copy operation
+    if (selectedCount > 0) {
+        showToast(`📂 ${selectedCount} فایل انتخاب شد. روی درایو مقصد کلیک کنید تا کپی شروع شود`, 'info', 3000);
+    }
 }
 
 /**
@@ -663,26 +674,34 @@ function sortFiles(criteria) {
 /**
  * Copy Operations
  */
-async function startCopyOperation() {
+async function startCopyOperation(destination = null) {
     if (selectedFiles.length === 0) {
         showToast('هیچ فایلی انتخاب نشده است', 'warning');
         return;
     }
     
-    if (!currentDrive) {
-        showToast('مقصد انتخاب نشده است', 'warning');
+    // If no destination provided, show instruction
+    if (!destination) {
+        showToast('فایل‌ها را انتخاب کردید. حالا روی درایو مقصد کلیک کنید', 'info', 5000);
         return;
     }
     
     try {
-        const result = await eel.start_copy(selectedFiles, currentDrive)();
+        showToast('⏳ در حال شروع کپی...', 'info');
+        const result = await eel.start_copy(selectedFiles, destination)();
         
         if (result.error) {
-            showToast(`خطا: ${result.error}`, 'error');
+            if (result.expired) {
+                showToast('❌ نسخه آزمایشی منقضی شده. لطفاً لایسنس تهیه کنید', 'error');
+            } else if (result.limit) {
+                showToast(`❌ محدودیت نسخه آزمایشی: حداکثر ${result.limit} فایل`, 'error');
+            } else {
+                showToast(`❌ خطا: ${result.error}`, 'error');
+            }
             return;
         }
         
-        showToast(`✅ کپی ${selectedFiles.length} فایل شروع شد`, 'success');
+        showToast(`✅ کپی ${selectedFiles.length} فایل با موفقیت شروع شد`, 'success');
         
         // Clear selection
         selectedFiles = [];
