@@ -2745,7 +2745,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             height=35,
             font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
             fg_color=("orange", "darkorange"),
-            hover_color=("darkorange", "lightorange")
+            hover_color=("darkorange", "#FFA500")
         ).pack(side="left", padx=5)
         
         # License Management Section - بخش مدیریت لایسنس
