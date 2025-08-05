@@ -1036,8 +1036,8 @@ class PersianFileCopierPro(QMainWindow):
     
     def open_zarinpal_purchase(self):
         """باز کردن صفحه خرید زرین‌پال"""
-        # آدرس واقعی زرین‌پال
-        zarinpal_url = "https://zarinpal.com/pg/services/"
+        # آدرس فروشگاه زرین‌پال
+        zarinpal_url = "https://zarinp.al/735413"
         webbrowser.open(zarinpal_url)
     
     def show_trial_expired_dialog(self):
@@ -1186,7 +1186,7 @@ class LicenseDialog(QDialog):
     def purchase_license(self, product_id):
         """خرید لایسنس"""
         # باز کردن صفحه خرید زرین‌پال
-        zarinpal_url = f"https://zarinpal.com/pg/services/?product={product_id}"
+        zarinpal_url = "https://zarinp.al/735413"
         webbrowser.open(zarinpal_url)
 
 

@@ -688,7 +688,7 @@ class FileCopierApp:
             
             if result:
                 # باز کردن سایت فروش
-                webbrowser.open("https://persianfile.ir/purchase")
+                webbrowser.open("https://zarinp.al/735413")
                 self.show_toast("در حال انتقال به سایت فروش...", "info")
             
         except Exception as e:

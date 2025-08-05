@@ -558,8 +558,11 @@ class EnhancedFileCopierApp:
         self.root.geometry("1400x900")
         self.root.minsize(1000, 700)
         
-        # تنظیم فونت فارسی
-        self.root.option_add("*Font", "B Nazanin 11")
+        # تنظیم فونت فارسی - با fallback به Tahoma
+        try:
+            self.root.option_add("*Font", ("B Nazanin", 11))
+        except:
+            self.root.option_add("*Font", ("Tahoma", 11))
     
     def create_ui(self):
         """ایجاد رابط کاربری"""
