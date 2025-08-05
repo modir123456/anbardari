@@ -1090,7 +1090,7 @@ class PersianFileCopierPyQt5(QMainWindow):
         
         drives_layout.addWidget(header_frame)
         
-        # Drives tree with destinations and drag-drop
+        # Drives tree with destinations and drag-drop (LTR)
         self.drives_tree = DragDropTreeWidget(self)
         self.drives_tree.setHeaderHidden(True)
         self.drives_tree.setFont(QFont("B Nazanin", 10))
@@ -1098,6 +1098,7 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.drives_tree.setIndentation(20)
         self.drives_tree.setAcceptDrops(True)
         self.drives_tree.setDragDropMode(QTreeWidget.DropOnly)
+        self.drives_tree.setLayoutDirection(Qt.LeftToRight)  # LTR for drives
         
         # Enable click and drop handling
         self.drives_tree.itemClicked.connect(self.on_destination_clicked)
@@ -1154,15 +1155,16 @@ class PersianFileCopierPyQt5(QMainWindow):
         
         # Tasks table (professional design)
         self.tasks_table = QTableWidget()
-        self.tasks_table.setColumnCount(3)
+        self.tasks_table.setColumnCount(4)
         self.tasks_table.setHorizontalHeaderLabels([
-            "🎛️ کنترل", "📁 مبدأ", "📂 مقصد"
+            "📁 مبدأ", "📂 مقصد", "📊 پیشرفت", "🎛️ کنترل"
         ])
         
-        # Set column widths - Control first, wider
-        self.tasks_table.setColumnWidth(0, 140)   # Control (first column, wider)
-        self.tasks_table.setColumnWidth(1, 120)   # Source
-        self.tasks_table.setColumnWidth(2, 120)   # Destination
+        # Set column widths
+        self.tasks_table.setColumnWidth(0, 120)   # Source (first column)
+        self.tasks_table.setColumnWidth(1, 120)   # Destination 
+        self.tasks_table.setColumnWidth(2, 150)   # Progress bar
+        self.tasks_table.setColumnWidth(3, 180)   # Control buttons (wider)
         
         self.tasks_table.setAlternatingRowColors(True)
         self.tasks_table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -1170,7 +1172,7 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.tasks_table.setMinimumHeight(180)
         
         # Set row height much larger for better visibility
-        self.tasks_table.verticalHeader().setDefaultSectionSize(80)
+        self.tasks_table.verticalHeader().setDefaultSectionSize(100)
         self.tasks_table.setGridStyle(Qt.NoPen)  # Remove grid lines for cleaner look
         
         tasks_layout.addWidget(self.tasks_table)
@@ -1972,6 +1974,7 @@ class PersianFileCopierPyQt5(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #218838, stop:1 #1e7e34);
             }
         """)
+        apply_all_btn.clicked.connect(self.apply_all_settings)
         lang_layout.addRow("", apply_all_btn)
         
         parent_layout.addWidget(lang_group)
@@ -2909,81 +2912,128 @@ class PersianFileCopierPyQt5(QMainWindow):
             row = self.tasks_table.rowCount()
             self.tasks_table.insertRow(row)
             
-            # Control buttons (first column - wider and more prominent)
-            control_widget = QWidget()
-            control_layout = QVBoxLayout(control_widget)
-            control_layout.setContentsMargins(6, 6, 6, 6)
-            control_layout.setSpacing(4)
+            # Source (file count) - Column 0
+            source_text = f"{len(file_paths)} فایل"
+            source_item = QTableWidgetItem(source_text)
+            source_item.setFont(QFont("B Nazanin", 12))
+            source_item.setTextAlignment(Qt.AlignCenter)
+            self.tasks_table.setItem(row, 0, source_item)
             
-            # Progress bar with status text (professional design)
-            progress_container = QFrame()
-            progress_container.setFrameStyle(QFrame.Box)
-            progress_container.setStyleSheet("""
-                QFrame {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
-                        stop:0 #4a4a4a, stop:1 #3a3a3a);
-                    border: 1px solid #666666;
-                    border-radius: 4px;
-                    min-height: 20px;
+            # Destination - Column 1
+            dest_text = os.path.basename(destination) or destination
+            dest_item = QTableWidgetItem(dest_text)
+            dest_item.setFont(QFont("B Nazanin", 12))
+            dest_item.setTextAlignment(Qt.AlignCenter)
+            self.tasks_table.setItem(row, 1, dest_item)
+            
+            # Progress bar - Column 2 (clean progress bar only)
+            progress_widget = QWidget()
+            progress_layout = QVBoxLayout(progress_widget)
+            progress_layout.setContentsMargins(8, 8, 8, 8)
+            progress_layout.setSpacing(2)
+            
+            # Clean progress bar
+            progress_bar = QProgressBar()
+            progress_bar.setMinimumHeight(25)
+            progress_bar.setMaximumHeight(25)
+            progress_bar.setTextVisible(True)
+            progress_bar.setFormat("%p%")
+            progress_bar.setStyleSheet("""
+                QProgressBar {
+                    border: 2px solid #666666;
+                    border-radius: 8px;
+                    text-align: center;
+                    font-family: 'B Nazanin';
+                    font-size: 12px;
+                    font-weight: bold;
+                    color: white;
+                    background-color: #404040;
+                }
+                QProgressBar::chunk {
+                    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 #ff6b6b, stop:0.25 #ffa500, stop:0.5 #ffeb3b, 
+                        stop:0.75 #4caf50, stop:1 #2e7d32);
+                    border-radius: 6px;
                 }
             """)
-            progress_layout = QHBoxLayout(progress_container)
-            progress_layout.setContentsMargins(4, 2, 4, 2)
             
-            # Create custom progress display
-            self.create_custom_progress_display(progress_container, task_id)
+            progress_layout.addWidget(progress_bar)
+            self.tasks_table.setCellWidget(row, 2, progress_widget)
             
-            control_layout.addWidget(progress_container)
+            # Control buttons - Column 3 (3 separate buttons)
+            control_widget = QWidget()
+            control_layout = QGridLayout(control_widget)
+            control_layout.setContentsMargins(4, 4, 4, 4)
+            control_layout.setSpacing(4)
             
-            # Control buttons row
-            buttons_layout = QHBoxLayout()
-            buttons_layout.setSpacing(3)
-            
+            # Three buttons in grid layout
             pause_btn = QPushButton("⏸️")
-            pause_btn.setMinimumSize(35, 25)
-            pause_btn.setFont(QFont("Arial", 10))
+            pause_btn.setMinimumSize(50, 30)
+            pause_btn.setMaximumSize(50, 30)
+            pause_btn.setFont(QFont("Arial", 12))
             pause_btn.setToolTip("مکث")
-            pause_btn.setStyleSheet("QPushButton { background: #ff9500; } QPushButton:hover { background: #ffad33; }")
+            pause_btn.setStyleSheet("""
+                QPushButton { 
+                    background: #ff9500; 
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    font-weight: bold;
+                } 
+                QPushButton:hover { 
+                    background: #ffad33; 
+                }
+            """)
             pause_btn.clicked.connect(lambda: self.pause_task(task_id))
             
             resume_btn = QPushButton("▶️")
-            resume_btn.setMinimumSize(35, 25)
-            resume_btn.setFont(QFont("Arial", 10))
+            resume_btn.setMinimumSize(50, 30)
+            resume_btn.setMaximumSize(50, 30)
+            resume_btn.setFont(QFont("Arial", 12))
             resume_btn.setToolTip("ادامه")
-            resume_btn.setStyleSheet("QPushButton { background: #28a745; } QPushButton:hover { background: #34ce57; }")
+            resume_btn.setStyleSheet("""
+                QPushButton { 
+                    background: #28a745; 
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    font-weight: bold;
+                } 
+                QPushButton:hover { 
+                    background: #34ce57; 
+                }
+            """)
             resume_btn.clicked.connect(lambda: self.resume_task(task_id))
             
             cancel_btn = QPushButton("❌")
-            cancel_btn.setMinimumSize(35, 25)
-            cancel_btn.setFont(QFont("Arial", 10))
+            cancel_btn.setMinimumSize(50, 30)
+            cancel_btn.setMaximumSize(50, 30)
+            cancel_btn.setFont(QFont("Arial", 12))
             cancel_btn.setToolTip("لغو")
-            cancel_btn.setStyleSheet("QPushButton { background: #dc3545; } QPushButton:hover { background: #e4606d; }")
+            cancel_btn.setStyleSheet("""
+                QPushButton { 
+                    background: #dc3545; 
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    font-weight: bold;
+                } 
+                QPushButton:hover { 
+                    background: #e4606d; 
+                }
+            """)
             cancel_btn.clicked.connect(lambda: self.cancel_task(task_id))
             
-            buttons_layout.addWidget(pause_btn)
-            buttons_layout.addWidget(resume_btn)
-            buttons_layout.addWidget(cancel_btn)
+            # Add buttons to grid (3 columns, 1 row)
+            control_layout.addWidget(pause_btn, 0, 0)
+            control_layout.addWidget(resume_btn, 0, 1)
+            control_layout.addWidget(cancel_btn, 0, 2)
             
-            control_layout.addLayout(buttons_layout)
-            self.tasks_table.setCellWidget(row, 0, control_widget)
+            self.tasks_table.setCellWidget(row, 3, control_widget)
             
-            # Source (file count)
-            source_text = f"{len(file_paths)} فایل"
-            source_item = QTableWidgetItem(source_text)
-            source_item.setFont(QFont("B Nazanin", 11))
-            source_item.setTextAlignment(Qt.AlignCenter)
-            self.tasks_table.setItem(row, 1, source_item)
-            
-            # Destination
-            dest_text = os.path.basename(destination) or destination
-            dest_item = QTableWidgetItem(dest_text)
-            dest_item.setFont(QFont("B Nazanin", 11))
-            dest_item.setTextAlignment(Qt.AlignCenter)
-            self.tasks_table.setItem(row, 2, dest_item)
-            
-            # Store row index for updates
+            # Store row index and widgets for updates
             self.active_tasks[task_id]['row'] = row
-            self.active_tasks[task_id]['progress_container'] = progress_container
+            self.active_tasks[task_id]['progress_bar'] = progress_bar
             
         except Exception as e:
             print(f"Error adding task to table: {e}")
@@ -3008,34 +3058,47 @@ class PersianFileCopierPyQt5(QMainWindow):
             print(f"Error creating progress display: {e}")
     
     def update_task_progress(self, task_id: str, progress: int, speed: str, eta: str):
-        """بروزرسانی پیشرفت تسک با انیمیشن حرفه‌ای"""
+        """بروزرسانی پیشرفت تسک"""
         try:
             if task_id in self.active_tasks:
                 task = self.active_tasks[task_id]
                 task['progress'] = progress
                 
-                # Update custom progress display
-                progress_container = task.get('progress_container')
-                progress_label = task.get('progress_label')
+                # Update progress bar
+                progress_bar = task.get('progress_bar')
                 
-                if progress_container and progress_label:
-                    # Update background gradient based on progress
-                    gradient_color = self.get_progress_color(progress)
-                    progress_container.setStyleSheet(f"""
-                        QFrame {{
-                            background: qlineargradient(x1:0, y1:0, x2:{progress/100}, y2:0,
-                                stop:0 {gradient_color}, stop:1 #3a3a3a);
-                            border: 1px solid #666666;
-                            border-radius: 4px;
-                            min-height: 20px;
+                if progress_bar:
+                    progress_bar.setValue(progress)
+                    
+                    # Update progress bar color based on progress
+                    color_stops = ""
+                    if progress < 25:
+                        color_stops = "stop:0 #ff6b6b, stop:1 #ff8a80"  # Red
+                    elif progress < 50:
+                        color_stops = "stop:0 #ffa500, stop:1 #ffb347"  # Orange
+                    elif progress < 75:
+                        color_stops = "stop:0 #ffeb3b, stop:1 #fff176"  # Yellow
+                    elif progress < 100:
+                        color_stops = "stop:0 #4caf50, stop:1 #81c784"  # Green
+                    else:
+                        color_stops = "stop:0 #2e7d32, stop:1 #4caf50"  # Dark Green
+                    
+                    progress_bar.setStyleSheet(f"""
+                        QProgressBar {{
+                            border: 2px solid #666666;
+                            border-radius: 8px;
+                            text-align: center;
+                            font-family: 'B Nazanin';
+                            font-size: 12px;
+                            font-weight: bold;
+                            color: white;
+                            background-color: #404040;
+                        }}
+                        QProgressBar::chunk {{
+                            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, {color_stops});
+                            border-radius: 6px;
                         }}
                     """)
-                    
-                    # Update text
-                    if progress < 100:
-                        progress_label.setText(f"{progress}% - {speed} - {eta}")
-                    else:
-                        progress_label.setText("✅ تکمیل شد")
                 
         except Exception as e:
             print(f"Error updating task progress: {e}")
@@ -3060,35 +3123,48 @@ class PersianFileCopierPyQt5(QMainWindow):
                 task = self.active_tasks[task_id]
                 task['status'] = 'completed' if success else 'failed'
                 
-                # Update custom progress display
-                progress_container = task.get('progress_container')
-                progress_label = task.get('progress_label')
+                # Update progress bar
+                progress_bar = task.get('progress_bar')
                 
-                if progress_container and progress_label:
+                if progress_bar:
                     if success:
-                        # Green gradient for success
-                        progress_container.setStyleSheet("""
-                            QFrame {
-                                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                    stop:0 #2e7d32, stop:1 #4caf50);
-                                border: 1px solid #4caf50;
-                                border-radius: 4px;
-                                min-height: 20px;
+                        progress_bar.setValue(100)
+                        progress_bar.setFormat("✅ تکمیل شد")
+                        progress_bar.setStyleSheet("""
+                            QProgressBar {
+                                border: 2px solid #4caf50;
+                                border-radius: 8px;
+                                text-align: center;
+                                font-family: 'B Nazanin';
+                                font-size: 12px;
+                                font-weight: bold;
+                                color: white;
+                                background-color: #2e7d32;
+                            }
+                            QProgressBar::chunk {
+                                background-color: #4caf50;
+                                border-radius: 6px;
                             }
                         """)
-                        progress_label.setText("✅ تکمیل شد")
                     else:
-                        # Red gradient for error
-                        progress_container.setStyleSheet("""
-                            QFrame {
-                                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                    stop:0 #d32f2f, stop:1 #f44336);
-                                border: 1px solid #f44336;
-                                border-radius: 4px;
-                                min-height: 20px;
+                        progress_bar.setValue(0)
+                        progress_bar.setFormat("❌ خطا")
+                        progress_bar.setStyleSheet("""
+                            QProgressBar {
+                                border: 2px solid #f44336;
+                                border-radius: 8px;
+                                text-align: center;
+                                font-family: 'B Nazanin';
+                                font-size: 12px;
+                                font-weight: bold;
+                                color: white;
+                                background-color: #d32f2f;
+                            }
+                            QProgressBar::chunk {
+                                background-color: #f44336;
+                                border-radius: 6px;
                             }
                         """)
-                        progress_label.setText("❌ خطا")
                 
                 # Show notification
                 toast_type = "success" if success else "error"
@@ -3439,7 +3515,7 @@ class PersianFileCopierPyQt5(QMainWindow):
                         drive_item = QTreeWidgetItem([drive_text])
                         drive_item.setData(0, Qt.UserRole, partition.mountpoint)  # Store path
                         drive_item.setData(0, Qt.UserRole + 1, "drive")  # Mark as drive
-                        drive_item.setTextAlignment(0, Qt.AlignRight)  # RTL alignment
+                        drive_item.setTextAlignment(0, Qt.AlignLeft)  # LTR alignment
                         
                         # Add main folders to drive
                         self.add_drive_folders(drive_item, partition.mountpoint)
@@ -3478,89 +3554,140 @@ class PersianFileCopierPyQt5(QMainWindow):
             return "💿"  # Default
     
     def add_mtp_devices(self):
-        """اضافه کردن دستگاه‌های MTP (گوشی، دوربین)"""
+        """اضافه کردن دستگاه‌های MTP (گوشی، دوربین) - Enhanced Detection"""
         try:
             import subprocess
             import glob
             
             mtp_devices = []
             
-            # Windows: Check for MTP devices
+            # Windows: Enhanced MTP device detection
             if platform.system() == "Windows":
                 try:
-                    # Check removable drives that might be phones
+                    # Method 1: Check all drive types (not just removable)
                     result = subprocess.run([
-                        "wmic", "logicaldisk", "where", "drivetype=2", "get", "deviceid,volumename"
-                    ], capture_output=True, text=True, timeout=10)
+                        "wmic", "logicaldisk", "get", "deviceid,drivetype,volumename"
+                    ], capture_output=True, text=True, timeout=15)
                     
                     if result.returncode == 0:
                         lines = result.stdout.strip().split('\n')[1:]  # Skip header
                         for line in lines:
                             if line.strip():
-                                parts = line.strip().split()
-                                if len(parts) >= 1:
+                                parts = line.strip().split(None, 2)
+                                if len(parts) >= 2:
                                     device_id = parts[0]
+                                    drive_type = parts[1]
+                                    volume_name = parts[2] if len(parts) > 2 else "دستگاه"
+                                    
                                     if device_id and ':' in device_id:
                                         try:
                                             test_path = device_id + "\\"
                                             if os.path.exists(test_path):
-                                                volume_name = " ".join(parts[1:]) if len(parts) > 1 else "دستگاه قابل حمل"
-                                                # Check if it looks like a phone
+                                                # Check contents to identify device type
                                                 try:
                                                     contents = os.listdir(test_path)
-                                                    if any(name.upper() in ['DCIM', 'ANDROID', 'INTERNAL STORAGE'] for name in contents):
-                                                        mtp_devices.append((device_id, f"📱 {volume_name}", test_path))
-                                                    else:
-                                                        mtp_devices.append((device_id, f"🔌 {volume_name}", test_path))
+                                                    content_upper = [name.upper() for name in contents]
+                                                    
+                                                    # Phone detection (Android/iOS)
+                                                    if any(folder in content_upper for folder in ['DCIM', 'ANDROID', 'INTERNAL STORAGE', 'PHONE']):
+                                                        mtp_devices.append((device_id, f"📱 {volume_name} (Phone)", test_path))
+                                                    # Camera detection
+                                                    elif any(folder in content_upper for folder in ['CAMERA', 'CANON_DC', 'NIKON', 'SONY']):
+                                                        mtp_devices.append((device_id, f"📷 {volume_name} (Camera)", test_path))
+                                                    # USB detection (but check if it's special)
+                                                    elif drive_type == "2":  # Removable
+                                                        # Check if it has typical phone/tablet structure
+                                                        if any(folder in content_upper for folder in ['PICTURES', 'MUSIC', 'DOWNLOADS']):
+                                                            # Could be tablet or phone
+                                                            if len(contents) < 10 and 'PICTURES' in content_upper:
+                                                                mtp_devices.append((device_id, f"📱 {volume_name} (Device)", test_path))
+                                                            else:
+                                                                mtp_devices.append((device_id, f"🔌 {volume_name} (USB)", test_path))
+                                                        else:
+                                                            mtp_devices.append((device_id, f"🔌 {volume_name} (USB)", test_path))
+                                                except PermissionError:
+                                                    # If we can't read, but it exists, it might be a special device
+                                                    if drive_type == "2":
+                                                        mtp_devices.append((device_id, f"🔐 {volume_name} (Protected Device)", test_path))
                                                 except:
-                                                    mtp_devices.append((device_id, f"🔌 {volume_name}", test_path))
+                                                    continue
                                         except:
                                             continue
-                except:
-                    pass
+                    
+                    # Method 2: Check Windows Portable Devices via WMI
+                    try:
+                        pnp_result = subprocess.run([
+                            "wmic", "path", "Win32_PnPEntity", "where", 
+                            "\"Name like '%MTP%' OR Name like '%Android%' OR Name like '%iPhone%' OR Name like '%iPad%'\"",
+                            "get", "Name,DeviceID"
+                        ], capture_output=True, text=True, timeout=10)
+                        
+                        if pnp_result.returncode == 0 and "Name" in pnp_result.stdout:
+                            print("Found potential MTP devices via PnP:", pnp_result.stdout)
+                    except:
+                        pass
+                        
+                except Exception as e:
+                    print(f"Error in Windows MTP detection: {e}")
             
-            # Linux: Check MTP mount points
+            # Linux: Enhanced MTP detection
             elif platform.system() == "Linux":
                 try:
-                    mtp_paths = glob.glob("/media/*/*") + glob.glob("/mnt/*") + glob.glob("/run/user/*/gvfs/*")
-                    for path in mtp_paths:
+                    # Check multiple MTP mount locations
+                    possible_paths = []
+                    possible_paths.extend(glob.glob("/media/*/*"))
+                    possible_paths.extend(glob.glob("/mnt/*"))
+                    possible_paths.extend(glob.glob("/run/user/*/gvfs/*"))
+                    possible_paths.extend(glob.glob("/run/media/*/*"))
+                    
+                    for path in possible_paths:
                         if os.path.exists(path) and os.path.isdir(path):
                             try:
                                 contents = os.listdir(path)
                                 device_name = os.path.basename(path)
-                                if any(name.upper() in ['DCIM', 'ANDROID', 'INTERNAL STORAGE'] for name in contents):
+                                content_upper = [name.upper() for name in contents]
+                                
+                                if any(folder in content_upper for folder in ['DCIM', 'ANDROID', 'INTERNAL STORAGE']):
                                     mtp_devices.append((path, f"📱 {device_name}", path))
-                                elif any(name.upper() in ['CAMERA', 'PICTURES'] for name in contents):
+                                elif any(folder in content_upper for folder in ['CAMERA', 'PICTURES']):
                                     mtp_devices.append((path, f"📷 {device_name}", path))
+                                elif "gvfs" in path.lower():  # GVFS usually handles MTP
+                                    mtp_devices.append((path, f"📱 {device_name}", path))
                                 else:
                                     mtp_devices.append((path, f"🔌 {device_name}", path))
                             except:
                                 continue
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Error in Linux MTP detection: {e}")
             
             # Add detected MTP devices to tree
             for device_id, device_name, device_path in mtp_devices:
                 device_item = QTreeWidgetItem([device_name])
                 device_item.setData(0, Qt.UserRole, device_path)
                 device_item.setData(0, Qt.UserRole + 1, "mtp_device")
-                device_item.setTextAlignment(0, Qt.AlignRight)  # RTL alignment
+                device_item.setTextAlignment(0, Qt.AlignLeft)  # LTR alignment
                 
                 # Add common mobile folders if they exist
                 try:
-                    common_folders = ["DCIM", "Download", "Downloads", "Pictures", "Documents", "Music", "Videos"]
+                    common_folders = ["DCIM", "Download", "Downloads", "Pictures", "Documents", "Music", "Videos", "Movies", "Camera"]
                     for folder_name in common_folders:
                         folder_path = os.path.join(device_path, folder_name)
                         if os.path.exists(folder_path):
                             folder_item = QTreeWidgetItem([f"📁 {folder_name}"])
                             folder_item.setData(0, Qt.UserRole, folder_path)
                             folder_item.setData(0, Qt.UserRole + 1, "folder")
-                            folder_item.setTextAlignment(0, Qt.AlignRight)
+                            folder_item.setTextAlignment(0, Qt.AlignLeft)
                             device_item.addChild(folder_item)
                 except:
                     pass
                 
                 self.drives_tree.addTopLevelItem(device_item)
+            
+            # Debug info
+            if mtp_devices:
+                print(f"Found {len(mtp_devices)} MTP devices: {[name for _, name, _ in mtp_devices]}")
+            else:
+                print("No MTP devices detected")
                     
         except Exception as e:
             print(f"Error adding MTP devices: {e}")
@@ -4042,6 +4169,100 @@ class PersianFileCopierPyQt5(QMainWindow):
             toast = ToastNotification(self, message, toast_type, duration)
         except Exception as e:
             print(f"Error showing auto-hide toast: {e}")
+    
+    def apply_all_settings(self):
+        """اعمال همه تنظیمات"""
+        try:
+            # Apply font settings
+            self.apply_font_settings()
+            
+            # Apply theme settings
+            theme_mapping = {0: "dark", 1: "light", 2: "blue", 3: "green"}
+            theme = theme_mapping.get(self.theme_combo.currentIndex(), "dark")
+            self.config.set('ui_settings', 'theme', theme)
+            self.apply_theme(theme)
+            
+            # Apply UI settings
+            self.config.set('ui_settings', 'startup_maximized', self.startup_maximized.isChecked())
+            self.config.set('ui_settings', 'animation_speed', self.animation_speed_spin.value())
+            
+            # Apply file operation settings
+            if hasattr(self, 'max_tasks_spin'):
+                self.config.set('file_operations', 'max_concurrent_tasks', self.max_tasks_spin.value())
+            if hasattr(self, 'chunk_size_spin'):
+                self.config.set('file_operations', 'chunk_size', self.chunk_size_spin.value())
+            if hasattr(self, 'verify_copy_check'):
+                self.config.set('file_operations', 'verify_copy', self.verify_copy_check.isChecked())
+            if hasattr(self, 'auto_retry_check'):
+                self.config.set('file_operations', 'auto_retry', self.auto_retry_check.isChecked())
+            
+            # Apply notification settings
+            if hasattr(self, 'toast_duration_spin'):
+                self.config.set('ui_settings', 'toast_duration', self.toast_duration_spin.value())
+            
+            # Apply advanced settings
+            if hasattr(self, 'scan_depth_spin'):
+                self.config.set('file_operations', 'max_scan_depth', self.scan_depth_spin.value())
+            
+            # Save config
+            self.config.save()
+            
+            self.show_toast("✅ همه تنظیمات با موفقیت اعمال شدند", "success")
+            
+        except Exception as e:
+            print(f"Error applying all settings: {e}")
+            self.show_toast("❌ خطا در اعمال تنظیمات", "error")
+    
+    def apply_font_settings(self):
+        """اعمال تنظیمات فونت به کل نرم‌افزار"""
+        try:
+            family = self.font_family_combo.currentText()
+            size = self.font_size_spin.value()
+            weight = self.font_weight_combo.currentText()
+            
+            # Save to config
+            self.config.set('font_settings', 'primary_font', family)
+            self.config.set('font_settings', 'font_size', size)
+            self.config.set('font_settings', 'font_weight', weight)
+            
+            # Apply to application
+            weight_val = QFont.Normal
+            if weight == "Bold":
+                weight_val = QFont.Bold
+            elif weight == "Light":
+                weight_val = QFont.Light
+                
+            app_font = QFont(family, size, weight_val)
+            QApplication.instance().setFont(app_font)
+            
+            # Update all existing widgets
+            self.update_all_fonts(app_font)
+            
+            self.show_toast("✅ فونت سراسری اعمال شد", "success")
+            
+        except Exception as e:
+            print(f"Error applying font settings: {e}")
+            self.show_toast("❌ خطا در اعمال فونت", "error")
+    
+    def update_all_fonts(self, font):
+        """بروزرسانی فونت همه widget ها"""
+        try:
+            # Update main widgets
+            widgets_to_update = [
+                self.search_entry, self.format_filter, self.size_filter,
+                self.file_tree, self.drives_tree, self.tasks_table
+            ]
+            
+            for widget in widgets_to_update:
+                if widget:
+                    widget.setFont(font)
+            
+            # Update tab widget
+            if hasattr(self, 'tab_widget'):
+                self.tab_widget.setFont(font)
+                
+        except Exception as e:
+            print(f"Error updating fonts: {e}")
     
     def check_disk_space(self, destination_path: str, total_size: int) -> bool:
         """بررسی فضای دیسک"""
