@@ -342,7 +342,8 @@
                     <small style="color: #718096; font-size: 12px;">خالی بگذارید برای لایسنس دائمی</small>
                 </div>
 
-                <button type="submit" class="btn">🔑 تولید لایسنس</button>
+                                 <button type="submit" class="btn">🔑 تولید لایسنس</button>
+                 <button type="button" class="btn btn-secondary" onclick="testGeneration()">🧪 تست تولید</button>
             </form>
 
             <div class="result-container" id="result-container">
@@ -429,12 +430,28 @@
 
         // Generate license key
         function generateLicenseKey(type, customerName, email) {
-            const timestamp = Date.now().toString(36);
-            const randomPart = Math.random().toString(36).substring(2, 8);
-            const nameHash = btoa(customerName.substring(0, 3)).substring(0, 4);
-            const emailHash = btoa(email.split('@')[0]).substring(0, 4);
-            
-            return `${type}-${timestamp}-${nameHash}-${emailHash}-${randomPart}`.toUpperCase();
+            try {
+                const timestamp = Date.now().toString(36);
+                const randomPart = Math.random().toString(36).substring(2, 8);
+                
+                // Safe name hash
+                const nameForHash = customerName.length >= 3 ? customerName.substring(0, 3) : customerName.padEnd(3, 'X');
+                const nameHash = btoa(nameForHash).substring(0, 4);
+                
+                // Safe email hash
+                const emailPrefix = email.split('@')[0];
+                const emailForHash = emailPrefix.length >= 3 ? emailPrefix.substring(0, 3) : emailPrefix.padEnd(3, 'X');
+                const emailHash = btoa(emailForHash).substring(0, 4);
+                
+                const licenseKey = `${type}-${timestamp}-${nameHash}-${emailHash}-${randomPart}`.toUpperCase();
+                console.log('Generated license key:', licenseKey);
+                return licenseKey;
+            } catch (error) {
+                console.error('Error generating license key:', error);
+                // Fallback simple generation
+                const simpleKey = `${type}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`.toUpperCase();
+                return simpleKey;
+            }
         }
 
         // Show alert
@@ -456,31 +473,59 @@
         // Form submission
         document.getElementById('license-form').addEventListener('submit', function(e) {
             e.preventDefault();
+            console.log('Form submitted');
             
             const customerName = document.getElementById('customer-name').value.trim();
             const customerEmail = document.getElementById('customer-email').value.trim();
             const licenseType = document.getElementById('license-type').value;
             const expiryDate = document.getElementById('expiry-date').value;
             
+            console.log('Form data:', { customerName, customerEmail, licenseType, expiryDate });
+            
             if (!customerName || !customerEmail || !licenseType) {
+                console.log('Validation failed');
                 showAlert('لطفاً تمام فیلدهای اجباری را پر کنید', 'error');
                 return;
             }
             
+            console.log('Validation passed, generating license...');
+            
             // Generate license
             const licenseKey = generateLicenseKey(licenseType, customerName, customerEmail);
+            console.log('License key generated:', licenseKey);
+            
             const currentDate = new Date().toLocaleDateString('fa-IR');
             const status = expiryDate ? `تا ${new Date(expiryDate).toLocaleDateString('fa-IR')}` : 'دائمی';
             
-            // Display result
-            document.getElementById('license-key-text').textContent = licenseKey;
-            document.getElementById('info-customer').textContent = customerName;
-            document.getElementById('info-email').textContent = customerEmail;
-            document.getElementById('info-type').textContent = licenseType;
-            document.getElementById('info-generated').textContent = currentDate;
-            document.getElementById('info-status').textContent = status;
+            console.log('Updating UI elements...');
             
-            document.getElementById('result-container').style.display = 'block';
+            // Display result
+            const keyElement = document.getElementById('license-key-text');
+            if (keyElement) {
+                keyElement.textContent = licenseKey;
+                console.log('License key set in UI:', keyElement.textContent);
+            }
+            
+            const customerElement = document.getElementById('info-customer');
+            if (customerElement) customerElement.textContent = customerName;
+            
+            const emailElement = document.getElementById('info-email');
+            if (emailElement) emailElement.textContent = customerEmail;
+            
+            const typeElement = document.getElementById('info-type');
+            if (typeElement) typeElement.textContent = licenseType;
+            
+            const generatedElement = document.getElementById('info-generated');
+            if (generatedElement) generatedElement.textContent = currentDate;
+            
+            const statusElement = document.getElementById('info-status');
+            if (statusElement) statusElement.textContent = status;
+            
+            const resultContainer = document.getElementById('result-container');
+            if (resultContainer) {
+                resultContainer.style.display = 'block';
+                console.log('Result container shown');
+            }
             
             // Store for download/email
             window.currentLicense = {
@@ -492,6 +537,7 @@
                 status: status
             };
             
+            console.log('License stored:', window.currentLicense);
             showAlert('لایسنس با موفقیت تولید شد!', 'success');
         });
 
@@ -566,6 +612,19 @@ All Rights Reserved
             
             window.open(`mailto:${window.currentLicense.email}?subject=${subject}&body=${body}`);
             showAlert('ایمیل آماده شد!', 'success');
+        }
+
+        // Test function for debugging
+        function testGeneration() {
+            console.log('Test generation started');
+            
+            // Fill form with test data
+            document.getElementById('customer-name').value = 'محمد احمدی';
+            document.getElementById('customer-email').value = 'test@example.com';
+            document.getElementById('license-type').value = 'PFC-PRO-2024-FULL';
+            
+            // Trigger form submission
+            document.getElementById('license-form').dispatchEvent(new Event('submit'));
         }
     </script>
 </body>

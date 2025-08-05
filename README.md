@@ -83,6 +83,36 @@ python3 license_server.py
 - ✅ ارسال خودکار به ایمیل مشتری
 - ✅ مدیریت انواع مختلف لایسنس
 
+### 📦 ساخت فایل نصبی:
+
+#### **ساخت سریع:**
+```bash
+# نصب PyInstaller و ساخت فایل اجرایی
+python3 quick_build.py advanced
+
+# یا به صورت تعاملی
+python3 quick_build.py
+```
+
+#### **ساخت کامل (با نصب‌کننده):**
+```bash
+# ساخت فایل اجرایی + نصب‌کننده + نسخه قابل حمل
+python3 build_installer.py
+```
+
+#### **گزینه‌های ساخت:**
+- **Basic**: فایل اجرایی ساده
+- **Advanced**: شامل تمام فایل‌های داده
+- **Directory**: نسخه پوشه‌ای
+- **Full Installer**: نصب‌کننده NSIS/Linux + نسخه قابل حمل
+
+#### **خروجی‌ها:**
+- 🎯 **Executable**: `dist/Persian_File_Copier_Pro.exe`
+- 📦 **Windows Installer**: `installer/Persian_File_Copier_Pro_Setup.exe`
+- 🐧 **Linux Installer**: `installer/install.sh`
+- 💼 **Portable Version**: `installer/Portable/`
+- 📁 **ZIP Package**: `installer/Persian_File_Copier_Pro_Portable.zip`
+
 ---
 
 ## 🛠️ نصب و راه‌اندازی

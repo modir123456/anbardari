@@ -28,6 +28,8 @@ class LicenseHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.path = '/license_generator.html'
         elif self.path == '/license' or self.path == '/license/':
             self.path = '/license_generator.html'
+        elif self.path == '/test' or self.path == '/test/':
+            self.path = '/license_test.html'
         
         return super().do_GET()
 
