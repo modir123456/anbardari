@@ -190,34 +190,84 @@ class ConfigManager:
         self.config[section][key] = value
         self.save_config()
 
-# License Management System  
+# License Management System - Enhanced Security
 class LicenseManager:
-    """مدیریت لایسنس و احراز هویت"""
+    """مدیریت لایسنس و احراز هویت - نسخه امن"""
     
     def __init__(self, config_manager: ConfigManager):
         self.config = config_manager
-        self.company_key = "PERSIANFILECOPIER2024"
+        self.company_key = "PERSIANFILECOPIER2024_SECURE"
+        self.trial_days = 7
+        self.trial_file_limit = 100
+        self._machine_id = self._get_machine_id()
         
+    def _get_machine_id(self) -> str:
+        """دریافت شناسه منحصر به فرد دستگاه"""
+        try:
+            import platform
+            
+            # Combine multiple hardware identifiers
+            machine_data = f"{platform.machine()}-{platform.processor()}-{platform.node()}"
+            
+            # Add network MAC address if available
+            try:
+                import uuid
+                mac = hex(uuid.getnode())[2:]
+                machine_data += f"-{mac}"
+            except:
+                pass
+            
+            # Create hash
+            hash_obj = hashlib.sha256(machine_data.encode())
+            return hash_obj.hexdigest()[:16].upper()
+        except:
+            return "DEFAULT-MACHINE"
+    
     def generate_serial(self, customer_name: str, customer_email: str) -> str:
-        """تولید سریال منحصربه‌فرد"""
+        """تولید سریال منحصربه‌فرد با machine binding"""
         timestamp = str(int(time.time()))
-        data = f"{customer_name}{customer_email}{timestamp}{self.company_key}"
+        machine_hash = self._machine_id[:8]
+        data = f"{customer_name}{customer_email}{timestamp}{machine_hash}{self.company_key}"
         hash_obj = hashlib.sha256(data.encode())
-        serial = base64.b64encode(hash_obj.digest()).decode()[:20].upper()
-        return f"PFC-{serial[:4]}-{serial[4:8]}-{serial[8:12]}-{serial[12:16]}"
+        serial = base64.b64encode(hash_obj.digest()).decode()[:16].upper()
+        checksum = self._calculate_checksum("PRO", machine_hash)
+        return f"PFC-PRO-{machine_hash}-{checksum}"
+    
+    def _calculate_checksum(self, license_type: str, machine_hash: str) -> str:
+        """محاسبه checksum برای لایسنس"""
+        data = f"{license_type}-{machine_hash}-{self.company_key}"
+        return hashlib.md5(data.encode()).hexdigest()[:8].upper()
     
     def validate_license(self, license_key: str) -> bool:
-        """اعتبارسنجی کلید لایسنس"""
+        """اعتبارسنجی کلید لایسنس با machine binding"""
         try:
-            if not license_key or len(license_key) < 20:
+            if not license_key or len(license_key) < 25:
                 return False
             
-            # Basic validation - in real app, check against server
+            # Expected format: PFC-[TYPE]-[MACHINE]-[CHECKSUM]
             parts = license_key.split('-')
-            if len(parts) != 5 or parts[0] != 'PFC':
+            if len(parts) != 4 or parts[0] != 'PFC':
                 return False
-                
+            
+            license_type = parts[1]
+            machine_hash = parts[2]
+            checksum = parts[3]
+            
+            # Validate license type
+            if license_type not in ['PRO', 'ENT']:
+                return False
+            
+            # Validate machine binding
+            if machine_hash != self._machine_id[:8]:
+                return False
+            
+            # Validate checksum
+            expected_checksum = self._calculate_checksum(license_type, machine_hash)
+            if checksum != expected_checksum:
+                return False
+            
             return True
+            
         except:
             return False
     
@@ -227,42 +277,96 @@ class LicenseManager:
             self.config.set('license', 'license_key', license_key)
             self.config.set('license', 'license_status', 'active')
             self.config.set('license', 'activation_date', datetime.now().isoformat())
+            self.config.set('license', 'machine_id', self._machine_id)
             
-            # Determine license type based on key pattern
-            if 'PERS' in license_key:
-                license_type = 'personal'
-            elif 'COMM' in license_key:
-                license_type = 'commercial' 
-            elif 'CORP' in license_key:
-                license_type = 'corporate'
-            else:
-                license_type = 'personal'
-                
+            # Determine license type
+            parts = license_key.split('-')
+            license_type = parts[1] if len(parts) > 1 else 'PRO'
+            
             self.config.set('license', 'license_type', license_type)
             return True, f"لایسنس {license_type} با موفقیت فعال شد"
         else:
-            return False, "کلید لایسنس نامعتبر است"
+            return False, "کلید لایسنس نامعتبر است یا متعلق به دستگاه دیگری است"
     
     def check_file_limit(self, file_count: int) -> bool:
         """بررسی محدودیت تعداد فایل"""
-        license_status = self.config.get('license', 'license_status', 'inactive')
-        license_type = self.config.get('license', 'license_type', 'trial')
+        license_info = self.get_license_info()
         
-        if license_status == 'active' and license_type != 'trial':
+        # Check if license is valid and not expired
+        if license_info['status'] == 'active' and license_info['type'] != 'trial':
+            # Additional machine verification
+            stored_machine = self.config.get('license', 'machine_id', '')
+            if stored_machine and stored_machine != self._machine_id:
+                return False
             return True
+        
+        # Trial version limitations
+        if self._is_trial_expired():
+            return False
             
-        max_files = self.config.get('license', 'max_files_trial', 100)
-        return file_count <= max_files
+        return file_count <= self.trial_file_limit
+    
+    def _is_trial_expired(self) -> bool:
+        """بررسی انقضای نسخه آزمایشی"""
+        try:
+            install_date_str = self.config.get('license', 'install_date', '')
+            if not install_date_str:
+                # First run
+                install_date = datetime.now().isoformat()
+                self.config.set('license', 'install_date', install_date)
+                self.config.set('license', 'trial_machine_id', self._machine_id)
+                return False
+            
+            # Check machine binding for trial
+            trial_machine = self.config.get('license', 'trial_machine_id', '')
+            if trial_machine and trial_machine != self._machine_id:
+                return True  # Trial expired if moved to different machine
+            
+            install_date = datetime.fromisoformat(install_date_str)
+            days_passed = (datetime.now() - install_date).days
+            return days_passed >= self.trial_days
+        except:
+            return True
     
     def get_license_info(self) -> dict:
         """دریافت اطلاعات لایسنس"""
+        license_status = self.config.get('license', 'license_status', 'inactive')
+        license_type = self.config.get('license', 'license_type', 'trial')
+        license_key = self.config.get('license', 'license_key', '')
+        
+        if license_status == 'active' and license_key:
+            # Verify license is still valid
+            if not self.validate_license(license_key):
+                license_status = 'invalid'
+                license_type = 'trial'
+        
+        # Calculate trial info
+        trial_info = ""
+        if license_type == 'trial' or license_status != 'active':
+            try:
+                install_date_str = self.config.get('license', 'install_date', '')
+                if install_date_str:
+                    install_date = datetime.fromisoformat(install_date_str)
+                    days_passed = (datetime.now() - install_date).days
+                    remaining_days = max(0, self.trial_days - days_passed)
+                    trial_info = f"{remaining_days} روز باقی‌مانده"
+                else:
+                    trial_info = f"{self.trial_days} روز آزمایشی"
+            except:
+                trial_info = "نامشخص"
+        
         return {
-            'status': self.config.get('license', 'license_status', 'inactive'),
-            'type': self.config.get('license', 'license_type', 'trial'),
-            'key': self.config.get('license', 'license_key', ''),
+            'status': trial_info if license_type == 'trial' else license_status,
+            'type': 'نسخه کامل' if license_status == 'active' else 'آزمایشی',
+            'key': license_key if license_status == 'active' else '',
             'activation_date': self.config.get('license', 'activation_date', ''),
-            'max_files': self.config.get('license', 'max_files_trial', 100)
+            'max_files': 'نامحدود' if license_status == 'active' else self.trial_file_limit,
+            'machine_id': self._machine_id[:8]  # Show partial ID for support
         }
+    
+    def get_machine_info_for_support(self) -> str:
+        """تولید اطلاعات دستگاه برای پشتیبانی"""
+        return f"Machine ID: {self._machine_id[:8]}\nFull Hash: {self._machine_id}\nPlatform: {platform.system()} {platform.release()}"
 
 # Toast Notification System
 class ToastNotification(QWidget):
@@ -642,7 +746,7 @@ class PersianFileCopierPyQt5(QMainWindow):
         
         # Start initial scan and load drives
         self.start_drive_scan()
-        self.load_drives_list()
+        self.load_drives_tree()
         
     def init_ui(self):
         """راه‌اندازی رابط کاربری"""
@@ -695,20 +799,17 @@ class PersianFileCopierPyQt5(QMainWindow):
         main_layout.setSpacing(8)
         
         # Main content area with splitter
-        splitter = QSplitter(Qt.Horizontal)
+        main_splitter = QSplitter(Qt.Horizontal)
         
-        # Left section - File list (45%)
-        self.create_file_section(splitter)
+        # Left section - File list (60%)
+        self.create_file_section(main_splitter)
         
-        # Center section - Drive list and copy controls (25%)
-        self.create_center_section(splitter)
-        
-        # Right section - Destinations and tasks (30%)
-        self.create_right_section(splitter)
+        # Right section - Split into drives/destinations (top) and tasks (bottom) (40%)
+        self.create_right_section(main_splitter)
         
         # Set splitter proportions
-        splitter.setSizes([450, 250, 300])
-        main_layout.addWidget(splitter)
+        main_splitter.setSizes([600, 400])
+        main_layout.addWidget(main_splitter)
         
         self.tab_widget.addTab(tab, "📁 مدیریت فایل‌ها")
     
@@ -818,166 +919,128 @@ class PersianFileCopierPyQt5(QMainWindow):
         file_layout.addWidget(action_frame)
         parent_splitter.addWidget(file_frame)
     
-    def create_center_section(self, parent_splitter):
-        """بخش مرکزی - لیست درایوها و کنترل‌های کپی"""
-        center_frame = QFrame()
-        center_frame.setFrameStyle(QFrame.StyledPanel)
-        center_layout = QVBoxLayout(center_frame)
-        center_layout.setContentsMargins(8, 8, 8, 8)
-        center_layout.setSpacing(8)
-        
-        # Drive list section
-        drive_group = QGroupBox("🖥️ لیست درایوها")
-        drive_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
-        drive_layout = QVBoxLayout(drive_group)
-        
-        self.drive_list = QTreeWidget()
-        self.drive_list.setHeaderLabels(["درایو", "فضای آزاد"])
-        self.drive_list.setFont(QFont("B Nazanin", 10))
-        self.drive_list.setMaximumHeight(150)
-        drive_layout.addWidget(self.drive_list)
-        
-        center_layout.addWidget(drive_group)
-        
-        # Copy controls
-        copy_group = QGroupBox("📋 کنترل کپی")
-        copy_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
-        copy_layout = QVBoxLayout(copy_group)
-        
-        self.copy_selected_btn = QPushButton("📁 کپی انتخاب شده")
-        self.copy_selected_btn.setFont(QFont("B Nazanin", 10))
-        self.copy_selected_btn.setMinimumHeight(35)
-        
-        self.copy_all_btn = QPushButton("📁 کپی همه فایل‌ها")
-        self.copy_all_btn.setFont(QFont("B Nazanin", 10))
-        self.copy_all_btn.setMinimumHeight(35)
-        
-        copy_layout.addWidget(self.copy_selected_btn)
-        copy_layout.addWidget(self.copy_all_btn)
-        center_layout.addWidget(copy_group)
-        
-        center_layout.addStretch()
-        parent_splitter.addWidget(center_frame)
+
     
     def create_right_section(self, parent_splitter):
-        """بخش راست - مقصدها و تسک‌ها"""
+        """بخش راست - درایوها/مقصدها (بالا) و تسک‌ها (پایین)"""
         right_frame = QFrame()
         right_frame.setFrameStyle(QFrame.StyledPanel)
         right_layout = QVBoxLayout(right_frame)
-        right_layout.setContentsMargins(8, 8, 8, 8)
-        right_layout.setSpacing(8)
+        right_layout.setContentsMargins(6, 6, 6, 6)
+        right_layout.setSpacing(4)
         
-        # Destinations section
-        dest_group = QGroupBox("📂 مقصدهای کپی")
-        dest_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
-        dest_layout = QVBoxLayout(dest_group)
+        # Create vertical splitter for top/bottom sections
+        right_splitter = QSplitter(Qt.Vertical)
         
-        # Current destination
-        current_layout = QHBoxLayout()
-        dest_label = QLabel("مقصد:")
-        dest_label.setFont(QFont("B Nazanin", 10))
+        # Top section - Drives and destinations
+        self.create_drives_destinations_section(right_splitter)
         
-        self.destination_entry = QLineEdit()
-        self.destination_entry.setFont(QFont("B Nazanin", 9))
-        self.destination_entry.setPlaceholderText("انتخاب مقصد...")
-        self.destination_entry.setMaximumHeight(26)
+        # Bottom section - Tasks
+        self.create_tasks_section(right_splitter)
         
-        self.browse_dest_btn = QPushButton("📁")
-        self.browse_dest_btn.setMaximumSize(30, 26)
+        # Set splitter proportions (50/50)
+        right_splitter.setSizes([200, 200])
+        right_layout.addWidget(right_splitter)
         
-        current_layout.addWidget(dest_label)
-        current_layout.addWidget(self.destination_entry)
-        current_layout.addWidget(self.browse_dest_btn)
-        dest_layout.addLayout(current_layout)
+        parent_splitter.addWidget(right_frame)
+    
+    def create_drives_destinations_section(self, parent_splitter):
+        """بخش بالای راست - درایوها و پوشه‌های مقصد"""
+        drives_frame = QFrame()
+        drives_frame.setFrameStyle(QFrame.Box)
+        drives_layout = QVBoxLayout(drives_frame)
+        drives_layout.setContentsMargins(6, 6, 6, 6)
+        drives_layout.setSpacing(4)
         
-        # Quick destinations as clickable buttons
-        quick_frame = QFrame()
-        quick_layout = QGridLayout(quick_frame)
-        quick_layout.setSpacing(3)
+        # Header
+        header_label = QLabel("🖥️ درایوها و مقصدها")
+        header_label.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        header_label.setAlignment(Qt.AlignCenter)
+        drives_layout.addWidget(header_label)
         
-        quick_destinations = [
-            ("🖥️ دسکتاپ", "~/Desktop"),
-            ("📁 مستندات", "~/Documents"),
-            ("📥 دانلودها", "~/Downloads"),
-            ("🎵 موزیک", "~/Music"),
-            ("🎬 ویدیوها", "~/Videos"),
-            ("📷 عکس‌ها", "~/Pictures")
-        ]
+        # Drives tree with destinations
+        self.drives_tree = QTreeWidget()
+        self.drives_tree.setHeaderHidden(True)
+        self.drives_tree.setFont(QFont("B Nazanin", 10))
+        self.drives_tree.setRootIsDecorated(True)
+        self.drives_tree.setIndentation(20)
         
-        row, col = 0, 0
-        for name, path in quick_destinations:
-            btn = QPushButton(name)
-            btn.setFont(QFont("B Nazanin", 8))
-            btn.setMaximumHeight(25)
-            btn.clicked.connect(lambda checked, p=path: self.set_destination_and_copy(p))
-            quick_layout.addWidget(btn, row, col)
-            
-            col += 1
-            if col > 1:
-                col = 0
-                row += 1
+        # Enable click handling
+        self.drives_tree.itemClicked.connect(self.on_destination_clicked)
         
-        dest_layout.addWidget(quick_frame)
-        right_layout.addWidget(dest_group)
+        drives_layout.addWidget(self.drives_tree)
+        parent_splitter.addWidget(drives_frame)
+    
+    def create_tasks_section(self, parent_splitter):
+        """بخش پایین راست - تسک‌های کپی"""
+        tasks_frame = QFrame()
+        tasks_frame.setFrameStyle(QFrame.Box)
+        tasks_layout = QVBoxLayout(tasks_frame)
+        tasks_layout.setContentsMargins(6, 6, 6, 6)
+        tasks_layout.setSpacing(4)
         
-        # Tasks section
-        tasks_group = QGroupBox("📊 تسک‌های کپی")
-        tasks_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
-        tasks_layout = QVBoxLayout(tasks_group)
+        # Header
+        header_label = QLabel("📊 تسک‌های کپی")
+        header_label.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        header_label.setAlignment(Qt.AlignCenter)
+        tasks_layout.addWidget(header_label)
         
-        # Task control buttons
+        # Task control buttons (larger size)
         task_control_frame = QFrame()
         task_control_layout = QHBoxLayout(task_control_frame)
-        task_control_layout.setContentsMargins(2, 2, 2, 2)
+        task_control_layout.setContentsMargins(4, 4, 4, 4)
+        task_control_layout.setSpacing(6)
         
-        self.pause_all_btn = QPushButton("⏸️")
-        self.pause_all_btn.setMaximumSize(30, 25)
-        self.pause_all_btn.setToolTip("مکث همه")
+        self.pause_all_btn = QPushButton("⏸️ مکث همه")
+        self.pause_all_btn.setFont(QFont("B Nazanin", 10))
+        self.pause_all_btn.setMinimumHeight(32)
+        self.pause_all_btn.setMinimumWidth(80)
         
-        self.resume_all_btn = QPushButton("▶️")
-        self.resume_all_btn.setMaximumSize(30, 25)
-        self.resume_all_btn.setToolTip("ادامه همه")
+        self.resume_all_btn = QPushButton("▶️ ادامه همه")
+        self.resume_all_btn.setFont(QFont("B Nazanin", 10))
+        self.resume_all_btn.setMinimumHeight(32)
+        self.resume_all_btn.setMinimumWidth(80)
         
-        self.cancel_all_btn = QPushButton("❌")
-        self.cancel_all_btn.setMaximumSize(30, 25)
-        self.cancel_all_btn.setToolTip("لغو همه")
+        self.cancel_all_btn = QPushButton("❌ لغو همه")
+        self.cancel_all_btn.setFont(QFont("B Nazanin", 10))
+        self.cancel_all_btn.setMinimumHeight(32)
+        self.cancel_all_btn.setMinimumWidth(80)
         
-        self.clear_completed_btn = QPushButton("🧹")
-        self.clear_completed_btn.setMaximumSize(30, 25)
-        self.clear_completed_btn.setToolTip("پاک کردن تکمیل شده")
+        self.clear_completed_btn = QPushButton("🧹 پاک‌سازی")
+        self.clear_completed_btn.setFont(QFont("B Nazanin", 10))
+        self.clear_completed_btn.setMinimumHeight(32)
+        self.clear_completed_btn.setMinimumWidth(80)
         
         task_control_layout.addWidget(self.pause_all_btn)
         task_control_layout.addWidget(self.resume_all_btn)
         task_control_layout.addWidget(self.cancel_all_btn)
         task_control_layout.addWidget(self.clear_completed_btn)
-        task_control_layout.addStretch()
         
         tasks_layout.addWidget(task_control_frame)
         
-        # Tasks table
+        # Tasks table (larger fonts and buttons)
         self.tasks_table = QTableWidget()
-        self.tasks_table.setColumnCount(5)
+        self.tasks_table.setColumnCount(4)
         self.tasks_table.setHorizontalHeaderLabels([
-            "مبدأ", "مقصد", "پیشرفت", "سرعت", "کنترل"
+            "📁 مبدأ", "📂 مقصد", "📊 پیشرفت", "🎛️ کنترل"
         ])
         
-        # Set column widths
-        self.tasks_table.setColumnWidth(0, 80)   # Source
-        self.tasks_table.setColumnWidth(1, 80)   # Destination  
-        self.tasks_table.setColumnWidth(2, 60)   # Progress
-        self.tasks_table.setColumnWidth(3, 50)   # Speed
-        self.tasks_table.setColumnWidth(4, 60)   # Control
+        # Set column widths (larger)
+        self.tasks_table.setColumnWidth(0, 100)   # Source
+        self.tasks_table.setColumnWidth(1, 100)   # Destination  
+        self.tasks_table.setColumnWidth(2, 120)   # Progress
+        self.tasks_table.setColumnWidth(3, 120)   # Control
         
         self.tasks_table.setAlternatingRowColors(True)
         self.tasks_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.tasks_table.setFont(QFont("B Nazanin", 8))
-        self.tasks_table.setMaximumHeight(200)
+        self.tasks_table.setFont(QFont("B Nazanin", 9))
+        self.tasks_table.setMinimumHeight(150)
+        
+        # Set row height larger
+        self.tasks_table.verticalHeader().setDefaultSectionSize(40)
         
         tasks_layout.addWidget(self.tasks_table)
-        right_layout.addWidget(tasks_group)
-        
-        right_layout.addStretch()
-        parent_splitter.addWidget(right_frame)
+        parent_splitter.addWidget(tasks_frame)
     
     def set_destination_and_copy(self, path: str):
         """تنظیم مقصد و شروع کپی"""
@@ -1542,120 +1605,74 @@ class PersianFileCopierPyQt5(QMainWindow):
     def load_about_content(self, parent_layout):
         """بارگذاری محتوای درباره ما از فایل HTML"""
         try:
-            # Create HTML viewer
-            from PyQt5.QtWebKitWidgets import QWebView
-            try:
-                html_viewer = QWebView()
-                html_viewer.setFont(QFont("B Nazanin", 11))
-                
-                if os.path.exists("about_us.html"):
-                    with open("about_us.html", 'r', encoding='utf-8') as f:
-                        html_content = f.read()
-                    html_viewer.setHtml(html_content)
-                else:
-                    # Default about content as HTML
-                    default_html = f"""
-                    <!DOCTYPE html>
-                    <html dir="rtl" lang="fa">
-                    <head>
-                        <meta charset="UTF-8">
-                        <style>
-                            body {{
-                                font-family: 'B Nazanin', Tahoma, Arial;
-                                font-size: 14px;
-                                line-height: 1.6;
-                                color: #333;
-                                direction: rtl;
-                                padding: 20px;
-                            }}
-                            h1 {{ color: #0078d4; text-align: center; }}
-                            h2 {{ color: #106ebe; }}
-                            .feature {{ margin: 10px 0; }}
-                            .company {{ 
-                                background: #f0f8ff; 
-                                padding: 15px; 
-                                border-radius: 8px;
-                                text-align: center;
-                                margin: 20px 0;
-                            }}
-                        </style>
-                    </head>
-                    <body>
-                        <h1>{self.config.get('app_settings', 'app_name')}</h1>
-                        
-                        <p>نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف 
-                        تسهیل کار کاربران ایرانی طراحی شده است.</p>
-                        
-                        <h2>🔧 امکانات اصلی:</h2>
-                        <div class="feature">📁 مرور و جستجوی پیشرفته فایل‌ها</div>
-                        <div class="feature">🔍 فیلتر بر اساس نوع و اندازه فایل</div>
-                        <div class="feature">⚡ کپی چندگانه با نمایش پیشرفت</div>
-                        <div class="feature">🔤 پشتیبانی از فونت‌های فارسی</div>
-                        <div class="feature">🎨 رابط کاربری زیبا و کاربردی</div>
-                        <div class="feature">📊 مدیریت تسک‌های کپی</div>
-                        <div class="feature">🚀 عملکرد بالا و بهینه</div>
-                        
-                        <h2>💼 مزایای نسخه کامل:</h2>
-                        <div class="feature">✅ کپی نامحدود فایل‌ها</div>
-                        <div class="feature">📞 پشتیبانی 24/7</div>
-                        <div class="feature">🔄 بروزرسانی رایگان مادام‌العمر</div>
-                        <div class="feature">⚙️ امکانات پیشرفته کپی</div>
-                        
-                        <div class="company">
-                            <h2>{self.config.get('app_settings', 'company')}</h2>
-                            <p>📞 پشتیبانی: {self.config.get('zarinpal', 'support_telegram')}</p>
-                            <p>🌐 درگاه پرداخت: {self.config.get('zarinpal', 'payment_url')}</p>
-                        </div>
-                    </body>
-                    </html>
-                    """
-                    html_viewer.setHtml(default_html)
-                
-                parent_layout.addWidget(html_viewer)
-                
-            except ImportError:
-                # Fallback to QTextEdit with rich text
-                about_text = QTextEdit()
-                about_text.setFont(QFont("B Nazanin", 11))
-                about_text.setReadOnly(True)
-                
-                if os.path.exists("about_us.html"):
-                    with open("about_us.html", 'r', encoding='utf-8') as f:
-                        html_content = f.read()
-                    about_text.setHtml(html_content)
-                else:
-                    # Default rich text content
-                    default_content = f"""
-                    <div style="font-family: 'B Nazanin', Tahoma; font-size: 12px; direction: rtl;">
-                        <h2 style="color: #0078d4; text-align: center;">{self.config.get('app_settings', 'app_name')}</h2>
-                        
-                        <p>نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف 
-                        تسهیل کار کاربران ایرانی طراحی شده است.</p>
-                        
-                        <h3 style="color: #106ebe;">🔧 امکانات اصلی:</h3>
-                        <ul>
-                            <li>📁 مرور و جستجوی پیشرفته فایل‌ها</li>
-                            <li>🔍 فیلتر بر اساس نوع و اندازه فایل</li>
-                            <li>⚡ کپی چندگانه با نمایش پیشرفت</li>
-                            <li>🔤 پشتیبانی از فونت‌های فارسی</li>
-                            <li>🎨 رابط کاربری زیبا و کاربردی</li>
-                        </ul>
-                        
-                        <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
-                            <h3>{self.config.get('app_settings', 'company')}</h3>
-                            <p>📞 پشتیبانی: {self.config.get('zarinpal', 'support_telegram')}</p>
-                        </div>
+            # Use QTextEdit with rich text (more reliable than QWebView)
+            about_text = QTextEdit()
+            about_text.setFont(QFont("B Nazanin", 11))
+            about_text.setReadOnly(True)
+            
+            if os.path.exists("about_us.html"):
+                with open("about_us.html", 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                about_text.setHtml(html_content)
+            else:
+                # Default rich text content
+                default_content = f"""
+                <div style="font-family: 'B Nazanin', Tahoma; font-size: 12px; direction: rtl; padding: 10px;">
+                    <h1 style="color: #0078d4; text-align: center; margin-bottom: 20px;">
+                        {self.config.get('app_settings', 'app_name')} v{self.config.get('app_settings', 'version')}
+                    </h1>
+                    
+                    <div style="background: linear-gradient(135deg, #f0f8ff, #e6f3ff); padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #0078d4;">
+                        <p style="text-align: center; font-size: 14px; margin: 0;">
+                            نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف 
+                            تسهیل کار کاربران ایرانی طراحی شده است.
+                        </p>
                     </div>
-                    """
-                    about_text.setHtml(default_content)
-                
-                parent_layout.addWidget(about_text)
-                
+                    
+                    <h2 style="color: #106ebe; border-bottom: 2px solid #106ebe; padding-bottom: 5px;">🔧 امکانات اصلی:</h2>
+                    <ul style="line-height: 1.8;">
+                        <li style="margin: 8px 0;">📁 مرور و جستجوی پیشرفته فایل‌ها در همه درایوها</li>
+                        <li style="margin: 8px 0;">🔍 فیلتر بر اساس نوع و اندازه فایل (12 دسته)</li>
+                        <li style="margin: 8px 0;">⚡ کپی چندگانه با نمایش پیشرفت زنده</li>
+                        <li style="margin: 8px 0;">🔤 پشتیبانی کامل از فونت‌های فارسی</li>
+                        <li style="margin: 8px 0;">🎨 رابط کاربری زیبا و کاربردی با تم‌های مختلف</li>
+                        <li style="margin: 8px 0;">📊 مدیریت پیشرفته تسک‌های کپی</li>
+                        <li style="margin: 8px 0;">🚀 عملکرد بالا و بهینه با PyQt5</li>
+                        <li style="margin: 8px 0;">🌳 نمایش درختواره‌ای درایوها و پوشه‌ها</li>
+                    </ul>
+                    
+                    <h2 style="color: #106ebe; border-bottom: 2px solid #106ebe; padding-bottom: 5px;">💼 مزایای نسخه کامل:</h2>
+                    <ul style="line-height: 1.8;">
+                        <li style="margin: 8px 0; color: #27ae60;"><b>✅ کپی نامحدود فایل‌ها</b></li>
+                        <li style="margin: 8px 0; color: #27ae60;"><b>📞 پشتیبانی 24/7</b></li>
+                        <li style="margin: 8px 0; color: #27ae60;"><b>🔄 بروزرسانی رایگان مادام‌العمر</b></li>
+                        <li style="margin: 8px 0; color: #27ae60;"><b>⚙️ امکانات پیشرفته کپی</b></li>
+                    </ul>
+                    
+                    <div style="background: #f0f8ff; padding: 20px; border-radius: 12px; text-align: center; margin: 20px 0; border: 2px solid #0078d4;">
+                        <h2 style="color: #0078d4; margin-top: 0;">{self.config.get('app_settings', 'company')}</h2>
+                        <p style="margin: 10px 0; font-size: 14px;"><b>📞 پشتیبانی:</b> {self.config.get('zarinpal', 'support_telegram')}</p>
+                        <p style="margin: 10px 0; font-size: 14px;"><b>🌐 درگاه پرداخت:</b> {self.config.get('zarinpal', 'payment_url')}</p>
+                        <p style="margin: 10px 0; font-size: 12px; color: #666;">ورژن: {self.config.get('app_settings', 'version')} - نسخه PyQt5</p>
+                    </div>
+                    
+                    <div style="background: #fff8dc; padding: 15px; border-radius: 8px; border-left: 4px solid #ffa500;">
+                        <p style="margin: 0; font-size: 13px; color: #b8860b;">
+                            <b>نکته:</b> این نسخه PyQt5 عملکرد بهتری نسبت به نسخه CustomTkinter دارد و برای استفاده حرفه‌ای توصیه می‌شود.
+                        </p>
+                    </div>
+                </div>
+                """
+                about_text.setHtml(default_content)
+            
+            parent_layout.addWidget(about_text)
+            
         except Exception as e:
             print(f"Error loading about content: {e}")
             # Fallback to simple text
             fallback_label = QLabel(f"خطا در بارگذاری محتوا: {e}")
             fallback_label.setFont(QFont("B Nazanin", 11))
+            fallback_label.setWordWrap(True)
             parent_layout.addWidget(fallback_label)
     
     def create_status_bar(self):
@@ -1844,6 +1861,16 @@ class PersianFileCopierPyQt5(QMainWindow):
                 background-color: #4a4a4a;
                 border: 1px solid #666666;
                 border-radius: 4px;
+                padding: 1px;
+            }
+            QFrame[frameShape="4"] { /* QFrame.Box */
+                border: 2px solid #666666;
+                border-radius: 6px;
+            }
+            QFrame[frameShape="1"] { /* QFrame.StyledPanel */
+                border: 1px solid #666666;
+                border-radius: 4px;
+                background-color: #4a4a4a;
             }
             QLabel {
                 color: #ffffff;
@@ -2139,9 +2166,7 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.clear_search_btn.clicked.connect(self.clear_filters)
         self.select_all_btn.clicked.connect(self.select_all_files)
         
-        # Copy buttons
-        self.copy_selected_btn.clicked.connect(self.copy_selected_files)
-        self.copy_all_btn.clicked.connect(self.copy_all_files)
+
         
         # Task control buttons
         self.pause_all_btn.clicked.connect(self.pause_all_tasks)
@@ -2439,59 +2464,54 @@ class PersianFileCopierPyQt5(QMainWindow):
             # Source (file count)
             source_text = f"{len(file_paths)} فایل"
             source_item = QTableWidgetItem(source_text)
-            source_item.setFont(QFont("B Nazanin", 8))
+            source_item.setFont(QFont("B Nazanin", 10))
             self.tasks_table.setItem(row, 0, source_item)
             
             # Destination
             dest_text = os.path.basename(destination) or destination
             dest_item = QTableWidgetItem(dest_text)
-            dest_item.setFont(QFont("B Nazanin", 8))
+            dest_item.setFont(QFont("B Nazanin", 10))
             self.tasks_table.setItem(row, 1, dest_item)
             
-            # Progress with speed combined
+            # Progress with speed combined (larger)
             progress_widget = QWidget()
             progress_layout = QVBoxLayout(progress_widget)
-            progress_layout.setContentsMargins(2, 2, 2, 2)
-            progress_layout.setSpacing(1)
+            progress_layout.setContentsMargins(4, 4, 4, 4)
+            progress_layout.setSpacing(2)
             
             progress_bar = QProgressBar()
-            progress_bar.setFont(QFont("B Nazanin", 7))
-            progress_bar.setMaximumHeight(12)
+            progress_bar.setFont(QFont("B Nazanin", 9))
+            progress_bar.setMinimumHeight(16)
             progress_layout.addWidget(progress_bar)
             
             speed_label = QLabel("0 MB/s")
-            speed_label.setFont(QFont("B Nazanin", 7))
+            speed_label.setFont(QFont("B Nazanin", 9))
             speed_label.setAlignment(Qt.AlignCenter)
             progress_layout.addWidget(speed_label)
             
             self.tasks_table.setCellWidget(row, 2, progress_widget)
             
-            # Status
-            status_item = QTableWidgetItem("شروع...")
-            status_item.setFont(QFont("B Nazanin", 8))
-            self.tasks_table.setItem(row, 3, status_item)
-            
-            # Individual control buttons
+            # Individual control buttons (larger)
             control_widget = QWidget()
             control_layout = QHBoxLayout(control_widget)
-            control_layout.setContentsMargins(1, 1, 1, 1)
-            control_layout.setSpacing(1)
+            control_layout.setContentsMargins(4, 4, 4, 4)
+            control_layout.setSpacing(4)
             
             pause_btn = QPushButton("⏸️")
-            pause_btn.setMaximumSize(20, 20)
-            pause_btn.setFont(QFont("Arial", 7))
+            pause_btn.setMinimumSize(28, 28)
+            pause_btn.setFont(QFont("Arial", 10))
             pause_btn.setToolTip("مکث")
             pause_btn.clicked.connect(lambda: self.pause_task(task_id))
             
             resume_btn = QPushButton("▶️")
-            resume_btn.setMaximumSize(20, 20)
-            resume_btn.setFont(QFont("Arial", 7))
+            resume_btn.setMinimumSize(28, 28)
+            resume_btn.setFont(QFont("Arial", 10))
             resume_btn.setToolTip("ادامه")
             resume_btn.clicked.connect(lambda: self.resume_task(task_id))
             
             cancel_btn = QPushButton("❌")
-            cancel_btn.setMaximumSize(20, 20)
-            cancel_btn.setFont(QFont("Arial", 7))
+            cancel_btn.setMinimumSize(28, 28)
+            cancel_btn.setFont(QFont("Arial", 10))
             cancel_btn.setToolTip("لغو")
             cancel_btn.clicked.connect(lambda: self.cancel_task(task_id))
             
@@ -2499,7 +2519,7 @@ class PersianFileCopierPyQt5(QMainWindow):
             control_layout.addWidget(resume_btn)
             control_layout.addWidget(cancel_btn)
             
-            self.tasks_table.setCellWidget(row, 4, control_widget)
+            self.tasks_table.setCellWidget(row, 3, control_widget)
             
             # Store row index and widgets for updates
             self.active_tasks[task_id]['row'] = row
@@ -2522,20 +2542,10 @@ class PersianFileCopierPyQt5(QMainWindow):
                 
                 if progress_bar:
                     progress_bar.setValue(progress)
-                    progress_bar.setFormat(f"{progress}%")
+                    progress_bar.setFormat(f"{progress}% - {eta}")
                 
                 if speed_label:
                     speed_label.setText(speed)
-                
-                # Update status
-                row = task.get('row', -1)
-                if row >= 0:
-                    status_item = self.tasks_table.item(row, 3)
-                    if status_item:
-                        if progress < 100:
-                            status_item.setText(f"در حال کپی... {eta}")
-                        else:
-                            status_item.setText("تکمیل شد")
                 
         except Exception as e:
             print(f"Error updating task progress: {e}")
@@ -2547,18 +2557,19 @@ class PersianFileCopierPyQt5(QMainWindow):
                 task = self.active_tasks[task_id]
                 task['status'] = 'completed' if success else 'failed'
                 
-                # Update progress bar and status
+                # Update progress bar
                 progress_bar = task.get('progress_bar')
-                if progress_bar and success:
-                    progress_bar.setValue(100)
-                    progress_bar.setFormat("100%")
+                speed_label = task.get('speed_label')
                 
-                # Update status in table
-                row = task.get('row', -1)
-                if row >= 0:
-                    status_item = self.tasks_table.item(row, 3)
-                    if status_item:
-                        status_item.setText("✅ تکمیل شد" if success else "❌ خطا")
+                if progress_bar:
+                    if success:
+                        progress_bar.setValue(100)
+                        progress_bar.setFormat("✅ تکمیل شد")
+                    else:
+                        progress_bar.setFormat("❌ خطا")
+                
+                if speed_label:
+                    speed_label.setText("تکمیل شد" if success else "خطا")
                 
                 # Show notification
                 toast_type = "success" if success else "error"
@@ -2885,34 +2896,194 @@ class PersianFileCopierPyQt5(QMainWindow):
         """بروزرسانی نوار وضعیت"""
         self.status_label.setText(message)
     
-    def load_drives_list(self):
-        """بارگذاری لیست درایوها"""
+    def load_drives_tree(self):
+        """بارگذاری درخت درایوها و پوشه‌ها"""
         try:
-            self.drive_list.clear()
+            self.drives_tree.clear()
             
             # Get all available drives
-            drives = []
             for partition in psutil.disk_partitions():
                 if partition.mountpoint:
                     try:
                         usage = psutil.disk_usage(partition.mountpoint)
                         free_space = self.format_size(usage.free)
+                        total_space = self.format_size(usage.total)
                         
-                        item = QTreeWidgetItem([
-                            partition.mountpoint,
-                            free_space
-                        ])
-                        self.drive_list.addTopLevelItem(item)
+                        # Create drive item
+                        drive_text = f"🖥️ {partition.mountpoint} ({free_space} آزاد از {total_space})"
+                        drive_item = QTreeWidgetItem([drive_text])
+                        drive_item.setData(0, Qt.UserRole, partition.mountpoint)  # Store path
+                        drive_item.setData(0, Qt.UserRole + 1, "drive")  # Mark as drive
+                        
+                        # Add main folders to drive
+                        self.add_drive_folders(drive_item, partition.mountpoint)
+                        
+                        self.drives_tree.addTopLevelItem(drive_item)
                         
                     except (PermissionError, OSError):
                         continue
             
-            # Auto resize columns
-            self.drive_list.resizeColumnToContents(0)
-            self.drive_list.resizeColumnToContents(1)
+            # Add quick destinations at top
+            self.add_quick_destinations()
             
         except Exception as e:
-            print(f"Error loading drives: {e}")
+            print(f"Error loading drives tree: {e}")
+    
+    def add_quick_destinations(self):
+        """اضافه کردن مقصدهای سریع به بالای درخت"""
+        try:
+            quick_item = QTreeWidgetItem(["📂 مقصدهای سریع"])
+            quick_item.setData(0, Qt.UserRole + 1, "quick")
+            
+            quick_destinations = [
+                ("🖥️ دسکتاپ", "~/Desktop"),
+                ("📁 مستندات", "~/Documents"),
+                ("📥 دانلودها", "~/Downloads"),
+                ("🎵 موزیک", "~/Music"),
+                ("🎬 ویدیوها", "~/Videos"),
+                ("📷 عکس‌ها", "~/Pictures")
+            ]
+            
+            for name, path in quick_destinations:
+                expanded_path = os.path.expanduser(path)
+                if os.path.exists(expanded_path):
+                    dest_item = QTreeWidgetItem([name])
+                    dest_item.setData(0, Qt.UserRole, expanded_path)
+                    dest_item.setData(0, Qt.UserRole + 1, "folder")
+                    quick_item.addChild(dest_item)
+            
+            # Insert at top
+            self.drives_tree.insertTopLevelItem(0, quick_item)
+            quick_item.setExpanded(True)
+            
+        except Exception as e:
+            print(f"Error adding quick destinations: {e}")
+    
+    def add_drive_folders(self, drive_item, drive_path):
+        """اضافه کردن پوشه‌های اصلی درایو"""
+        try:
+            # Add common directories
+            common_dirs = ["Users", "Program Files", "Windows", "Documents and Settings"]
+            
+            # For Unix-like systems
+            if not drive_path.endswith('\\'):
+                common_dirs = ["home", "usr", "var", "opt", "etc"]
+            
+            for dir_name in common_dirs:
+                dir_path = os.path.join(drive_path, dir_name)
+                if os.path.exists(dir_path) and os.path.isdir(dir_path):
+                    try:
+                        folder_item = QTreeWidgetItem([f"📁 {dir_name}"])
+                        folder_item.setData(0, Qt.UserRole, dir_path)
+                        folder_item.setData(0, Qt.UserRole + 1, "folder")
+                        
+                        # Add dummy child to make it expandable
+                        dummy = QTreeWidgetItem(["..."])
+                        folder_item.addChild(dummy)
+                        
+                        drive_item.addChild(folder_item)
+                    except (PermissionError, OSError):
+                        continue
+            
+            # Add direct drive access
+            drive_direct = QTreeWidgetItem([f"📂 ریشه {drive_path}"])
+            drive_direct.setData(0, Qt.UserRole, drive_path)
+            drive_direct.setData(0, Qt.UserRole + 1, "folder")
+            drive_item.addChild(drive_direct)
+            
+        except Exception as e:
+            print(f"Error adding drive folders: {e}")
+    
+    def on_destination_clicked(self, item, column):
+        """کلیک روی مقصد در درخت"""
+        try:
+            item_type = item.data(0, Qt.UserRole + 1)
+            if item_type in ["folder", "drive"]:
+                destination_path = item.data(0, Qt.UserRole)
+                if destination_path:
+                    # Check if files are selected
+                    selected_items = self.file_tree.selectedItems()
+                    if selected_items:
+                        self.start_copy_to_destination(destination_path)
+                    else:
+                        self.show_toast("ابتدا فایل‌هایی را از لیست چپ انتخاب کنید", "warning")
+                        
+                    # Load subfolders if clicked and has dummy child
+                    if item.childCount() == 1 and item.child(0).text(0) == "...":
+                        self.load_subfolders(item, destination_path)
+            
+        except Exception as e:
+            print(f"Error handling destination click: {e}")
+    
+    def load_subfolders(self, parent_item, folder_path):
+        """بارگذاری زیرپوشه‌ها"""
+        try:
+            # Remove dummy child
+            parent_item.removeChild(parent_item.child(0))
+            
+            # Add real subfolders
+            try:
+                for item_name in os.listdir(folder_path):
+                    item_path = os.path.join(folder_path, item_name)
+                    if os.path.isdir(item_path):
+                        try:
+                            subfolder_item = QTreeWidgetItem([f"📁 {item_name}"])
+                            subfolder_item.setData(0, Qt.UserRole, item_path)
+                            subfolder_item.setData(0, Qt.UserRole + 1, "folder")
+                            
+                            # Check if it has subfolders
+                            has_subfolders = False
+                            try:
+                                for sub_item in os.listdir(item_path):
+                                    if os.path.isdir(os.path.join(item_path, sub_item)):
+                                        has_subfolders = True
+                                        break
+                            except (PermissionError, OSError):
+                                pass
+                            
+                            if has_subfolders:
+                                dummy = QTreeWidgetItem(["..."])
+                                subfolder_item.addChild(dummy)
+                            
+                            parent_item.addChild(subfolder_item)
+                            
+                        except (PermissionError, OSError):
+                            continue
+            except (PermissionError, OSError):
+                pass
+                
+        except Exception as e:
+            print(f"Error loading subfolders: {e}")
+    
+    def start_copy_to_destination(self, destination_path):
+        """شروع کپی به مقصد انتخاب شده"""
+        try:
+            selected_items = self.file_tree.selectedItems()
+            if not selected_items:
+                self.show_toast("فایلی انتخاب نشده", "warning")
+                return
+            
+            # Check license limit
+            if not self.license_manager.check_file_limit(len(selected_items)):
+                self.show_license_restriction()
+                return
+            
+            # Extract file paths
+            file_paths = []
+            for item in selected_items:
+                file_path = item.text(1)  # Path column
+                if os.path.exists(file_path):
+                    file_paths.append(file_path)
+            
+            if file_paths:
+                self.start_copy_task(file_paths, destination_path)
+                self.show_toast(f"شروع کپی {len(file_paths)} فایل به {os.path.basename(destination_path)}", "info")
+            else:
+                self.show_toast("فایل‌های انتخاب شده یافت نشدند", "error")
+                
+        except Exception as e:
+            print(f"Error starting copy to destination: {e}")
+            self.show_toast(f"خطا در شروع کپی: {e}", "error")
     
     def format_size(self, size: int) -> str:
         """فرمت اندازه فایل"""
