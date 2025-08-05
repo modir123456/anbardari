@@ -426,28 +426,33 @@ class FileCopierApp:
         self.setup_logging()  # تنظیم سیستم ثبت لاگ برای رخدادها و خطاها
         self.setup_executor()  # راه‌اندازی thread pool برای اجرای همزمان کارها
         
-        # نمایش صفحه بارگذاری قبل از ساخت رابط کاربری
-        self.show_loading_screen()
+        # نمایش پیش‌رفت در status bar به جای loading screen
+        # حذف show_loading_screen() برای جلوگیری از نمایش MessageBox
         
         # اسکن اولیه درایوها قبل از ساخت GUI برای جلوگیری از مشکلات layout
-        self.update_status("اسکن درایوهای سیستم...")  # به‌روزرسانی وضعیت برای کاربر
+        self.update_status("🔍 اسکن درایوهای سیستم...")  # به‌روزرسانی وضعیت برای کاربر
         self.scan_all_drives()  # اسکن همزمان درایوها در thread اصلی
         
         # ساخت رابط کاربری با داده‌های از پیش اسکن شده درایوها
+        self.update_status("🎨 ساخت رابط کاربری...")
         self.setup_gui()  # ساخت تمام عناصر رابط کاربری
+        
+        self.update_status("⚙️ تنظیم event handlers...")
         self.setup_bindings()  # تنظیم event handler ها و کلیدهای میانبر
         
         # شروع تمیزکاری خودکار تسک‌های تکمیل شده
+        self.update_status("🧹 راه‌اندازی سیستم تمیزکاری...")
         self.start_auto_cleanup()
         
         # بررسی وضعیت لایسنس در زمان راه‌اندازی
+        self.update_status("🔐 بررسی وضعیت لایسنس...")
         self.check_license_on_startup()
         
         # لیست اعلانات فعال برای مدیریت موقعیت‌ها و جلوگیری از همپوشانی
         self.active_toasts = []
         
         # ادامه اسکن فایل‌ها در پس‌زمینه پس از آماده شدن رابط کاربری
-        self.update_status("اسکن فایل‌ها...")  # اطلاع‌رسانی به کاربر
+        self.update_status("📁 اسکن فایل‌ها در پس‌زمینه...")  # اطلاع‌رسانی به کاربر
         # ایجاد thread جداگانه برای اسکن کامل فایل‌ها بدون مسدود کردن رابط کاربری
         threading.Thread(target=self.complete_system_scan, daemon=True).start()
 
@@ -1119,11 +1124,14 @@ class FileCopierApp:
         """Complete file scanning after GUI is ready"""
         try:
             print("📁 Starting file scanning...")
+            self.root.after(0, lambda: self.update_status("🔍 شروع اسکن کامل فایل‌ها..."))
             
             # 1. Scan files from all drives
+            self.root.after(0, lambda: self.update_status("📂 اسکن فایل‌های همه درایوها..."))
             self.scan_all_files()
             
             # 2. Auto-detect destination folders
+            self.root.after(0, lambda: self.update_status("📁 شناسایی پوشه‌های مقصد..."))
             self.auto_detect_destinations()
             
             # 3. Update GUI
@@ -1132,7 +1140,7 @@ class FileCopierApp:
         except Exception as e:
             self.logger.error(f"Error in file scan: {e}")
             print(f"❌ File scan error: {e}")
-            self.root.after(0, lambda: self.update_status("File scan error - using fallback"))
+            self.root.after(0, lambda: self.update_status("❌ خطا در اسکن فایل‌ها"))
 
     def initial_system_scan(self):
         """Comprehensive system scan for drives and files at startup - DEPRECATED, split into parts"""
@@ -1405,8 +1413,8 @@ class FileCopierApp:
     def on_scan_complete(self):
         """Called when initial system scan is complete"""
         try:
-            # Hide loading screen
-            self.hide_loading_screen()
+            # بروزرسانی وضعیت در حین تکمیل
+            self.update_status("🔄 تکمیل عملیات اسکن...")
             
             # Display cached files
             self.display_cache()
@@ -1418,18 +1426,16 @@ class FileCopierApp:
             if hasattr(self, 'drive_combo'):
                 self.populate_drive_combo()
             
-            # Update status
+            # Update final status with Persian text
             total_files = self.file_cache.get("total_files", 0)
             total_drives = len(self.all_drives)
-            self.update_status(f"Ready - {total_files} files from {total_drives} drives scanned")
+            self.update_status(f"✅ آماده - {total_files:,} فایل از {total_drives} درایو اسکن شد")
             
             print("✅ System scan completed successfully")
             
         except Exception as e:
             print(f"❌ Error completing scan: {e}")
-            self.update_status("Ready - scan completed with errors")
-            # Make sure to hide loading screen even on error
-            self.hide_loading_screen()
+            self.update_status("⚠️ آماده - اسکن با خطا تکمیل شد")
 
     def get_drive_values(self):
         """Get formatted drive values for combo box"""
@@ -1931,6 +1937,144 @@ class FileCopierApp:
         
         # Setup beautiful text display
         self.setup_beautiful_text_display(content_section)
+    
+    def create_info_cards(self, parent_frame):
+        """ایجاد کارت‌های اطلاعاتی زیبا"""
+        
+        # تعریف اطلاعات کارت‌ها
+        cards_info = [
+            {
+                "icon": "🏢",
+                "title": "شرکت ما",
+                "text": "فناوری پارس فایل\nارائه دهنده راه‌حل‌های نرم‌افزاری",
+                "color": ("blue", "darkblue")
+            },
+            {
+                "icon": "📞", 
+                "title": "تماس",
+                "text": "+98 21 1234 5678\ninfo@persianfile.ir",
+                "color": ("green", "darkgreen")
+            },
+            {
+                "icon": "⭐",
+                "title": "ویژگی‌ها",
+                "text": "کپی سریع و ایمن\nپشتیبانی همه فرمت‌ها",
+                "color": ("orange", "darkorange")
+            },
+            {
+                "icon": "🔐",
+                "title": "امنیت",
+                "text": "رمزگذاری پیشرفته\nحفاظت از داده‌ها",
+                "color": ("purple", "darkviolet")
+            }
+        ]
+        
+        # ایجاد کانتینر برای کارت‌ها
+        cards_container = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        cards_container.pack(fill="x", padx=5)
+        
+        # ایجاد کارت‌ها در دو ردیف
+        for i, card_info in enumerate(cards_info):
+            row = i // 2
+            col = i % 2
+            
+            # کارت frame
+            card = ctk.CTkFrame(
+                cards_container,
+                fg_color=("white", "gray25"),
+                corner_radius=12,
+                border_width=1,
+                border_color=("gray70", "gray35")
+            )
+            
+            if row == 0:
+                if col == 0:
+                    card.grid(row=0, column=0, padx=(0, 5), pady=(0, 10), sticky="ew")
+                else:
+                    card.grid(row=0, column=1, padx=(5, 0), pady=(0, 10), sticky="ew")
+            else:
+                if col == 0:
+                    card.grid(row=1, column=0, padx=(0, 5), pady=0, sticky="ew")
+                else:
+                    card.grid(row=1, column=1, padx=(5, 0), pady=0, sticky="ew")
+            
+            # تنظیم grid weights
+            cards_container.grid_columnconfigure(0, weight=1)
+            cards_container.grid_columnconfigure(1, weight=1)
+            
+            # آیکون
+            icon_label = ctk.CTkLabel(
+                card,
+                text=card_info["icon"],
+                font=ctk.CTkFont(size=30),
+                text_color=card_info["color"]
+            )
+            icon_label.pack(pady=(15, 5))
+            
+            # عنوان
+            title_label = ctk.CTkLabel(
+                card,
+                text=card_info["title"],
+                font=ctk.CTkFont(family=self.current_font_family, size=14, weight="bold"),
+                text_color=("gray20", "white")
+            )
+            title_label.pack(pady=(0, 5))
+            
+            # متن
+            text_label = ctk.CTkLabel(
+                card,
+                text=card_info["text"],
+                font=ctk.CTkFont(family=self.current_font_family, size=11),
+                text_color=("gray50", "gray70"),
+                justify="center"
+            )
+            text_label.pack(pady=(0, 15), padx=10)
+    
+    def setup_beautiful_text_display(self, parent_frame):
+        """نمایش زیبای متن درباره ما"""
+        
+        # بارگذاری محتوا
+        content = self.load_about_content()
+        if not content:
+            content = """
+📌 Persian File Copier Pro
+
+شرکت فناوری پارس فایل با افتخار ارائه دهنده پیشرفته‌ترین نرم‌افزار کپی فایل در ایران است.
+
+🎯 ماموریت ما
+ارائه راه‌حل‌های نرم‌افزاری قدرتمند و کاربرپسند برای مدیریت و انتقال فایل‌ها
+
+✨ ویژگی‌های کلیدی
+• کپی سریع و ایمن فایل‌ها
+• پشتیبانی از تمام فرمت‌های فایل
+• رابط کاربری فارسی و زیبا
+• امکانات پیشرفته مدیریت
+• پشتیبانی 24/7
+
+📞 اطلاعات تماس
+آدرس: تهران، خیابان ولیعصر، پلاک ۱۲۳
+تلفن: +98 21 1234 5678
+ایمیل: info@persianfile.ir
+            """
+        
+        # Text display with scrolling
+        text_frame = ctk.CTkScrollableFrame(
+            parent_frame,
+            fg_color=("gray98", "gray15"),
+            corner_radius=10
+        )
+        text_frame.pack(fill="both", expand=True, padx=20, pady=(10, 20))
+        
+        # نمایش محتوا
+        content_label = ctk.CTkLabel(
+            text_frame,
+            text=content,
+            font=ctk.CTkFont(family=self.current_font_family, size=12),
+            text_color=("gray20", "gray80"),
+            justify="right",
+            anchor="ne"
+        )
+        content_label.pack(fill="both", expand=True, padx=15, pady=15)
 
     def setup_html_viewer(self, parent_frame):
         """تنظیم نمایشگر HTML برای فایل درباره ما"""
