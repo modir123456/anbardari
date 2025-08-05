@@ -1076,33 +1076,30 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             self.root.after(0, lambda: self.update_status("Destination refresh error"))
 
     def setup_explorer_tab(self):
-        """Setup the file explorer tab with 4-column layout: File Browser, Drive List, Copy Operations, Task Management"""
-        # Main horizontal layout: file browser (25%), drive list (25%), copy operations (25%), task management (25%)
+        """Setup the file explorer tab with resizable 4-column layout"""
+        # Main container
         main_container = ctk.CTkFrame(self.explorer_frame)
         main_container.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Configure grid weights for 4-column split
-        main_container.grid_columnconfigure(0, weight=1)
-        main_container.grid_columnconfigure(1, weight=1)
-        main_container.grid_columnconfigure(2, weight=1)
-        main_container.grid_columnconfigure(3, weight=1)
-        main_container.grid_rowconfigure(0, weight=1)
+        # Create a resizable PanedWindow for the 4 columns
+        self.main_paned = ttk.PanedWindow(main_container, orient="horizontal")
+        self.main_paned.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Column 1: File Browser (25%)
-        browser_frame = ctk.CTkFrame(main_container)
-        browser_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 2))
+        browser_frame = ctk.CTkFrame(self.main_paned, width=350)
+        self.main_paned.add(browser_frame, weight=1)
         
-        # Column 2: Drive List for Destination (25%)
-        drive_list_frame = ctk.CTkFrame(main_container)
-        drive_list_frame.grid(row=0, column=1, sticky="nsew", padx=(2, 2))
+        # Column 2: Drive List for Destination (35% - increased)
+        drive_list_frame = ctk.CTkFrame(self.main_paned, width=400)
+        self.main_paned.add(drive_list_frame, weight=1.4)
         
         # Column 3: Copy Operations (25%)
-        copy_operations_frame = ctk.CTkFrame(main_container)
-        copy_operations_frame.grid(row=0, column=2, sticky="nsew", padx=(2, 2))
+        copy_operations_frame = ctk.CTkFrame(self.main_paned, width=300)
+        self.main_paned.add(copy_operations_frame, weight=1)
         
-        # Column 4: Task Management (25%)
-        task_management_frame = ctk.CTkFrame(main_container)
-        task_management_frame.grid(row=0, column=3, sticky="nsew", padx=(2, 0))
+        # Column 4: Task Management (15% - reduced)
+        task_management_frame = ctk.CTkFrame(self.main_paned, width=250)
+        self.main_paned.add(task_management_frame, weight=0.6)
         
         # Setup all sections
         self.setup_file_browser_section(browser_frame)
@@ -1291,27 +1288,27 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         self.start_btn = ctk.CTkButton(main_controls, text="▶ شروع", command=self.start_selected_task,
                                       fg_color="green", hover_color="darkgreen", 
-                                      font=ctk.CTkFont(family="B Nazanin", size=12), width=80, height=32)
-        self.start_btn.pack(side="left", padx=3)
+                                      font=ctk.CTkFont(family="B Nazanin", size=10), width=60, height=28)
+        self.start_btn.pack(side="left", padx=2)
         
         self.pause_btn = ctk.CTkButton(main_controls, text="⏸ توقف", command=self.pause_selected_task,
                                       fg_color="orange", hover_color="darkorange", 
-                                      font=ctk.CTkFont(family="B Nazanin", size=12), width=80, height=32)
-        self.pause_btn.pack(side="left", padx=3)
+                                      font=ctk.CTkFont(family="B Nazanin", size=10), width=60, height=28)
+        self.pause_btn.pack(side="left", padx=2)
         
         self.cancel_btn = ctk.CTkButton(main_controls, text="⏹ لغو", command=self.cancel_selected_task,
                                        fg_color="red", hover_color="darkred", 
-                                       font=ctk.CTkFont(family="B Nazanin", size=12), width=80, height=32)
-        self.cancel_btn.pack(side="left", padx=3)
+                                       font=ctk.CTkFont(family="B Nazanin", size=10), width=60, height=28)
+        self.cancel_btn.pack(side="left", padx=2)
         
         # Task management buttons
         task_controls = ctk.CTkFrame(control_frame)
         task_controls.pack(fill="x")
         
         ctk.CTkButton(task_controls, text="🗑 پاک همه", command=self.clear_all_tasks, 
-                     font=ctk.CTkFont(family="B Nazanin", size=12), width=100, height=32).pack(side="left", padx=3)
+                     font=ctk.CTkFont(family="B Nazanin", size=10), width=80, height=28).pack(side="left", padx=2)
         ctk.CTkButton(task_controls, text="✓ تکمیل شده", command=self.clear_completed, 
-                     font=ctk.CTkFont(family="B Nazanin", size=12), width=120, height=32).pack(side="left", padx=3)
+                     font=ctk.CTkFont(family="B Nazanin", size=10), width=90, height=28).pack(side="left", padx=2)
         
         # Progress overview
         progress_frame = ctk.CTkFrame(task_frame)
@@ -1346,11 +1343,11 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         self.task_tree.heading("Size", text="💾 حجم")
         self.task_tree.heading("Status", text="🔄 وضعیت")
         
-        self.task_tree.column("File", width=180, minwidth=140)
-        self.task_tree.column("Destination", width=150, minwidth=120)
-        self.task_tree.column("Progress", width=80, minwidth=60)
-        self.task_tree.column("Size", width=100, minwidth=80)
-        self.task_tree.column("Status", width=120, minwidth=100)
+        self.task_tree.column("File", width=120, minwidth=100)
+        self.task_tree.column("Destination", width=100, minwidth=80)
+        self.task_tree.column("Progress", width=60, minwidth=50)
+        self.task_tree.column("Size", width=70, minwidth=60)
+        self.task_tree.column("Status", width=80, minwidth=70)
         
         # Task tree scrollbars
         task_v_scrollbar = ttk.Scrollbar(tasks_container, orient="vertical", command=self.task_tree.yview)
