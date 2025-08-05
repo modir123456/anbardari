@@ -557,7 +557,7 @@ class ToastNotification(QWidget):
 class FileCopyWorker(QThread):
     """Worker thread برای کپی فایل‌ها"""
     
-    progress_updated = pyqtSignal(str, int, str, str)  # task_id, progress, speed, eta
+    progress_updated = pyqtSignal(str, int, str, str, str, str)  # task_id, progress, speed, eta, copied_size, total_size
     task_completed = pyqtSignal(str, bool, str)  # task_id, success, message
     error_occurred = pyqtSignal(str, str)  # task_id, error_message
     
@@ -611,7 +611,11 @@ class FileCopyWorker(QThread):
                     speed_str = "0 MB/s"
                     eta = "محاسبه..."
                 
-                self.progress_updated.emit(self.task_id, progress, speed_str, eta)
+                # Format sizes
+                copied_size_str = self.format_size(self.copied_size)
+                total_size_str = self.format_size(self.total_size)
+                
+                self.progress_updated.emit(self.task_id, progress, speed_str, eta, copied_size_str, total_size_str)
             
             if not self.is_cancelled:
                 self.task_completed.emit(self.task_id, True, "کپی با موفقیت تکمیل شد")
@@ -687,6 +691,14 @@ class FileCopyWorker(QThread):
             hours = int(seconds // 3600)
             minutes = int((seconds % 3600) // 60)
             return f"{hours} ساعت {minutes} دقیقه"
+    
+    def format_size(self, size_bytes):
+        """فرمت اندازه فایل"""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size_bytes < 1024.0:
+                return f"{size_bytes:.1f} {unit}"
+            size_bytes /= 1024.0
+        return f"{size_bytes:.1f} PB"
 
 # File Scanner Worker Thread
 class FileScannerWorker(QThread):
@@ -1155,16 +1167,17 @@ class PersianFileCopierPyQt5(QMainWindow):
         
         # Tasks table (professional design)
         self.tasks_table = QTableWidget()
-        self.tasks_table.setColumnCount(4)
+        self.tasks_table.setColumnCount(5)
         self.tasks_table.setHorizontalHeaderLabels([
-            "📁 مبدأ", "📂 مقصد", "📊 پیشرفت", "🎛️ کنترل"
+            "📁 مبدأ", "📂 مقصد", "📊 پیشرفت", "⚡ سرعت/حجم", "🎛️ کنترل"
         ])
         
         # Set column widths
-        self.tasks_table.setColumnWidth(0, 120)   # Source (first column)
-        self.tasks_table.setColumnWidth(1, 120)   # Destination 
-        self.tasks_table.setColumnWidth(2, 150)   # Progress bar
-        self.tasks_table.setColumnWidth(3, 180)   # Control buttons (wider)
+        self.tasks_table.setColumnWidth(0, 100)   # Source
+        self.tasks_table.setColumnWidth(1, 100)   # Destination 
+        self.tasks_table.setColumnWidth(2, 120)   # Progress bar
+        self.tasks_table.setColumnWidth(3, 140)   # Speed/Size info
+        self.tasks_table.setColumnWidth(4, 180)   # Control buttons
         
         self.tasks_table.setAlternatingRowColors(True)
         self.tasks_table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -2937,7 +2950,8 @@ class PersianFileCopierPyQt5(QMainWindow):
             progress_bar.setMinimumHeight(25)
             progress_bar.setMaximumHeight(25)
             progress_bar.setTextVisible(True)
-            progress_bar.setFormat("%p%")
+            progress_bar.setFormat("0%")
+            progress_bar.setValue(0)
             progress_bar.setStyleSheet("""
                 QProgressBar {
                     border: 2px solid #666666;
@@ -2960,7 +2974,30 @@ class PersianFileCopierPyQt5(QMainWindow):
             progress_layout.addWidget(progress_bar)
             self.tasks_table.setCellWidget(row, 2, progress_widget)
             
-            # Control buttons - Column 3 (3 separate buttons)
+            # Speed/Size info - Column 3
+            speed_widget = QWidget()
+            speed_layout = QVBoxLayout(speed_widget)
+            speed_layout.setContentsMargins(4, 4, 4, 4)
+            speed_layout.setSpacing(2)
+            
+            speed_label = QLabel("سرعت: 0 MB/s")
+            speed_label.setFont(QFont("B Nazanin", 9))
+            speed_label.setAlignment(Qt.AlignCenter)
+            speed_layout.addWidget(speed_label)
+            
+            size_label = QLabel("حجم: محاسبه...")
+            size_label.setFont(QFont("B Nazanin", 9))
+            size_label.setAlignment(Qt.AlignCenter)
+            speed_layout.addWidget(size_label)
+            
+            eta_label = QLabel("زمان: محاسبه...")
+            eta_label.setFont(QFont("B Nazanin", 9))
+            eta_label.setAlignment(Qt.AlignCenter)
+            speed_layout.addWidget(eta_label)
+            
+            self.tasks_table.setCellWidget(row, 3, speed_widget)
+            
+            # Control buttons - Column 4 (3 separate buttons)
             control_widget = QWidget()
             control_layout = QGridLayout(control_widget)
             control_layout.setContentsMargins(4, 4, 4, 4)
@@ -3029,11 +3066,22 @@ class PersianFileCopierPyQt5(QMainWindow):
             control_layout.addWidget(resume_btn, 0, 1)
             control_layout.addWidget(cancel_btn, 0, 2)
             
-            self.tasks_table.setCellWidget(row, 3, control_widget)
+            # Initially show pause and cancel (not resume)
+            pause_btn.setVisible(True)
+            resume_btn.setVisible(False)
+            cancel_btn.setVisible(True)
+            
+            self.tasks_table.setCellWidget(row, 4, control_widget)
             
             # Store row index and widgets for updates
             self.active_tasks[task_id]['row'] = row
             self.active_tasks[task_id]['progress_bar'] = progress_bar
+            self.active_tasks[task_id]['speed_label'] = speed_label
+            self.active_tasks[task_id]['size_label'] = size_label
+            self.active_tasks[task_id]['eta_label'] = eta_label
+            self.active_tasks[task_id]['pause_btn'] = pause_btn
+            self.active_tasks[task_id]['resume_btn'] = resume_btn
+            self.active_tasks[task_id]['cancel_btn'] = cancel_btn
             
         except Exception as e:
             print(f"Error adding task to table: {e}")
@@ -3057,8 +3105,9 @@ class PersianFileCopierPyQt5(QMainWindow):
         except Exception as e:
             print(f"Error creating progress display: {e}")
     
-    def update_task_progress(self, task_id: str, progress: int, speed: str, eta: str):
-        """بروزرسانی پیشرفت تسک"""
+    def update_task_progress(self, task_id: str, progress: int, speed: str, eta: str, 
+                           copied_size: str = "", total_size: str = ""):
+        """بروزرسانی پیشرفت تسک با اطلاعات کامل"""
         try:
             if task_id in self.active_tasks:
                 task = self.active_tasks[task_id]
@@ -3066,9 +3115,9 @@ class PersianFileCopierPyQt5(QMainWindow):
                 
                 # Update progress bar
                 progress_bar = task.get('progress_bar')
-                
                 if progress_bar:
                     progress_bar.setValue(progress)
+                    progress_bar.setFormat(f"{progress}%")
                     
                     # Update progress bar color based on progress
                     color_stops = ""
@@ -3100,8 +3149,51 @@ class PersianFileCopierPyQt5(QMainWindow):
                         }}
                     """)
                 
+                # Update speed label
+                speed_label = task.get('speed_label')
+                if speed_label:
+                    speed_label.setText(f"سرعت: {speed}")
+                
+                # Update size label
+                size_label = task.get('size_label')
+                if size_label:
+                    if copied_size and total_size:
+                        size_label.setText(f"حجم: {copied_size} / {total_size}")
+                    else:
+                        size_label.setText(f"حجم: {progress}%")
+                
+                # Update ETA label
+                eta_label = task.get('eta_label')
+                if eta_label:
+                    eta_label.setText(f"زمان: {eta}")
+                
         except Exception as e:
             print(f"Error updating task progress: {e}")
+    
+    def update_task_status(self, task_id: str, status: str):
+        """بروزرسانی وضعیت دکمه‌های کنترل"""
+        try:
+            if task_id in self.active_tasks:
+                task = self.active_tasks[task_id]
+                pause_btn = task.get('pause_btn')
+                resume_btn = task.get('resume_btn')
+                cancel_btn = task.get('cancel_btn')
+                
+                if status == "running":
+                    if pause_btn: pause_btn.setVisible(True)
+                    if resume_btn: resume_btn.setVisible(False)
+                    if cancel_btn: cancel_btn.setVisible(True)
+                elif status == "paused":
+                    if pause_btn: pause_btn.setVisible(False)
+                    if resume_btn: resume_btn.setVisible(True)
+                    if cancel_btn: cancel_btn.setVisible(True)
+                elif status == "completed":
+                    if pause_btn: pause_btn.setVisible(False)
+                    if resume_btn: resume_btn.setVisible(False)
+                    if cancel_btn: cancel_btn.setVisible(False)
+                    
+        except Exception as e:
+            print(f"Error updating task status: {e}")
     
     def get_progress_color(self, progress: int) -> str:
         """دریافت رنگ بر اساس پیشرفت"""
@@ -3125,7 +3217,6 @@ class PersianFileCopierPyQt5(QMainWindow):
                 
                 # Update progress bar
                 progress_bar = task.get('progress_bar')
-                
                 if progress_bar:
                     if success:
                         progress_bar.setValue(100)
@@ -3165,6 +3256,22 @@ class PersianFileCopierPyQt5(QMainWindow):
                                 border-radius: 6px;
                             }
                         """)
+                
+                # Update info labels
+                speed_label = task.get('speed_label')
+                if speed_label:
+                    speed_label.setText("تکمیل شد" if success else "متوقف شد")
+                
+                size_label = task.get('size_label')
+                if size_label and success:
+                    size_label.setText("حجم: 100%")
+                
+                eta_label = task.get('eta_label')
+                if eta_label:
+                    eta_label.setText("زمان: 00:00")
+                
+                # Update control buttons
+                self.update_task_status(task_id, "completed")
                 
                 # Show notification
                 toast_type = "success" if success else "error"
@@ -4399,6 +4506,8 @@ class PersianFileCopierPyQt5(QMainWindow):
                 if worker and hasattr(worker, 'pause'):
                     worker.pause()
                     task['status'] = 'paused'
+                    self.update_task_status(task_id, "paused")
+                    self.show_toast(f"تسک متوقف شد", "warning")
         except Exception as e:
             print(f"Error pausing task {task_id}: {e}")
     
@@ -4411,6 +4520,8 @@ class PersianFileCopierPyQt5(QMainWindow):
                 if worker and hasattr(worker, 'resume'):
                     worker.resume()
                     task['status'] = 'running'
+                    self.update_task_status(task_id, "running")
+                    self.show_toast(f"تسک ادامه یافت", "info")
         except Exception as e:
             print(f"Error resuming task {task_id}: {e}")
     
@@ -4423,6 +4534,17 @@ class PersianFileCopierPyQt5(QMainWindow):
                 if worker and hasattr(worker, 'cancel'):
                     worker.cancel()
                     task['status'] = 'cancelled'
+                    self.update_task_status(task_id, "completed")
+                    self.show_toast(f"تسک لغو شد", "error")
+                    
+                    # Update labels for cancelled task
+                    speed_label = task.get('speed_label')
+                    if speed_label:
+                        speed_label.setText("لغو شد")
+                    
+                    eta_label = task.get('eta_label')
+                    if eta_label:
+                        eta_label.setText("متوقف")
                 
                 # Remove from table immediately
                 self.remove_completed_task(task_id)
