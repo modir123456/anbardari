@@ -700,8 +700,12 @@ class FileManager:
         """دریافت نام درایو"""
         try:
             if platform.system() == "Windows":
-                import win32api
-                return win32api.GetVolumeInformation(partition.mountpoint)[0] or partition.mountpoint
+                try:
+                    import win32api
+                    return win32api.GetVolumeInformation(partition.mountpoint)[0] or partition.mountpoint
+                except ImportError:
+                    # Fallback if win32api is not available
+                    return f"Drive {partition.mountpoint}"
             else:
                 return partition.mountpoint
         except:

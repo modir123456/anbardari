@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔑 تولید لایسنس - Persian File Copier Pro</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/themes.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 90%;
+            margin: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 64px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #718096;
+            font-weight: 400;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: 'Vazirmatn', sans-serif;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-control:invalid {
+            border-color: #e53e3e;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Vazirmatn', sans-serif;
+            margin-bottom: 15px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #4299e1, #3182ce);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+        }
+
+        .result-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(45deg, #f0fff4, #e6fffa);
+            border: 2px solid #48bb78;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #2f855a;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .license-key {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            word-break: break-all;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .license-info {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border-right: 4px solid #667eea;
+        }
+
+        .license-info h4 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .license-info p {
+            color: #718096;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #f0fff4;
+            border: 1px solid #48bb78;
+            color: #2f855a;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            border: 1px solid #e53e3e;
+            color: #c53030;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .feature-list {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .feature-list h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .feature-list ul {
+            list-style: none;
+        }
+
+        .feature-list li {
+            color: #4a5568;
+            margin-bottom: 8px;
+            position: relative;
+            padding-right: 25px;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            position: absolute;
+            right: 0;
+            color: #48bb78;
+            font-weight: bold;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #e2e8f0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: #e2e8f0;
+            color: #718096;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+
+        .tab.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔑</div>
+            <h1 class="title">تولید لایسنس</h1>
+            <p class="subtitle">Persian File Copier Pro - شرکت فناوری نوآئران مثبت سبز</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('generator')">🔧 تولید لایسنس</button>
+            <button class="tab" onclick="showTab('info')">ℹ️ اطلاعات</button>
+        </div>
+
+        <!-- Generator Tab -->
+        <div id="generator-tab" class="tab-content active">
+            <div class="alert alert-success" id="success-alert"></div>
+            <div class="alert alert-error" id="error-alert"></div>
+
+            <form id="license-form">
+                <div class="form-group">
+                    <label for="customer-name">نام مشتری:</label>
+                    <input type="text" id="customer-name" class="form-control" required 
+                           placeholder="نام و نام خانوادگی مشتری">
+                </div>
+
+                <div class="form-group">
+                    <label for="customer-email">ایمیل مشتری:</label>
+                    <input type="email" id="customer-email" class="form-control" required 
+                           placeholder="example@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="license-type">نوع لایسنس:</label>
+                    <select id="license-type" class="form-control" required>
+                        <option value="">انتخاب کنید</option>
+                        <option value="PFC-PRO-2024-FULL">نسخه کامل 2024</option>
+                        <option value="PFC-PRO-UNLIMITED">نسخه نامحدود</option>
+                        <option value="PERSIAN-FILE-COPIER-PRO">نسخه حرفه‌ای</option>
+                        <option value="PFC-PREMIUM-2024">نسخه پریمیوم 2024</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="expiry-date">تاریخ انقضا (اختیاری):</label>
+                    <input type="date" id="expiry-date" class="form-control">
+                    <small style="color: #718096; font-size: 12px;">خالی بگذارید برای لایسنس دائمی</small>
+                </div>
+
+                <button type="submit" class="btn">🔑 تولید لایسنس</button>
+            </form>
+
+            <div class="result-container" id="result-container">
+                <div class="result-title">✅ لایسنس با موفقیت تولید شد:</div>
+                
+                <div class="license-key" id="license-key-display">
+                    <button class="copy-btn" onclick="copyLicense()">کپی</button>
+                    <span id="license-key-text"></span>
+                </div>
+
+                <div class="license-info">
+                    <h4>🔍 جزئیات لایسنس:</h4>
+                    <p><strong>نام مشتری:</strong> <span id="info-customer"></span></p>
+                    <p><strong>ایمیل:</strong> <span id="info-email"></span></p>
+                    <p><strong>نوع:</strong> <span id="info-type"></span></p>
+                    <p><strong>تاریخ تولید:</strong> <span id="info-generated"></span></p>
+                    <p><strong>وضعیت:</strong> <span id="info-status"></span></p>
+                </div>
+
+                <button class="btn btn-success" onclick="downloadLicense()">📥 دانلود فایل لایسنس</button>
+                <button class="btn btn-secondary" onclick="emailLicense()">📧 ارسال به ایمیل</button>
+            </div>
+        </div>
+
+        <!-- Info Tab -->
+        <div id="info-tab" class="tab-content">
+            <div class="feature-list">
+                <h3>🌟 امکانات نسخه حرفه‌ای:</h3>
+                <ul>
+                    <li>کپی نامحدود فایل‌ها</li>
+                    <li>پردازش همزمان چندین تسک</li>
+                    <li>پشتیبانی از تمام فرمت‌های فایل</li>
+                    <li>رابط کاربری پیشرفته</li>
+                    <li>گزارش‌گیری کامل</li>
+                    <li>پشتیبانی فنی 24/7</li>
+                    <li>به‌روزرسانی رایگان</li>
+                    <li>امکان استفاده در محیط‌های تجاری</li>
+                </ul>
+            </div>
+
+            <div class="feature-list">
+                <h3>🔑 انواع لایسنس:</h3>
+                <ul>
+                    <li><strong>PFC-PRO-2024-FULL:</strong> نسخه کامل سال 2024</li>
+                    <li><strong>PFC-PRO-UNLIMITED:</strong> نسخه نامحدود و دائمی</li>
+                    <li><strong>PERSIAN-FILE-COPIER-PRO:</strong> نسخه حرفه‌ای استاندارد</li>
+                    <li><strong>PFC-PREMIUM-2024:</strong> نسخه پریمیوم با امکانات ویژه</li>
+                </ul>
+            </div>
+
+            <div class="feature-list">
+                <h3>📋 راهنمای فعال‌سازی:</h3>
+                <ul>
+                    <li>برنامه Persian File Copier Pro را اجرا کنید</li>
+                    <li>به بخش "تنظیمات" → "لایسنس" بروید</li>
+                    <li>کلید لایسنس تولید شده را وارد کنید</li>
+                    <li>روی "فعال‌سازی" کلیک کنید</li>
+                    <li>از تمام امکانات لامحدود استفاده کنید</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 شرکت فناوری نوآئران مثبت سبز - تمام حقوق محفوظ است</p>
+            <p>Persian File Copier Pro License Generator v1.0</p>
+        </div>
+    </div>
+
+    <script>
+        // Tab management
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Generate license key
+        function generateLicenseKey(type, customerName, email) {
+            const timestamp = Date.now().toString(36);
+            const randomPart = Math.random().toString(36).substring(2, 8);
+            const nameHash = btoa(customerName.substring(0, 3)).substring(0, 4);
+            const emailHash = btoa(email.split('@')[0]).substring(0, 4);
+            
+            return `${type}-${timestamp}-${nameHash}-${emailHash}-${randomPart}`.toUpperCase();
+        }
+
+        // Show alert
+        function showAlert(message, type = 'success') {
+            const alertElement = document.getElementById(type + '-alert');
+            alertElement.textContent = message;
+            alertElement.style.display = 'block';
+            
+            // Hide other alerts
+            const otherType = type === 'success' ? 'error' : 'success';
+            document.getElementById(otherType + '-alert').style.display = 'none';
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                alertElement.style.display = 'none';
+            }, 5000);
+        }
+
+        // Form submission
+        document.getElementById('license-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const customerName = document.getElementById('customer-name').value.trim();
+            const customerEmail = document.getElementById('customer-email').value.trim();
+            const licenseType = document.getElementById('license-type').value;
+            const expiryDate = document.getElementById('expiry-date').value;
+            
+            if (!customerName || !customerEmail || !licenseType) {
+                showAlert('لطفاً تمام فیلدهای اجباری را پر کنید', 'error');
+                return;
+            }
+            
+            // Generate license
+            const licenseKey = generateLicenseKey(licenseType, customerName, customerEmail);
+            const currentDate = new Date().toLocaleDateString('fa-IR');
+            const status = expiryDate ? `تا ${new Date(expiryDate).toLocaleDateString('fa-IR')}` : 'دائمی';
+            
+            // Display result
+            document.getElementById('license-key-text').textContent = licenseKey;
+            document.getElementById('info-customer').textContent = customerName;
+            document.getElementById('info-email').textContent = customerEmail;
+            document.getElementById('info-type').textContent = licenseType;
+            document.getElementById('info-generated').textContent = currentDate;
+            document.getElementById('info-status').textContent = status;
+            
+            document.getElementById('result-container').style.display = 'block';
+            
+            // Store for download/email
+            window.currentLicense = {
+                key: licenseKey,
+                customer: customerName,
+                email: customerEmail,
+                type: licenseType,
+                generated: currentDate,
+                status: status
+            };
+            
+            showAlert('لایسنس با موفقیت تولید شد!', 'success');
+        });
+
+        // Copy license to clipboard
+        function copyLicense() {
+            const licenseKey = document.getElementById('license-key-text').textContent;
+            navigator.clipboard.writeText(licenseKey).then(() => {
+                showAlert('کلید لایسنس کپی شد!', 'success');
+            }).catch(() => {
+                showAlert('خطا در کپی کردن', 'error');
+            });
+        }
+
+        // Download license file
+        function downloadLicense() {
+            if (!window.currentLicense) return;
+            
+            const licenseData = `
+Persian File Copier Pro - License File
+======================================
+
+Customer Name: ${window.currentLicense.customer}
+Email: ${window.currentLicense.email}
+License Type: ${window.currentLicense.type}
+License Key: ${window.currentLicense.key}
+Generated Date: ${window.currentLicense.generated}
+Status: ${window.currentLicense.status}
+
+======================================
+© 2024 Noavaran Mosbat Sabz Technology
+All Rights Reserved
+            `.trim();
+            
+            const blob = new Blob([licenseData], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `PFC_License_${window.currentLicense.customer.replace(/\s+/g, '_')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showAlert('فایل لایسنس دانلود شد!', 'success');
+        }
+
+        // Email license (mock function)
+        function emailLicense() {
+            if (!window.currentLicense) return;
+            
+            const subject = encodeURIComponent('Persian File Copier Pro - License Key');
+            const body = encodeURIComponent(`
+سلام ${window.currentLicense.customer} عزیز،
+
+لایسنس Persian File Copier Pro شما با موفقیت تولید شد:
+
+🔑 کلید لایسنس: ${window.currentLicense.key}
+📅 تاریخ تولید: ${window.currentLicense.generated}
+📋 نوع لایسنس: ${window.currentLicense.type}
+⏰ وضعیت: ${window.currentLicense.status}
+
+راهنمای فعال‌سازی:
+1. برنامه Persian File Copier Pro را اجرا کنید
+2. به بخش "تنظیمات" → "لایسنس" بروید
+3. کلید لایسنس را وارد کنید
+4. روی "فعال‌سازی" کلیک کنید
+
+از خرید شما متشکریم!
+
+شرکت فناوری نوآئران مثبت سبز
+            `);
+            
+            window.open(`mailto:${window.currentLicense.email}?subject=${subject}&body=${body}`);
+            showAlert('ایمیل آماده شد!', 'success');
+        }
+    </script>
+</body>
+</html>
