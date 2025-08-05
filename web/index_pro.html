@@ -523,42 +523,111 @@
                 
                 <!-- Advanced Settings -->
                 <div id="advanced-settings" class="settings-section">
-                    <h3>⚙️ تنظیمات پیشرفته</h3>
-                    
-                    <div class="settings-group">
-                        <h4>🔧 سیستم</h4>
-                        <div class="setting-row">
-                            <label>لاگ دیباگ:</label>
-                            <input type="checkbox" id="debug-logging" />
-                        </div>
-                        <div class="setting-row">
-                            <label>ذخیره خودکار تنظیمات:</label>
-                            <input type="checkbox" id="auto-save" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>بهینه‌سازی حافظه:</label>
-                            <input type="checkbox" id="memory-optimization" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>حالت عملکرد:</label>
-                            <select id="performance-mode">
-                                <option value="economy">اقتصادی</option>
-                                <option value="balanced">متعادل</option>
-                                <option value="performance">عملکرد</option>
-                            </select>
-                        </div>
+                    <div class="settings-header">
+                        <h3>⚙️ تنظیمات پیشرفته</h3>
+                        <p class="settings-description">تنظیمات پیشرفته سیستم و بهینه‌سازی</p>
                     </div>
                     
-                    <div class="settings-group">
-                        <h4>🗄️ پایگاه داده</h4>
-                        <div class="setting-row">
-                            <label>پاک‌سازی خودکار (روز):</label>
-                            <input type="number" id="cleanup-days" min="1" max="365" value="30" />
+                    <div class="settings-grid">
+                        <div class="settings-card">
+                            <div class="card-header">
+                                <h4>🔧 تنظیمات سیستم</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>🐛 لاگ دیباگ</label>
+                                        <small>فعال‌سازی لاگ‌های تشخیص خطا</small>
+                                    </div>
+                                    <div class="setting-control">
+                                        <label class="switch">
+                                            <input type="checkbox" id="debug-logging">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>💾 ذخیره خودکار</label>
+                                        <small>ذخیره خودکار تنظیمات پس از تغییر</small>
+                                    </div>
+                                    <div class="setting-control">
+                                        <label class="switch">
+                                            <input type="checkbox" id="auto-save" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>🧠 بهینه‌سازی حافظه</label>
+                                        <small>مدیریت هوشمند استفاده از حافظه</small>
+                                    </div>
+                                    <div class="setting-control">
+                                        <label class="switch">
+                                            <input type="checkbox" id="memory-optimization" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>⚡ حالت عملکرد</label>
+                                        <small>تنظیم میزان استفاده از منابع سیستم</small>
+                                    </div>
+                                    <div class="setting-control">
+                                        <select id="performance-mode" class="modern-select">
+                                            <option value="economy">🌱 اقتصادی</option>
+                                            <option value="balanced">⚖️ متعادل</option>
+                                            <option value="performance">🚀 عملکرد</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="setting-row">
-                            <label>اعمال تغییرات:</label>
-                            <button class="btn btn-secondary" onclick="optimizeDatabase()">🔧 بهینه‌سازی</button>
-                            <button class="btn btn-warning" onclick="resetDatabase()">⚠️ بازنشانی</button>
+                        
+                        <div class="settings-card">
+                            <div class="card-header">
+                                <h4>🗄️ مدیریت پایگاه داده</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>🧹 پاک‌سازی خودکار</label>
+                                        <small>حذف خودکار فایل‌های قدیمی (روز)</small>
+                                    </div>
+                                    <div class="setting-control">
+                                        <div class="number-input">
+                                            <input type="number" id="cleanup-days" min="1" max="365" value="30">
+                                            <span class="input-suffix">روز</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>📊 وضعیت پایگاه داده</label>
+                                        <small id="db-status">در حال بررسی...</small>
+                                    </div>
+                                    <div class="setting-control">
+                                        <button class="btn btn-info btn-sm" onclick="checkDatabaseStatus()">
+                                            🔍 بررسی
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="setting-actions">
+                                    <button class="btn btn-primary" onclick="optimizeDatabase()">
+                                        🔧 بهینه‌سازی پایگاه داده
+                                    </button>
+                                    <button class="btn btn-warning" onclick="confirmDatabaseReset()">
+                                        ⚠️ بازنشانی کامل
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

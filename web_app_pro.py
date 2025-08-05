@@ -1347,7 +1347,7 @@ def main():
         
         try:
             # Try to start with browser if available
-            eel.start('index.html', size=(1400, 900), port=8080, host='localhost', 
+            eel.start('index_pro.html', size=(1400, 900), port=8080, host='localhost', 
                      close_callback=lambda page, sockets: background_indexer.stop(),
                      block=True)
         except Exception as browser_error:
