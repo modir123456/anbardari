@@ -368,6 +368,91 @@ class LicenseManager:
         """تولید اطلاعات دستگاه برای پشتیبانی"""
         return f"Machine ID: {self._machine_id[:8]}\nFull Hash: {self._machine_id}\nPlatform: {platform.system()} {platform.release()}"
 
+# Custom QTreeWidget with Drag & Drop Support
+class DragDropTreeWidget(QTreeWidget):
+    """QTreeWidget با پشتیبانی از drag & drop"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent_app = parent
+        
+    def dragEnterEvent(self, event):
+        """ورود drag"""
+        if event.mimeData().hasUrls() or event.mimeData().hasText():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+    
+    def dragMoveEvent(self, event):
+        """حرکت drag"""
+        if event.mimeData().hasUrls() or event.mimeData().hasText():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+    
+    def dropEvent(self, event):
+        """رها کردن فایل"""
+        try:
+            item = self.itemAt(event.pos())
+            if not item:
+                event.ignore()
+                return
+            
+            # Get destination path
+            destination_path = item.data(0, Qt.UserRole)
+            item_type = item.data(0, Qt.UserRole + 1)
+            
+            if not destination_path or item_type not in ["folder", "drive"]:
+                event.ignore()
+                return
+            
+            # Get dropped files
+            file_paths = []
+            
+            if event.mimeData().hasUrls():
+                # External files dropped
+                for url in event.mimeData().urls():
+                    if url.isLocalFile():
+                        file_paths.append(url.toLocalFile())
+            elif event.mimeData().hasText():
+                # Internal drag from file tree
+                text_data = event.mimeData().text()
+                if text_data:
+                    file_paths = [text_data]
+            
+            if file_paths and self.parent_app:
+                # Calculate total size and check space
+                total_size = 0
+                for file_path in file_paths:
+                    if os.path.exists(file_path):
+                        try:
+                            if os.path.isfile(file_path):
+                                total_size += os.path.getsize(file_path)
+                            elif os.path.isdir(file_path):
+                                for dirpath, dirnames, filenames in os.walk(file_path):
+                                    for filename in filenames:
+                                        fp = os.path.join(dirpath, filename)
+                                        try:
+                                            total_size += os.path.getsize(fp)
+                                        except:
+                                            continue
+                        except:
+                            continue
+                
+                # Check disk space
+                if self.parent_app.check_disk_space(destination_path, total_size):
+                    # Start copy
+                    self.parent_app.start_copy_task(file_paths, destination_path)
+                    self.parent_app.show_toast(f"🎯 شروع کپی {len(file_paths)} آیتم به {os.path.basename(destination_path)}", "success")
+                
+                event.acceptProposedAction()
+            else:
+                event.ignore()
+                
+        except Exception as e:
+            print(f"Error in drop event: {e}")
+            event.ignore()
+
 # Toast Notification System
 class ToastNotification(QWidget):
     """سیستم اعلان Toast مشابه SweetAlert"""
@@ -658,6 +743,12 @@ class FileScannerWorker(QThread):
                             self.file_count += 1
                             
                     elif os.path.isdir(item_path):
+                        # Add directory to index as well
+                        dir_info = self.get_directory_info(item_path)
+                        if dir_info:
+                            self.file_found.emit(dir_info)
+                            self.file_count += 1
+                        
                         # Skip system directories
                         skip_dirs = {
                             'System Volume Information', '$RECYCLE.BIN',
@@ -687,7 +778,26 @@ class FileScannerWorker(QThread):
                 'raw_size': size,
                 'type': self.get_file_type(file_path),
                 'drive': os.path.splitdrive(file_path)[0],
-                'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M')
+                'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M'),
+                'item_type': 'file'
+            }
+        except:
+            return None
+    
+    def get_directory_info(self, dir_path: str) -> dict:
+        """دریافت اطلاعات پوشه"""
+        try:
+            stat = os.stat(dir_path)
+            
+            return {
+                'name': os.path.basename(dir_path),
+                'path': dir_path,
+                'size': "پوشه",
+                'raw_size': 0,
+                'type': "📁 پوشه",
+                'drive': os.path.splitdrive(dir_path)[0],
+                'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M'),
+                'item_type': 'directory'
             }
         except:
             return None
@@ -747,6 +857,9 @@ class PersianFileCopierPyQt5(QMainWindow):
         # Start initial scan and load drives
         self.start_drive_scan()
         self.load_drives_tree()
+        
+        # Setup drive monitoring
+        self.setup_drive_monitoring()
         
     def init_ui(self):
         """راه‌اندازی رابط کاربری"""
@@ -879,12 +992,16 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.file_count_label.setAlignment(Qt.AlignCenter)
         file_layout.addWidget(self.file_count_label)
         
-        # File tree
+        # File tree with enhanced features
         self.file_tree = QTreeWidget()
         self.file_tree.setHeaderLabels(["📁 نام", "📂 مسیر", "📄 نوع", "💾 اندازه"])
         self.file_tree.setAlternatingRowColors(True)
         self.file_tree.setSelectionMode(QTreeWidget.ExtendedSelection)
         self.file_tree.setFont(QFont("B Nazanin", 9))
+        self.file_tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.file_tree.setAcceptDrops(True)
+        self.file_tree.setDragEnabled(True)
+        self.file_tree.setDragDropMode(QTreeWidget.DragDrop)
         
         # Set column widths
         self.file_tree.setColumnWidth(0, 150)  # Name
@@ -958,14 +1075,16 @@ class PersianFileCopierPyQt5(QMainWindow):
         header_label.setAlignment(Qt.AlignCenter)
         drives_layout.addWidget(header_label)
         
-        # Drives tree with destinations
-        self.drives_tree = QTreeWidget()
+        # Drives tree with destinations and drag-drop
+        self.drives_tree = DragDropTreeWidget(self)
         self.drives_tree.setHeaderHidden(True)
         self.drives_tree.setFont(QFont("B Nazanin", 10))
         self.drives_tree.setRootIsDecorated(True)
         self.drives_tree.setIndentation(20)
+        self.drives_tree.setAcceptDrops(True)
+        self.drives_tree.setDragDropMode(QTreeWidget.DropOnly)
         
-        # Enable click handling
+        # Enable click and drop handling
         self.drives_tree.itemClicked.connect(self.on_destination_clicked)
         
         drives_layout.addWidget(self.drives_tree)
@@ -1018,26 +1137,26 @@ class PersianFileCopierPyQt5(QMainWindow):
         
         tasks_layout.addWidget(task_control_frame)
         
-        # Tasks table (larger fonts and buttons)
+        # Tasks table (professional design)
         self.tasks_table = QTableWidget()
-        self.tasks_table.setColumnCount(4)
+        self.tasks_table.setColumnCount(3)
         self.tasks_table.setHorizontalHeaderLabels([
-            "📁 مبدأ", "📂 مقصد", "📊 پیشرفت", "🎛️ کنترل"
+            "🎛️ کنترل", "📁 مبدأ", "📂 مقصد"
         ])
         
-        # Set column widths (larger)
-        self.tasks_table.setColumnWidth(0, 100)   # Source
-        self.tasks_table.setColumnWidth(1, 100)   # Destination  
-        self.tasks_table.setColumnWidth(2, 120)   # Progress
-        self.tasks_table.setColumnWidth(3, 120)   # Control
+        # Set column widths - Control first, wider
+        self.tasks_table.setColumnWidth(0, 140)   # Control (first column, wider)
+        self.tasks_table.setColumnWidth(1, 120)   # Source
+        self.tasks_table.setColumnWidth(2, 120)   # Destination
         
         self.tasks_table.setAlternatingRowColors(True)
         self.tasks_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.tasks_table.setFont(QFont("B Nazanin", 9))
-        self.tasks_table.setMinimumHeight(150)
+        self.tasks_table.setFont(QFont("B Nazanin", 10))
+        self.tasks_table.setMinimumHeight(180)
         
-        # Set row height larger
-        self.tasks_table.verticalHeader().setDefaultSectionSize(40)
+        # Set row height much larger for better visibility
+        self.tasks_table.verticalHeader().setDefaultSectionSize(60)
+        self.tasks_table.setGridStyle(Qt.NoPen)  # Remove grid lines for cleaner look
         
         tasks_layout.addWidget(self.tasks_table)
         parent_splitter.addWidget(tasks_frame)
@@ -2198,6 +2317,8 @@ class PersianFileCopierPyQt5(QMainWindow):
             # File tree connections
             if hasattr(self, 'file_tree'):
                 self.file_tree.itemDoubleClicked.connect(self.on_file_double_click)
+                self.file_tree.itemClicked.connect(self.on_file_clicked)
+                self.file_tree.customContextMenuRequested.connect(self.show_file_context_menu)
                 
         except Exception as e:
             print(f"Error setting up connections: {e}")
@@ -2258,8 +2379,7 @@ class PersianFileCopierPyQt5(QMainWindow):
     
     def scan_completed(self, total_files: int):
         """تکمیل اسکن"""
-        self.update_status(f"اسکن تکمیل شد - {total_files} فایل یافت شد")
-        self.show_toast(f"اسکن تکمیل شد! {total_files} فایل یافت شد", "success")
+                    self.update_status(f"اسکن تکمیل شد - {total_files} فایل یافت شد")
     
     def matches_current_filters(self, file_info: dict) -> bool:
         """بررسی انطباق فایل با فیلترهای فعلی"""
@@ -2471,99 +2591,154 @@ class PersianFileCopierPyQt5(QMainWindow):
             self.show_toast(f"خطا در شروع کپی: {e}", "error")
     
     def add_task_to_table(self, task_id: str, file_paths: List[str], destination: str):
-        """اضافه کردن تسک به جدول"""
+        """اضافه کردن تسک به جدول با طراحی حرفه‌ای"""
         try:
             row = self.tasks_table.rowCount()
             self.tasks_table.insertRow(row)
             
+            # Control buttons (first column - wider and more prominent)
+            control_widget = QWidget()
+            control_layout = QVBoxLayout(control_widget)
+            control_layout.setContentsMargins(6, 6, 6, 6)
+            control_layout.setSpacing(4)
+            
+            # Progress bar with status text (professional design)
+            progress_container = QFrame()
+            progress_container.setFrameStyle(QFrame.Box)
+            progress_container.setStyleSheet("""
+                QFrame {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
+                        stop:0 #4a4a4a, stop:1 #3a3a3a);
+                    border: 1px solid #666666;
+                    border-radius: 4px;
+                    min-height: 20px;
+                }
+            """)
+            progress_layout = QHBoxLayout(progress_container)
+            progress_layout.setContentsMargins(4, 2, 4, 2)
+            
+            # Create custom progress display
+            self.create_custom_progress_display(progress_container, task_id)
+            
+            control_layout.addWidget(progress_container)
+            
+            # Control buttons row
+            buttons_layout = QHBoxLayout()
+            buttons_layout.setSpacing(3)
+            
+            pause_btn = QPushButton("⏸️")
+            pause_btn.setMinimumSize(35, 25)
+            pause_btn.setFont(QFont("Arial", 10))
+            pause_btn.setToolTip("مکث")
+            pause_btn.setStyleSheet("QPushButton { background: #ff9500; } QPushButton:hover { background: #ffad33; }")
+            pause_btn.clicked.connect(lambda: self.pause_task(task_id))
+            
+            resume_btn = QPushButton("▶️")
+            resume_btn.setMinimumSize(35, 25)
+            resume_btn.setFont(QFont("Arial", 10))
+            resume_btn.setToolTip("ادامه")
+            resume_btn.setStyleSheet("QPushButton { background: #28a745; } QPushButton:hover { background: #34ce57; }")
+            resume_btn.clicked.connect(lambda: self.resume_task(task_id))
+            
+            cancel_btn = QPushButton("❌")
+            cancel_btn.setMinimumSize(35, 25)
+            cancel_btn.setFont(QFont("Arial", 10))
+            cancel_btn.setToolTip("لغو")
+            cancel_btn.setStyleSheet("QPushButton { background: #dc3545; } QPushButton:hover { background: #e4606d; }")
+            cancel_btn.clicked.connect(lambda: self.cancel_task(task_id))
+            
+            buttons_layout.addWidget(pause_btn)
+            buttons_layout.addWidget(resume_btn)
+            buttons_layout.addWidget(cancel_btn)
+            
+            control_layout.addLayout(buttons_layout)
+            self.tasks_table.setCellWidget(row, 0, control_widget)
+            
             # Source (file count)
             source_text = f"{len(file_paths)} فایل"
             source_item = QTableWidgetItem(source_text)
-            source_item.setFont(QFont("B Nazanin", 10))
-            self.tasks_table.setItem(row, 0, source_item)
+            source_item.setFont(QFont("B Nazanin", 11))
+            source_item.setTextAlignment(Qt.AlignCenter)
+            self.tasks_table.setItem(row, 1, source_item)
             
             # Destination
             dest_text = os.path.basename(destination) or destination
             dest_item = QTableWidgetItem(dest_text)
-            dest_item.setFont(QFont("B Nazanin", 10))
-            self.tasks_table.setItem(row, 1, dest_item)
+            dest_item.setFont(QFont("B Nazanin", 11))
+            dest_item.setTextAlignment(Qt.AlignCenter)
+            self.tasks_table.setItem(row, 2, dest_item)
             
-            # Progress with speed combined (larger)
-            progress_widget = QWidget()
-            progress_layout = QVBoxLayout(progress_widget)
-            progress_layout.setContentsMargins(4, 4, 4, 4)
-            progress_layout.setSpacing(2)
-            
-            progress_bar = QProgressBar()
-            progress_bar.setFont(QFont("B Nazanin", 9))
-            progress_bar.setMinimumHeight(16)
-            progress_layout.addWidget(progress_bar)
-            
-            speed_label = QLabel("0 MB/s")
-            speed_label.setFont(QFont("B Nazanin", 9))
-            speed_label.setAlignment(Qt.AlignCenter)
-            progress_layout.addWidget(speed_label)
-            
-            self.tasks_table.setCellWidget(row, 2, progress_widget)
-            
-            # Individual control buttons (larger)
-            control_widget = QWidget()
-            control_layout = QHBoxLayout(control_widget)
-            control_layout.setContentsMargins(4, 4, 4, 4)
-            control_layout.setSpacing(4)
-            
-            pause_btn = QPushButton("⏸️")
-            pause_btn.setMinimumSize(28, 28)
-            pause_btn.setFont(QFont("Arial", 10))
-            pause_btn.setToolTip("مکث")
-            pause_btn.clicked.connect(lambda: self.pause_task(task_id))
-            
-            resume_btn = QPushButton("▶️")
-            resume_btn.setMinimumSize(28, 28)
-            resume_btn.setFont(QFont("Arial", 10))
-            resume_btn.setToolTip("ادامه")
-            resume_btn.clicked.connect(lambda: self.resume_task(task_id))
-            
-            cancel_btn = QPushButton("❌")
-            cancel_btn.setMinimumSize(28, 28)
-            cancel_btn.setFont(QFont("Arial", 10))
-            cancel_btn.setToolTip("لغو")
-            cancel_btn.clicked.connect(lambda: self.cancel_task(task_id))
-            
-            control_layout.addWidget(pause_btn)
-            control_layout.addWidget(resume_btn)
-            control_layout.addWidget(cancel_btn)
-            
-            self.tasks_table.setCellWidget(row, 3, control_widget)
-            
-            # Store row index and widgets for updates
+            # Store row index for updates
             self.active_tasks[task_id]['row'] = row
-            self.active_tasks[task_id]['progress_bar'] = progress_bar
-            self.active_tasks[task_id]['speed_label'] = speed_label
+            self.active_tasks[task_id]['progress_container'] = progress_container
             
         except Exception as e:
             print(f"Error adding task to table: {e}")
     
+    def create_custom_progress_display(self, container, task_id):
+        """ایجاد نمایش پیشرفت سفارشی"""
+        try:
+            # Progress text overlay
+            progress_label = QLabel("شروع...")
+            progress_label.setAlignment(Qt.AlignCenter)
+            progress_label.setFont(QFont("B Nazanin", 9, QFont.Bold))
+            progress_label.setStyleSheet("color: white; background: transparent;")
+            
+            # Store for updates
+            self.active_tasks[task_id]['progress_label'] = progress_label
+            
+            layout = QHBoxLayout(container)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.addWidget(progress_label)
+            
+        except Exception as e:
+            print(f"Error creating progress display: {e}")
+    
     def update_task_progress(self, task_id: str, progress: int, speed: str, eta: str):
-        """بروزرسانی پیشرفت تسک"""
+        """بروزرسانی پیشرفت تسک با انیمیشن حرفه‌ای"""
         try:
             if task_id in self.active_tasks:
                 task = self.active_tasks[task_id]
                 task['progress'] = progress
                 
-                # Update progress bar and speed in the combined widget
-                progress_bar = task.get('progress_bar')
-                speed_label = task.get('speed_label')
+                # Update custom progress display
+                progress_container = task.get('progress_container')
+                progress_label = task.get('progress_label')
                 
-                if progress_bar:
-                    progress_bar.setValue(progress)
-                    progress_bar.setFormat(f"{progress}% - {eta}")
-                
-                if speed_label:
-                    speed_label.setText(speed)
+                if progress_container and progress_label:
+                    # Update background gradient based on progress
+                    gradient_color = self.get_progress_color(progress)
+                    progress_container.setStyleSheet(f"""
+                        QFrame {{
+                            background: qlineargradient(x1:0, y1:0, x2:{progress/100}, y2:0,
+                                stop:0 {gradient_color}, stop:1 #3a3a3a);
+                            border: 1px solid #666666;
+                            border-radius: 4px;
+                            min-height: 20px;
+                        }}
+                    """)
+                    
+                    # Update text
+                    if progress < 100:
+                        progress_label.setText(f"{progress}% - {speed} - {eta}")
+                    else:
+                        progress_label.setText("✅ تکمیل شد")
                 
         except Exception as e:
             print(f"Error updating task progress: {e}")
+    
+    def get_progress_color(self, progress: int) -> str:
+        """دریافت رنگ بر اساس پیشرفت"""
+        if progress < 25:
+            return "#ff6b6b"  # قرمز برای شروع
+        elif progress < 50:
+            return "#ffa500"  # نارنجی
+        elif progress < 75:
+            return "#ffeb3b"  # زرد  
+        elif progress < 100:
+            return "#4caf50"  # سبز
+        else:
+            return "#2e7d32"  # سبز تیره برای تکمیل
     
     def task_completed(self, task_id: str, success: bool, message: str):
         """تسک تکمیل شد"""
@@ -2572,19 +2747,35 @@ class PersianFileCopierPyQt5(QMainWindow):
                 task = self.active_tasks[task_id]
                 task['status'] = 'completed' if success else 'failed'
                 
-                # Update progress bar
-                progress_bar = task.get('progress_bar')
-                speed_label = task.get('speed_label')
+                # Update custom progress display
+                progress_container = task.get('progress_container')
+                progress_label = task.get('progress_label')
                 
-                if progress_bar:
+                if progress_container and progress_label:
                     if success:
-                        progress_bar.setValue(100)
-                        progress_bar.setFormat("✅ تکمیل شد")
+                        # Green gradient for success
+                        progress_container.setStyleSheet("""
+                            QFrame {
+                                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                    stop:0 #2e7d32, stop:1 #4caf50);
+                                border: 1px solid #4caf50;
+                                border-radius: 4px;
+                                min-height: 20px;
+                            }
+                        """)
+                        progress_label.setText("✅ تکمیل شد")
                     else:
-                        progress_bar.setFormat("❌ خطا")
-                
-                if speed_label:
-                    speed_label.setText("تکمیل شد" if success else "خطا")
+                        # Red gradient for error
+                        progress_container.setStyleSheet("""
+                            QFrame {
+                                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                    stop:0 #d32f2f, stop:1 #f44336);
+                                border: 1px solid #f44336;
+                                border-radius: 4px;
+                                min-height: 20px;
+                            }
+                        """)
+                        progress_label.setText("❌ خطا")
                 
                 # Show notification
                 toast_type = "success" if success else "error"
@@ -3083,18 +3274,39 @@ class PersianFileCopierPyQt5(QMainWindow):
                 self.show_license_restriction()
                 return
             
-            # Extract file paths
+            # Extract file paths and calculate total size
             file_paths = []
+            total_size = 0
             for item in selected_items:
                 file_path = item.text(1)  # Path column
                 if os.path.exists(file_path):
                     file_paths.append(file_path)
+                    try:
+                        if os.path.isfile(file_path):
+                            total_size += os.path.getsize(file_path)
+                        elif os.path.isdir(file_path):
+                            # Calculate directory size
+                            for dirpath, dirnames, filenames in os.walk(file_path):
+                                for filename in filenames:
+                                    fp = os.path.join(dirpath, filename)
+                                    try:
+                                        total_size += os.path.getsize(fp)
+                                    except (OSError, IOError):
+                                        continue
+                    except (OSError, IOError):
+                        continue
             
-            if file_paths:
-                self.start_copy_task(file_paths, destination_path)
-                self.show_toast(f"شروع کپی {len(file_paths)} فایل به {os.path.basename(destination_path)}", "info")
-            else:
+            if not file_paths:
                 self.show_toast("فایل‌های انتخاب شده یافت نشدند", "error")
+                return
+                
+            # Check disk space
+            if not self.check_disk_space(destination_path, total_size):
+                return
+            
+            # Start copy task
+            self.start_copy_task(file_paths, destination_path)
+            self.show_toast(f"شروع کپی {len(file_paths)} فایل به {os.path.basename(destination_path)}", "info")
                 
         except Exception as e:
             print(f"Error starting copy to destination: {e}")
@@ -3297,6 +3509,16 @@ class PersianFileCopierPyQt5(QMainWindow):
         except Exception as e:
             print(f"Error refreshing files: {e}")
     
+    def on_file_clicked(self, item, column):
+        """کلیک روی فایل - نمایش راهنمای انتخاب مقصد"""
+        try:
+            selected_count = len(self.file_tree.selectedItems())
+            if selected_count > 0:
+                message = f"✅ {selected_count} فایل انتخاب شد\n💡 حالا روی مقصد مورد نظر کلیک کنید"
+                self.show_auto_hide_toast(message, "info", 5000)
+        except Exception as e:
+            print(f"Error handling file click: {e}")
+    
     def on_file_double_click(self, item, column):
         """کلیک دوگانه روی فایل"""
         try:
@@ -3305,6 +3527,117 @@ class PersianFileCopierPyQt5(QMainWindow):
                 os.startfile(file_path)  # Open file with default program
         except Exception as e:
             print(f"Error opening file: {e}")
+    
+    def show_file_context_menu(self, position):
+        """نمایش منوی راست کلیک برای فایل‌ها"""
+        try:
+            item = self.file_tree.itemAt(position)
+            if not item:
+                return
+            
+            menu = QMenu(self)
+            menu.setFont(QFont("B Nazanin", 10))
+            
+            # Copy path action
+            copy_path_action = menu.addAction("📋 کپی مسیر")
+            copy_path_action.triggered.connect(lambda: self.copy_file_path(item))
+            
+            # Open file action
+            open_action = menu.addAction("📂 باز کردن فایل")
+            open_action.triggered.connect(lambda: self.on_file_double_click(item, 0))
+            
+            # Open folder action
+            open_folder_action = menu.addAction("📁 باز کردن پوشه")
+            open_folder_action.triggered.connect(lambda: self.open_file_folder(item))
+            
+            # Properties action
+            menu.addSeparator()
+            properties_action = menu.addAction("🔍 ویژگی‌ها")
+            properties_action.triggered.connect(lambda: self.show_file_properties(item))
+            
+            # Select all action
+            menu.addSeparator()
+            select_all_action = menu.addAction("☑️ انتخاب همه")
+            select_all_action.triggered.connect(self.select_all_files)
+            
+            menu.exec_(self.file_tree.mapToGlobal(position))
+            
+        except Exception as e:
+            print(f"Error showing context menu: {e}")
+    
+    def copy_file_path(self, item):
+        """کپی مسیر فایل به کلیپبورد"""
+        try:
+            file_path = item.text(1)
+            clipboard = QApplication.clipboard()
+            clipboard.setText(file_path)
+            self.show_toast("مسیر فایل کپی شد", "success")
+        except Exception as e:
+            print(f"Error copying file path: {e}")
+    
+    def open_file_folder(self, item):
+        """باز کردن پوشه فایل"""
+        try:
+            file_path = item.text(1)
+            folder_path = os.path.dirname(file_path)
+            if os.path.exists(folder_path):
+                os.startfile(folder_path)
+        except Exception as e:
+            print(f"Error opening file folder: {e}")
+    
+    def show_file_properties(self, item):
+        """نمایش ویژگی‌های فایل"""
+        try:
+            file_path = item.text(1)
+            if os.path.exists(file_path):
+                stat = os.stat(file_path)
+                size = self.format_size(stat.st_size)
+                modified = datetime.fromtimestamp(stat.st_mtime).strftime("%Y/%m/%d %H:%M")
+                
+                properties = f"""
+                📁 نام: {os.path.basename(file_path)}
+                📂 مسیر: {file_path}
+                💾 اندازه: {size}
+                📅 تاریخ تغییر: {modified}
+                📄 نوع: {os.path.splitext(file_path)[1] or 'فایل'}
+                """
+                
+                self.show_toast(properties, "info")
+        except Exception as e:
+            print(f"Error showing file properties: {e}")
+    
+    def show_auto_hide_toast(self, message: str, toast_type: str = "info", duration: int = 5000):
+        """نمایش toast با زمان مشخص"""
+        try:
+            toast = ToastNotification(self, message, toast_type, duration)
+        except Exception as e:
+            print(f"Error showing auto-hide toast: {e}")
+    
+    def check_disk_space(self, destination_path: str, total_size: int) -> bool:
+        """بررسی فضای دیسک"""
+        try:
+            if os.path.exists(destination_path):
+                free_space = psutil.disk_usage(destination_path).free
+                if total_size > free_space:
+                    needed_space = self.format_size(total_size - free_space)
+                    available_space = self.format_size(free_space)
+                    
+                    message = f"""
+                    ⚠️ فضای ناکافی!
+                    
+                    📊 فضای مورد نیاز: {self.format_size(total_size)}
+                    💾 فضای موجود: {available_space}
+                    ❌ کمبود فضا: {needed_space}
+                    
+                    لطفاً فضای بیشتری آزاد کنید
+                    """
+                    
+                    self.show_auto_hide_toast(message, "error", 10000)
+                    return False
+            return True
+        except Exception as e:
+            print(f"Error checking disk space: {e}")
+            return True
     
     def show_license_restriction(self):
         """نمایش محدودیت لایسنس"""
@@ -3444,6 +3777,73 @@ class PersianFileCopierPyQt5(QMainWindow):
                 self.remove_completed_task(task_id)
         except Exception as e:
             print(f"Error cancelling task {task_id}: {e}")
+    
+    def setup_drive_monitoring(self):
+        """راه‌اندازی مانیتورینگ درایوها"""
+        try:
+            # Store current drives for comparison
+            self.current_drives = set()
+            for partition in psutil.disk_partitions():
+                if partition.mountpoint:
+                    self.current_drives.add(partition.mountpoint)
+            
+            # Setup timer for drive monitoring
+            self.drive_monitor_timer = QTimer()
+            self.drive_monitor_timer.timeout.connect(self.check_for_new_drives)
+            self.drive_monitor_timer.start(3000)  # Check every 3 seconds
+            
+        except Exception as e:
+            print(f"Error setting up drive monitoring: {e}")
+    
+    def check_for_new_drives(self):
+        """بررسی درایوهای جدید"""
+        try:
+            new_drives = set()
+            for partition in psutil.disk_partitions():
+                if partition.mountpoint:
+                    new_drives.add(partition.mountpoint)
+            
+            # Check for added drives
+            added_drives = new_drives - self.current_drives
+            if added_drives:
+                for drive in added_drives:
+                    self.show_toast(f"🔌 درایو جدید شناسایی شد: {drive}", "info")
+                
+                # Refresh drives tree
+                self.load_drives_tree()
+                
+                # Optionally start scanning new drives
+                for drive in added_drives:
+                    self.scan_new_drive(drive)
+            
+            # Check for removed drives
+            removed_drives = self.current_drives - new_drives
+            if removed_drives:
+                for drive in removed_drives:
+                    self.show_toast(f"🔌 درایو حذف شد: {drive}", "warning")
+                
+                # Refresh drives tree
+                self.load_drives_tree()
+            
+            # Update current drives list
+            self.current_drives = new_drives
+            
+        except Exception as e:
+            print(f"Error checking for new drives: {e}")
+    
+    def scan_new_drive(self, drive_path: str):
+        """اسکن سریع درایو جدید"""
+        try:
+            self.update_status(f"اسکن درایو جدید: {drive_path}")
+            
+            # Start background scan for new drive
+            scanner = FileScannerWorker([drive_path], self.config)
+            scanner.file_found.connect(self.add_file_to_cache)
+            scanner.scan_completed.connect(lambda count: self.update_status(f"اسکن {drive_path} تکمیل شد - {count} آیتم"))
+            scanner.start()
+            
+        except Exception as e:
+            print(f"Error scanning new drive: {e}")
     
     def closeEvent(self, event):
         """رویداد بستن برنامه"""
