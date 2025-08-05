@@ -495,15 +495,14 @@ class ToastNotification(QWidget):
             "info": "#2196F3"
         }
         
-        icon_label = QLabel(icons.get(toast_type, "ℹ️"))
-        icon_label.setFont(QFont("Arial", 16))
-        
-        message_label = QLabel(message)
+        # Combined icon and message in single label
+        combined_text = f"{icons.get(toast_type, 'ℹ️')} {message}"
+        message_label = QLabel(combined_text)
         message_label.setFont(QFont("B Nazanin", 11))
         message_label.setWordWrap(True)
-        message_label.setStyleSheet("color: white;")
+        message_label.setStyleSheet("color: white; padding: 5px;")
+        message_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # RTL alignment
         
-        layout.addWidget(icon_label)
         layout.addWidget(message_label)
         
         # Styling
@@ -954,8 +953,9 @@ class PersianFileCopierPyQt5(QMainWindow):
         
         self.search_entry = QLineEdit()
         self.search_entry.setPlaceholderText("جستجو در فایل‌ها...")
-        self.search_entry.setFont(QFont("B Nazanin", 10))
-        self.search_entry.setMaximumHeight(28)
+        self.search_entry.setFont(QFont("B Nazanin", 11))
+        self.search_entry.setMinimumHeight(35)
+        self.search_entry.setMaximumHeight(35)
         
         search_row.addWidget(search_label)
         search_row.addWidget(self.search_entry)
@@ -965,8 +965,9 @@ class PersianFileCopierPyQt5(QMainWindow):
         filter_row = QHBoxLayout()
         
         self.format_filter = QComboBox()
-        self.format_filter.setFont(QFont("B Nazanin", 9))
-        self.format_filter.setMaximumHeight(26)
+        self.format_filter.setFont(QFont("B Nazanin", 10))
+        self.format_filter.setMinimumHeight(32)
+        self.format_filter.setMaximumHeight(32)
         format_options = [
             "همه فرمت‌ها", "📷 تصاویر", "🎬 ویدیوها", "🎵 صوتی", 
             "📄 اسناد", "📊 جداول", "📋 ارائه", "📦 آرشیو",
@@ -975,8 +976,9 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.format_filter.addItems(format_options)
         
         self.size_filter = QComboBox()
-        self.size_filter.setFont(QFont("B Nazanin", 9))
-        self.size_filter.setMaximumHeight(26)
+        self.size_filter.setFont(QFont("B Nazanin", 10))
+        self.size_filter.setMinimumHeight(32)
+        self.size_filter.setMaximumHeight(32)
         size_options = ["همه اندازه‌ها", "🟢 کوچک", "🟡 متوسط", "🟠 بزرگ", "🔴 خیلی بزرگ"]
         self.size_filter.addItems(size_options)
         
@@ -1070,10 +1072,23 @@ class PersianFileCopierPyQt5(QMainWindow):
         drives_layout.setSpacing(4)
         
         # Header
+        # Header with refresh button
+        header_frame = QFrame()
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(4, 4, 4, 4)
+        
         header_label = QLabel("🖥️ درایوها و مقصدها")
         header_label.setFont(QFont("B Nazanin", 12, QFont.Bold))
-        header_label.setAlignment(Qt.AlignCenter)
-        drives_layout.addWidget(header_label)
+        header_layout.addWidget(header_label)
+        
+        refresh_drives_btn = QPushButton("🔄")
+        refresh_drives_btn.setToolTip("بروزرسانی لیست درایوها")
+        refresh_drives_btn.setMaximumSize(30, 25)
+        refresh_drives_btn.setFont(QFont("Arial", 10))
+        refresh_drives_btn.clicked.connect(self.refresh_drives_list)
+        header_layout.addWidget(refresh_drives_btn)
+        
+        drives_layout.addWidget(header_frame)
         
         # Drives tree with destinations and drag-drop
         self.drives_tree = DragDropTreeWidget(self)
@@ -1155,7 +1170,7 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.tasks_table.setMinimumHeight(180)
         
         # Set row height much larger for better visibility
-        self.tasks_table.verticalHeader().setDefaultSectionSize(60)
+        self.tasks_table.verticalHeader().setDefaultSectionSize(80)
         self.tasks_table.setGridStyle(Qt.NoPen)  # Remove grid lines for cleaner look
         
         tasks_layout.addWidget(self.tasks_table)
@@ -1471,17 +1486,26 @@ class PersianFileCopierPyQt5(QMainWindow):
         scroll_widget = QWidget()
         scroll_layout = QVBoxLayout(scroll_widget)
         
-        # Font settings
-        self.create_font_settings(scroll_layout)
+        # Font settings - Global font system
+        self.create_global_font_settings(scroll_layout)
         
-        # Theme settings  
-        self.create_theme_settings(scroll_layout)
+        # UI/UX settings
+        self.create_ui_settings(scroll_layout)
         
-        # Performance settings
-        self.create_performance_settings(scroll_layout)
+        # File operations settings
+        self.create_file_operations_settings(scroll_layout)
+        
+        # Notification settings
+        self.create_notification_settings(scroll_layout)
+        
+        # Advanced settings
+        self.create_advanced_settings(scroll_layout)
         
         # License settings
         self.create_license_settings(scroll_layout)
+        
+        # Language settings
+        self.create_language_settings(scroll_layout)
         
         scroll_layout.addStretch()
         scroll.setWidget(scroll_widget)
@@ -1490,38 +1514,97 @@ class PersianFileCopierPyQt5(QMainWindow):
         
         self.tab_widget.addTab(tab, "⚙️ تنظیمات")
     
-    def create_font_settings(self, parent_layout):
-        """تنظیمات فونت"""
-        font_group = QGroupBox("🔤 تنظیمات فونت")
+    def create_global_font_settings(self, parent_layout):
+        """سیستم فونت سراسری"""
+        font_group = QGroupBox("🔤 سیستم فونت سراسری")
         font_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
-        font_layout = QFormLayout(font_group)
+        font_layout = QVBoxLayout(font_group)
         
-        # Font family
+        # Global font description
+        desc_label = QLabel("فونت انتخاب شده برای تمام قسمت‌های نرم‌افزار اعمال می‌شود")
+        desc_label.setFont(QFont("B Nazanin", 9))
+        desc_label.setStyleSheet("color: #888888;")
+        font_layout.addWidget(desc_label)
+        
+        form_layout = QFormLayout()
+        
+        # Font family with preview
         self.font_family_combo = QComboBox()
-        self.font_family_combo.setFont(QFont("B Nazanin", 10))
+        self.font_family_combo.setFont(QFont("B Nazanin", 11))
+        self.font_family_combo.setMinimumHeight(35)
         
-        # Load system fonts
-        available_fonts = ["B Nazanin", "Tahoma", "Arial", "Calibri", "IRANSans", "Vazir"]
-        self.font_family_combo.addItems(available_fonts)
+        # Load ALL system fonts (like Microsoft Word)
+        from PyQt5.QtGui import QFontDatabase
+        font_db = QFontDatabase()
+        system_fonts = font_db.families()
+        
+        # Persian fonts first, then others
+        persian_fonts = ["B Nazanin", "IRANSans", "Vazir", "Samim", "Sahel", "Shabnam"]
+        popular_fonts = ["Tahoma", "Arial", "Calibri", "Times New Roman", "Verdana"]
+        
+        all_fonts = persian_fonts + popular_fonts + [f for f in system_fonts if f not in persian_fonts + popular_fonts]
+        self.font_family_combo.addItems(all_fonts)
         
         current_font = self.config.get('font_settings', 'primary_font', 'B Nazanin')
-        if current_font in available_fonts:
+        if current_font in all_fonts:
             self.font_family_combo.setCurrentText(current_font)
         
         # Font size
         self.font_size_spin = QSpinBox()
-        self.font_size_spin.setRange(8, 24)
+        self.font_size_spin.setRange(8, 32)
         self.font_size_spin.setValue(self.config.get('font_settings', 'font_size', 11))
+        self.font_size_spin.setMinimumHeight(35)
+        
+        # Font weight
+        self.font_weight_combo = QComboBox()
+        self.font_weight_combo.addItems(["Normal", "Bold", "Light"])
+        self.font_weight_combo.setCurrentText(self.config.get('font_settings', 'font_weight', 'Normal'))
+        self.font_weight_combo.setMinimumHeight(35)
+        
+        # Preview text
+        self.font_preview = QLabel("نمونه متن: Persian File Copier Pro")
+        self.font_preview.setStyleSheet("border: 1px solid #666; padding: 10px; background: #f0f0f0;")
+        self.font_preview.setMinimumHeight(50)
+        self.update_font_preview()
+        
+        # Connect font changes to preview
+        self.font_family_combo.currentTextChanged.connect(self.update_font_preview)
+        self.font_size_spin.valueChanged.connect(self.update_font_preview)
+        self.font_weight_combo.currentTextChanged.connect(self.update_font_preview)
+        
+        form_layout.addRow("👤 نوع فونت:", self.font_family_combo)
+        form_layout.addRow("📏 اندازه فونت:", self.font_size_spin)
+        form_layout.addRow("⚖️ ضخامت فونت:", self.font_weight_combo)
+        form_layout.addRow("👁️ پیش‌نمایش:", self.font_preview)
+        
+        font_layout.addLayout(form_layout)
         
         # Apply button
-        self.apply_font_btn = QPushButton("✅ اعمال فونت")
-        self.apply_font_btn.setFont(QFont("B Nazanin", 10))
-        
-        font_layout.addRow("👤 نوع فونت:", self.font_family_combo)
-        font_layout.addRow("📏 اندازه فونت:", self.font_size_spin)
-        font_layout.addRow("", self.apply_font_btn)
+        self.apply_font_btn = QPushButton("✅ اعمال فونت به کل نرم‌افزار")
+        self.apply_font_btn.setFont(QFont("B Nazanin", 11, QFont.Bold))
+        self.apply_font_btn.setMinimumHeight(45)
+        self.apply_font_btn.setStyleSheet("QPushButton { background: #28a745; color: white; }")
+        font_layout.addWidget(self.apply_font_btn)
         
         parent_layout.addWidget(font_group)
+    
+    def update_font_preview(self):
+        """بروزرسانی پیش‌نمایش فونت"""
+        try:
+            family = self.font_family_combo.currentText()
+            size = self.font_size_spin.value()
+            weight = self.font_weight_combo.currentText()
+            
+            weight_val = QFont.Normal
+            if weight == "Bold":
+                weight_val = QFont.Bold
+            elif weight == "Light":
+                weight_val = QFont.Light
+                
+            font = QFont(family, size, weight_val)
+            self.font_preview.setFont(font)
+        except:
+            pass
     
     def create_theme_settings(self, parent_layout):
         """تنظیمات تم"""
@@ -1649,11 +1732,12 @@ class PersianFileCopierPyQt5(QMainWindow):
         buttons_layout.addWidget(self.purchase_license_btn)
         license_layout.addLayout(buttons_layout)
         
-        # License info (single type)
+        # License info (Professional only)
         info_text = QLabel("""
-💡 نسخه کامل:
-• کپی نامحدود فایل‌ها
-• پشتیبانی کامل
+💎 نسخه Professional:
+• کپی نامحدود فایل‌ها و پوشه‌ها
+• عدم محدودیت اندازه فایل
+• پشتیبانی کامل تلگرام: @PersianFileSupport
 • بروزرسانی مادام‌العمر
 • قیمت: 500,000 تومان
         """)
@@ -1662,6 +1746,235 @@ class PersianFileCopierPyQt5(QMainWindow):
         license_layout.addWidget(info_text)
         
         parent_layout.addWidget(license_group)
+    
+    def create_ui_settings(self, parent_layout):
+        """تنظیمات رابط کاربری"""
+        ui_group = QGroupBox("🎨 تنظیمات ظاهری و رابط کاربری")
+        ui_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        ui_layout = QFormLayout(ui_group)
+        
+        # Theme selection
+        self.theme_combo = QComboBox()
+        self.theme_combo.setFont(QFont("B Nazanin", 10))
+        self.theme_combo.setMinimumHeight(32)
+        
+        themes = ["🌙 تیره", "☀️ روشن", "🔵 آبی", "🟢 سبز"]
+        self.theme_combo.addItems(themes)
+        
+        current_theme = self.config.get('ui_settings', 'theme', 'dark')
+        theme_mapping = {"dark": 0, "light": 1, "blue": 2, "green": 3}
+        self.theme_combo.setCurrentIndex(theme_mapping.get(current_theme, 0))
+        
+        # Window startup state
+        self.startup_maximized = QCheckBox("شروع در حالت ماکسیمم")
+        self.startup_maximized.setFont(QFont("B Nazanin", 10))
+        self.startup_maximized.setChecked(self.config.get('ui_settings', 'startup_maximized', True))
+        
+        # Animation speed
+        self.animation_speed_spin = QSpinBox()
+        self.animation_speed_spin.setRange(100, 1000)
+        self.animation_speed_spin.setSuffix(" ms")
+        self.animation_speed_spin.setValue(self.config.get('ui_settings', 'animation_speed', 300))
+        self.animation_speed_spin.setMinimumHeight(30)
+        
+        # UI Language and direction
+        self.ui_direction = QComboBox()
+        self.ui_direction.addItems(["راست به چپ (فارسی)", "چپ به راست (انگلیسی)"])
+        self.ui_direction.setCurrentIndex(0)  # RTL by default
+        self.ui_direction.setMinimumHeight(32)
+        
+        ui_layout.addRow("🎨 تم رنگی:", self.theme_combo)
+        ui_layout.addRow("🖥️ حالت شروع:", self.startup_maximized)
+        ui_layout.addRow("🎬 سرعت انیمیشن:", self.animation_speed_spin)
+        ui_layout.addRow("🌐 جهت رابط کاربری:", self.ui_direction)
+        
+        parent_layout.addWidget(ui_group)
+    
+    def create_file_operations_settings(self, parent_layout):
+        """تنظیمات عملیات فایل"""
+        file_group = QGroupBox("📁 تنظیمات عملیات فایل")
+        file_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        file_layout = QFormLayout(file_group)
+        
+        # Max concurrent tasks
+        self.max_tasks_spin = QSpinBox()
+        self.max_tasks_spin.setRange(1, 20)
+        self.max_tasks_spin.setValue(self.config.get('file_operations', 'max_concurrent_tasks', 3))
+        self.max_tasks_spin.setMinimumHeight(30)
+        
+        # Buffer/Chunk size
+        self.chunk_size_spin = QSpinBox()
+        self.chunk_size_spin.setRange(1024, 1048576)  # 1KB to 1MB
+        self.chunk_size_spin.setSuffix(" bytes")
+        self.chunk_size_spin.setValue(self.config.get('file_operations', 'chunk_size', 65536))
+        self.chunk_size_spin.setMinimumHeight(30)
+        
+        # Verify copy integrity
+        self.verify_copy_check = QCheckBox("تأیید یکپارچگی فایل‌های کپی شده")
+        self.verify_copy_check.setFont(QFont("B Nazanin", 10))
+        self.verify_copy_check.setChecked(self.config.get('file_operations', 'verify_copy', True))
+        
+        # Auto retry on failure
+        self.auto_retry_check = QCheckBox("تلاش مجدد خودکار در صورت خطا")
+        self.auto_retry_check.setFont(QFont("B Nazanin", 10))
+        self.auto_retry_check.setChecked(self.config.get('file_operations', 'auto_retry', True))
+        
+        # Max retry attempts
+        self.max_retry_spin = QSpinBox()
+        self.max_retry_spin.setRange(1, 10)
+        self.max_retry_spin.setValue(self.config.get('file_operations', 'max_retry_attempts', 3))
+        self.max_retry_spin.setMinimumHeight(30)
+        
+        # Skip existing files
+        self.skip_existing_check = QCheckBox("رد کردن فایل‌های موجود")
+        self.skip_existing_check.setFont(QFont("B Nazanin", 10))
+        self.skip_existing_check.setChecked(self.config.get('file_operations', 'skip_existing', False))
+        
+        file_layout.addRow("🔄 حداکثر تسک همزمان:", self.max_tasks_spin)
+        file_layout.addRow("📦 اندازه بافر (بایت):", self.chunk_size_spin)
+        file_layout.addRow("✅", self.verify_copy_check)
+        file_layout.addRow("🔁", self.auto_retry_check)
+        file_layout.addRow("🔢 حداکثر تلاش مجدد:", self.max_retry_spin)
+        file_layout.addRow("⏭️", self.skip_existing_check)
+        
+        parent_layout.addWidget(file_group)
+    
+    def create_notification_settings(self, parent_layout):
+        """تنظیمات اعلانات"""
+        notif_group = QGroupBox("🔔 تنظیمات اعلانات و Toast")
+        notif_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        notif_layout = QFormLayout(notif_group)
+        
+        # Toast duration
+        self.toast_duration_spin = QSpinBox()
+        self.toast_duration_spin.setRange(1000, 60000)  # 1 to 60 seconds
+        self.toast_duration_spin.setSuffix(" ms")
+        self.toast_duration_spin.setValue(self.config.get('ui_settings', 'toast_duration', 10000))
+        self.toast_duration_spin.setMinimumHeight(30)
+        
+        # Sound notifications
+        self.sound_enabled_check = QCheckBox("صدای اعلانات")
+        self.sound_enabled_check.setFont(QFont("B Nazanin", 10))
+        self.sound_enabled_check.setChecked(self.config.get('notifications', 'sound_enabled', True))
+        
+        # System tray notifications
+        self.tray_notifications_check = QCheckBox("اعلانات سینی سیستم")
+        self.tray_notifications_check.setFont(QFont("B Nazanin", 10))
+        self.tray_notifications_check.setChecked(self.config.get('notifications', 'tray_enabled', True))
+        
+        # Progress notifications
+        self.progress_notifications_check = QCheckBox("اعلان پیشرفت کپی")
+        self.progress_notifications_check.setFont(QFont("B Nazanin", 10))
+        self.progress_notifications_check.setChecked(self.config.get('notifications', 'progress_enabled', True))
+        
+        notif_layout.addRow("⏱️ مدت نمایش Toast:", self.toast_duration_spin)
+        notif_layout.addRow("🔊", self.sound_enabled_check)
+        notif_layout.addRow("📱", self.tray_notifications_check)
+        notif_layout.addRow("📊", self.progress_notifications_check)
+        
+        parent_layout.addWidget(notif_group)
+    
+    def create_advanced_settings(self, parent_layout):
+        """تنظیمات پیشرفته"""
+        advanced_group = QGroupBox("⚙️ تنظیمات پیشرفته")
+        advanced_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        advanced_layout = QFormLayout(advanced_group)
+        
+        # Scan depth limit
+        self.scan_depth_spin = QSpinBox()
+        self.scan_depth_spin.setRange(1, 50)
+        self.scan_depth_spin.setValue(self.config.get('file_operations', 'max_scan_depth', 10))
+        self.scan_depth_spin.setMinimumHeight(30)
+        
+        # Enable debug logging
+        self.debug_logging_check = QCheckBox("فعال‌سازی لاگ دیباگ")
+        self.debug_logging_check.setFont(QFont("B Nazanin", 10))
+        self.debug_logging_check.setChecked(self.config.get('advanced', 'debug_logging', False))
+        
+        # Auto-save settings
+        self.auto_save_check = QCheckBox("ذخیره خودکار تنظیمات")
+        self.auto_save_check.setFont(QFont("B Nazanin", 10))
+        self.auto_save_check.setChecked(self.config.get('advanced', 'auto_save_settings', True))
+        
+        # Memory usage optimization
+        self.memory_optimization_check = QCheckBox("بهینه‌سازی مصرف حافظه")
+        self.memory_optimization_check.setFont(QFont("B Nazanin", 10))
+        self.memory_optimization_check.setChecked(self.config.get('advanced', 'memory_optimization', True))
+        
+        # Cache size limit
+        self.cache_size_spin = QSpinBox()
+        self.cache_size_spin.setRange(1000, 1000000)
+        self.cache_size_spin.setSuffix(" فایل")
+        self.cache_size_spin.setValue(self.config.get('advanced', 'max_cache_size', 100000))
+        self.cache_size_spin.setMinimumHeight(30)
+        
+        advanced_layout.addRow("🔍 عمق اسکن دایرکتوری:", self.scan_depth_spin)
+        advanced_layout.addRow("🐛", self.debug_logging_check)
+        advanced_layout.addRow("💾", self.auto_save_check)
+        advanced_layout.addRow("🧠", self.memory_optimization_check)
+        advanced_layout.addRow("📋 حداکثر کش فایل:", self.cache_size_spin)
+        
+        parent_layout.addWidget(advanced_group)
+    
+    def create_language_settings(self, parent_layout):
+        """تنظیمات زبان"""
+        lang_group = QGroupBox("🌐 تنظیمات زبان و محلی‌سازی")
+        lang_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        lang_layout = QFormLayout(lang_group)
+        
+        # Interface language
+        self.interface_language = QComboBox()
+        self.interface_language.addItems([
+            "🇮🇷 فارسی (پیش‌فرض)",
+            "🇺🇸 English", 
+            "🇸🇦 العربية",
+            "🇹🇷 Türkçe",
+            "🇷🇺 Русский"
+        ])
+        self.interface_language.setCurrentIndex(0)  # Persian by default
+        self.interface_language.setMinimumHeight(32)
+        
+        # Date format
+        self.date_format = QComboBox()
+        self.date_format.addItems([
+            "1403/10/15 (شمسی)",
+            "2024/12/06 (میلادی)", 
+            "1446/05/04 (قمری)"
+        ])
+        self.date_format.setCurrentIndex(0)
+        self.date_format.setMinimumHeight(32)
+        
+        # Number format
+        self.number_format = QComboBox()
+        self.number_format.addItems([
+            "۱۲۳۴۵۶۷۸۹۰ (فارسی)",
+            "1234567890 (انگلیسی)"
+        ])
+        self.number_format.setCurrentIndex(0)
+        self.number_format.setMinimumHeight(32)
+        
+        lang_layout.addRow("🗣️ زبان رابط کاربری:", self.interface_language)
+        lang_layout.addRow("📅 فرمت تاریخ:", self.date_format)
+        lang_layout.addRow("🔢 فرمت اعداد:", self.number_format)
+        
+        # Apply all settings button
+        apply_all_btn = QPushButton("✅ اعمال همه تنظیمات")
+        apply_all_btn.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        apply_all_btn.setMinimumHeight(50)
+        apply_all_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #28a745, stop:1 #20c997);
+                color: white;
+                border-radius: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #218838, stop:1 #1e7e34);
+            }
+        """)
+        lang_layout.addRow("", apply_all_btn)
+        
+        parent_layout.addWidget(lang_group)
     
     def create_about_tab(self):
         """تب درباره ما"""
@@ -1840,8 +2153,8 @@ class PersianFileCopierPyQt5(QMainWindow):
         about_action = help_menu.addAction("ℹ️ درباره")
         about_action.triggered.connect(lambda: self.tab_widget.setCurrentIndex(3))
         
-                 support_action = help_menu.addAction("📞 پشتیبانی")
-         support_action.triggered.connect(self.open_support)
+        support_action = help_menu.addAction("📞 پشتیبانی")
+        support_action.triggered.connect(self.open_support)
     
     def setup_styling(self):
         """تنظیم استایل و تم برنامه"""
@@ -2379,7 +2692,7 @@ class PersianFileCopierPyQt5(QMainWindow):
     
     def scan_completed(self, total_files: int):
         """تکمیل اسکن"""
-                    self.update_status(f"اسکن تکمیل شد - {total_files} فایل یافت شد")
+        self.update_status(f"اسکن تکمیل شد - {total_files} فایل یافت شد")
     
     def matches_current_filters(self, file_info: dict) -> bool:
         """بررسی انطباق فایل با فیلترهای فعلی"""
@@ -3103,9 +3416,12 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.status_label.setText(message)
     
     def load_drives_tree(self):
-        """بارگذاری درخت درایوها و پوشه‌ها"""
+        """بارگذاری درخت درایوها و پوشه‌ها شامل MTP devices"""
         try:
             self.drives_tree.clear()
+            
+            # Add quick destinations at top
+            self.add_quick_destinations()
             
             # Get all available drives
             for partition in psutil.disk_partitions():
@@ -3115,11 +3431,15 @@ class PersianFileCopierPyQt5(QMainWindow):
                         free_space = self.format_size(usage.free)
                         total_space = self.format_size(usage.total)
                         
-                        # Create drive item
-                        drive_text = f"🖥️ {partition.mountpoint} ({free_space} آزاد از {total_space})"
+                        # Determine drive icon
+                        drive_icon = self.get_drive_icon(partition)
+                        
+                        # Create drive item with RTL text
+                        drive_text = f"{drive_icon} {partition.mountpoint} ({free_space} آزاد از {total_space})"
                         drive_item = QTreeWidgetItem([drive_text])
                         drive_item.setData(0, Qt.UserRole, partition.mountpoint)  # Store path
                         drive_item.setData(0, Qt.UserRole + 1, "drive")  # Mark as drive
+                        drive_item.setTextAlignment(0, Qt.AlignRight)  # RTL alignment
                         
                         # Add main folders to drive
                         self.add_drive_folders(drive_item, partition.mountpoint)
@@ -3129,11 +3449,121 @@ class PersianFileCopierPyQt5(QMainWindow):
                     except (PermissionError, OSError):
                         continue
             
-            # Add quick destinations at top
-            self.add_quick_destinations()
+            # Add MTP devices (phones, cameras, etc.)
+            self.add_mtp_devices()
             
         except Exception as e:
             print(f"Error loading drives tree: {e}")
+    
+    def get_drive_icon(self, partition):
+        """تشخیص آیکون مناسب برای درایو"""
+        try:
+            drive_type = partition.fstype.lower() if partition.fstype else ""
+            device = partition.device.lower() if partition.device else ""
+            
+            # USB/Removable drives
+            if "usb" in device or "removable" in str(partition.opts).lower():
+                return "🔌"  # USB drive
+            # CD/DVD drives  
+            elif "cdrom" in str(partition.opts).lower() or drive_type in ["udf", "iso9660"]:
+                return "💿"  # CD/DVD
+            # Network drives
+            elif "network" in str(partition.opts).lower() or drive_type in ["cifs", "nfs"]:
+                return "🌐"  # Network
+            # Fixed drives (HDD/SSD)
+            else:
+                return "💾"  # Fixed drive
+                
+        except:
+            return "💿"  # Default
+    
+    def add_mtp_devices(self):
+        """اضافه کردن دستگاه‌های MTP (گوشی، دوربین)"""
+        try:
+            import subprocess
+            import glob
+            
+            mtp_devices = []
+            
+            # Windows: Check for MTP devices
+            if platform.system() == "Windows":
+                try:
+                    # Check removable drives that might be phones
+                    result = subprocess.run([
+                        "wmic", "logicaldisk", "where", "drivetype=2", "get", "deviceid,volumename"
+                    ], capture_output=True, text=True, timeout=10)
+                    
+                    if result.returncode == 0:
+                        lines = result.stdout.strip().split('\n')[1:]  # Skip header
+                        for line in lines:
+                            if line.strip():
+                                parts = line.strip().split()
+                                if len(parts) >= 1:
+                                    device_id = parts[0]
+                                    if device_id and ':' in device_id:
+                                        try:
+                                            test_path = device_id + "\\"
+                                            if os.path.exists(test_path):
+                                                volume_name = " ".join(parts[1:]) if len(parts) > 1 else "دستگاه قابل حمل"
+                                                # Check if it looks like a phone
+                                                try:
+                                                    contents = os.listdir(test_path)
+                                                    if any(name.upper() in ['DCIM', 'ANDROID', 'INTERNAL STORAGE'] for name in contents):
+                                                        mtp_devices.append((device_id, f"📱 {volume_name}", test_path))
+                                                    else:
+                                                        mtp_devices.append((device_id, f"🔌 {volume_name}", test_path))
+                                                except:
+                                                    mtp_devices.append((device_id, f"🔌 {volume_name}", test_path))
+                                        except:
+                                            continue
+                except:
+                    pass
+            
+            # Linux: Check MTP mount points
+            elif platform.system() == "Linux":
+                try:
+                    mtp_paths = glob.glob("/media/*/*") + glob.glob("/mnt/*") + glob.glob("/run/user/*/gvfs/*")
+                    for path in mtp_paths:
+                        if os.path.exists(path) and os.path.isdir(path):
+                            try:
+                                contents = os.listdir(path)
+                                device_name = os.path.basename(path)
+                                if any(name.upper() in ['DCIM', 'ANDROID', 'INTERNAL STORAGE'] for name in contents):
+                                    mtp_devices.append((path, f"📱 {device_name}", path))
+                                elif any(name.upper() in ['CAMERA', 'PICTURES'] for name in contents):
+                                    mtp_devices.append((path, f"📷 {device_name}", path))
+                                else:
+                                    mtp_devices.append((path, f"🔌 {device_name}", path))
+                            except:
+                                continue
+                except:
+                    pass
+            
+            # Add detected MTP devices to tree
+            for device_id, device_name, device_path in mtp_devices:
+                device_item = QTreeWidgetItem([device_name])
+                device_item.setData(0, Qt.UserRole, device_path)
+                device_item.setData(0, Qt.UserRole + 1, "mtp_device")
+                device_item.setTextAlignment(0, Qt.AlignRight)  # RTL alignment
+                
+                # Add common mobile folders if they exist
+                try:
+                    common_folders = ["DCIM", "Download", "Downloads", "Pictures", "Documents", "Music", "Videos"]
+                    for folder_name in common_folders:
+                        folder_path = os.path.join(device_path, folder_name)
+                        if os.path.exists(folder_path):
+                            folder_item = QTreeWidgetItem([f"📁 {folder_name}"])
+                            folder_item.setData(0, Qt.UserRole, folder_path)
+                            folder_item.setData(0, Qt.UserRole + 1, "folder")
+                            folder_item.setTextAlignment(0, Qt.AlignRight)
+                            device_item.addChild(folder_item)
+                except:
+                    pass
+                
+                self.drives_tree.addTopLevelItem(device_item)
+                    
+        except Exception as e:
+            print(f"Error adding MTP devices: {e}")
     
     def add_quick_destinations(self):
         """اضافه کردن مقصدهای سریع به بالای درخت"""
@@ -3336,7 +3766,7 @@ class PersianFileCopierPyQt5(QMainWindow):
         try:
             filtered_files = []
             
-            for file_path, file_data in self.file_cache.items():
+            for file_path, file_data in list(self.file_cache.items()):
                 # Search filter
                 if search_term:
                     filename = os.path.basename(file_path).lower()
@@ -3844,6 +4274,17 @@ class PersianFileCopierPyQt5(QMainWindow):
             
         except Exception as e:
             print(f"Error scanning new drive: {e}")
+    
+    def refresh_drives_list(self):
+        """بروزرسانی دستی لیست درایوها"""
+        try:
+            self.show_toast("🔄 بروزرسانی لیست درایوها...", "info")
+            self.load_drives_tree()
+            self.check_for_new_drives()  # Force check for new drives
+            self.show_toast("✅ لیست درایوها بروزرسانی شد", "success")
+        except Exception as e:
+            print(f"Error refreshing drives list: {e}")
+            self.show_toast("❌ خطا در بروزرسانی لیست درایوها", "error")
     
     def closeEvent(self, event):
         """رویداد بستن برنامه"""
