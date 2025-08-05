@@ -2156,36 +2156,51 @@ class PersianFileCopierPyQt5(QMainWindow):
     
     def setup_connections(self):
         """اتصال سیگنال‌ها و اسلات‌ها"""
-        # Search and filter connections
-        self.search_entry.textChanged.connect(self.apply_filters)
-        self.format_filter.currentTextChanged.connect(self.apply_filters)
-        self.size_filter.currentTextChanged.connect(self.apply_filters)
-        
-        # Button connections
-        self.refresh_btn.clicked.connect(self.refresh_files)
-        self.clear_search_btn.clicked.connect(self.clear_filters)
-        self.select_all_btn.clicked.connect(self.select_all_files)
-        
-
-        
-        # Task control buttons
-        self.pause_all_btn.clicked.connect(self.pause_all_tasks)
-        self.resume_all_btn.clicked.connect(self.resume_all_tasks)
-        self.cancel_all_btn.clicked.connect(self.cancel_all_tasks)
-        self.clear_completed_btn.clicked.connect(self.clear_completed_tasks)
-        
-        # Destination buttons
-        self.browse_dest_btn.clicked.connect(self.browse_destination)
-        
-        # Settings buttons
-        self.apply_font_btn.clicked.connect(self.apply_font_settings)
-        self.apply_settings_btn.clicked.connect(self.apply_all_settings)
-        self.paste_license_btn.clicked.connect(self.paste_license_key)
-        self.activate_license_btn.clicked.connect(self.activate_license)
-        self.purchase_license_btn.clicked.connect(self.purchase_license)
-        
-        # File tree double click
-        self.file_tree.itemDoubleClicked.connect(self.on_file_double_click)
+        try:
+            # Search and filter connections
+            if hasattr(self, 'search_entry'):
+                self.search_entry.textChanged.connect(self.apply_filters)
+            if hasattr(self, 'format_filter'):
+                self.format_filter.currentTextChanged.connect(self.apply_filters)
+            if hasattr(self, 'size_filter'):
+                self.size_filter.currentTextChanged.connect(self.apply_filters)
+            
+            # Button connections
+            if hasattr(self, 'refresh_btn'):
+                self.refresh_btn.clicked.connect(self.refresh_files)
+            if hasattr(self, 'clear_search_btn'):
+                self.clear_search_btn.clicked.connect(self.clear_filters)
+            if hasattr(self, 'select_all_btn'):
+                self.select_all_btn.clicked.connect(self.select_all_files)
+            
+            # Task control buttons
+            if hasattr(self, 'pause_all_btn'):
+                self.pause_all_btn.clicked.connect(self.pause_all_tasks)
+            if hasattr(self, 'resume_all_btn'):
+                self.resume_all_btn.clicked.connect(self.resume_all_tasks)
+            if hasattr(self, 'cancel_all_btn'):
+                self.cancel_all_btn.clicked.connect(self.cancel_all_tasks)
+            if hasattr(self, 'clear_completed_btn'):
+                self.clear_completed_btn.clicked.connect(self.clear_completed_tasks)
+            
+            # Settings buttons
+            if hasattr(self, 'apply_font_btn'):
+                self.apply_font_btn.clicked.connect(self.apply_font_settings)
+            if hasattr(self, 'apply_settings_btn'):
+                self.apply_settings_btn.clicked.connect(self.apply_all_settings)
+            if hasattr(self, 'paste_license_btn'):
+                self.paste_license_btn.clicked.connect(self.paste_license_key)
+            if hasattr(self, 'activate_license_btn'):
+                self.activate_license_btn.clicked.connect(self.activate_license)
+            if hasattr(self, 'purchase_license_btn'):
+                self.purchase_license_btn.clicked.connect(self.purchase_license)
+            
+            # File tree connections
+            if hasattr(self, 'file_tree'):
+                self.file_tree.itemDoubleClicked.connect(self.on_file_double_click)
+                
+        except Exception as e:
+            print(f"Error setting up connections: {e}")
     
     def start_drive_scan(self):
         """شروع اسکن درایوها"""
@@ -3085,6 +3100,223 @@ class PersianFileCopierPyQt5(QMainWindow):
             print(f"Error starting copy to destination: {e}")
             self.show_toast(f"خطا در شروع کپی: {e}", "error")
     
+    def apply_filters(self):
+        """اعمال فیلترها"""
+        try:
+            search_term = self.search_entry.text().strip() if hasattr(self, 'search_entry') else ""
+            format_filter = self.format_filter.currentText() if hasattr(self, 'format_filter') else "همه فرمت‌ها"
+            size_filter = self.size_filter.currentText() if hasattr(self, 'size_filter') else "همه اندازه‌ها"
+            
+            # If no filters applied, show all cached files
+            if not search_term and format_filter == "همه فرمت‌ها" and size_filter == "همه اندازه‌ها":
+                self.display_cache()
+                return
+            
+            # Apply filters in background thread
+            self.update_status("اعمال فیلترها...")
+            threading.Thread(target=self._filter_files_thread, args=(search_term, format_filter, size_filter), daemon=True).start()
+            
+        except Exception as e:
+            print(f"Error applying filters: {e}")
+    
+    def _filter_files_thread(self, search_term, format_filter, size_filter):
+        """اعمال فیلترها در thread جداگانه"""
+        try:
+            filtered_files = []
+            
+            for file_path, file_data in self.file_cache.items():
+                # Search filter
+                if search_term:
+                    filename = os.path.basename(file_path).lower()
+                    if search_term.lower() not in filename:
+                        continue
+                
+                # Format filter
+                if format_filter != "همه فرمت‌ها":
+                    file_category = self.get_file_category(file_path)
+                    if not self.matches_format_filter(file_category, format_filter):
+                        continue
+                
+                # Size filter
+                if size_filter != "همه اندازه‌ها":
+                    raw_size = file_data.get('raw_size', 0)
+                    if not self.matches_size_filter(raw_size, size_filter):
+                        continue
+                
+                filtered_files.append((file_path, file_data))
+            
+            # Update UI on main thread
+            self.update_filtered_display(filtered_files)
+            
+        except Exception as e:
+            print(f"Error filtering files: {e}")
+    
+    def update_filtered_display(self, filtered_files):
+        """بروزرسانی نمایش فایل‌های فیلتر شده"""
+        try:
+            self.file_tree.clear()
+            
+            for file_path, file_data in filtered_files:
+                try:
+                    filename = os.path.basename(file_path)
+                    file_type = file_data.get('type', 'نامشخص')
+                    file_size = file_data.get('size', '0 B')
+                    
+                    item = QTreeWidgetItem([filename, file_path, file_type, file_size])
+                    item.setFont(0, QFont("B Nazanin", 9))
+                    self.file_tree.addTopLevelItem(item)
+                    
+                except Exception as e:
+                    continue
+            
+            # Update file count
+            count = len(filtered_files)
+            if hasattr(self, 'file_count_label'):
+                self.file_count_label.setText(f"تعداد فایل‌ها: {count}")
+            
+            self.update_status(f"{count} فایل یافت شد")
+            
+        except Exception as e:
+            print(f"Error updating filtered display: {e}")
+    
+    def get_file_category(self, filename):
+        """تشخیص دسته‌بندی فایل"""
+        try:
+            ext = os.path.splitext(filename.lower())[1]
+            
+            image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.svg', '.webp']
+            video_extensions = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v']
+            audio_extensions = ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a']
+            document_extensions = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt']
+            spreadsheet_extensions = ['.xls', '.xlsx', '.csv', '.ods']
+            presentation_extensions = ['.ppt', '.pptx', '.odp']
+            archive_extensions = ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2']
+            executable_extensions = ['.exe', '.msi', '.deb', '.rpm', '.dmg', '.app']
+            code_extensions = ['.py', '.js', '.html', '.css', '.cpp', '.java', '.php']
+            font_extensions = ['.ttf', '.otf', '.woff', '.woff2', '.eot']
+            database_extensions = ['.db', '.sqlite', '.mdb', '.accdb', '.sql']
+            
+            if ext in image_extensions:
+                return "images"
+            elif ext in video_extensions:
+                return "videos"
+            elif ext in audio_extensions:
+                return "audio"
+            elif ext in document_extensions:
+                return "documents"
+            elif ext in spreadsheet_extensions:
+                return "spreadsheets"
+            elif ext in presentation_extensions:
+                return "presentations"
+            elif ext in archive_extensions:
+                return "archives"
+            elif ext in executable_extensions:
+                return "executables"
+            elif ext in code_extensions:
+                return "code"
+            elif ext in font_extensions:
+                return "fonts"
+            elif ext in database_extensions:
+                return "databases"
+            else:
+                return "other"
+                
+        except:
+            return "other"
+    
+    def matches_format_filter(self, file_category, format_filter):
+        """بررسی تطابق با فیلتر فرمت"""
+        filter_mapping = {
+            "📷 تصاویر": "images",
+            "🎬 ویدیوها": "videos", 
+            "🎵 صوتی": "audio",
+            "📄 اسناد": "documents",
+            "📊 جداول": "spreadsheets",
+            "📋 ارائه": "presentations",
+            "📦 آرشیو": "archives",
+            "⚙️ برنامه": "executables",
+            "💻 کد": "code",
+            "🔤 فونت": "fonts",
+            "🗄️ دیتابیس": "databases"
+        }
+        
+        return filter_mapping.get(format_filter) == file_category
+    
+    def matches_size_filter(self, raw_size, size_filter):
+        """بررسی تطابق با فیلتر اندازه"""
+        try:
+            size_mb = raw_size / (1024 * 1024)
+            
+            if size_filter == "🟢 کوچک":
+                return size_mb < 10
+            elif size_filter == "🟡 متوسط":
+                return 10 <= size_mb < 100
+            elif size_filter == "🟠 بزرگ":
+                return 100 <= size_mb < 1000
+            elif size_filter == "🔴 خیلی بزرگ":
+                return size_mb >= 1000
+            else:
+                return True
+        except:
+            return True
+    
+    def clear_filters(self):
+        """پاک کردن فیلترها"""
+        try:
+            if hasattr(self, 'search_entry'):
+                self.search_entry.clear()
+            if hasattr(self, 'format_filter'):
+                self.format_filter.setCurrentText("همه فرمت‌ها")
+            if hasattr(self, 'size_filter'):
+                self.size_filter.setCurrentText("همه اندازه‌ها")
+            
+            self.display_cache()
+        except Exception as e:
+            print(f"Error clearing filters: {e}")
+    
+    def select_all_files(self):
+        """انتخاب همه فایل‌ها"""
+        try:
+            if hasattr(self, 'file_tree'):
+                self.file_tree.selectAll()
+        except Exception as e:
+            print(f"Error selecting all files: {e}")
+    
+    def refresh_files(self):
+        """بروزرسانی لیست فایل‌ها"""
+        try:
+            self.file_cache.clear()
+            if hasattr(self, 'file_tree'):
+                self.file_tree.clear()
+            if hasattr(self, 'file_count_label'):
+                self.file_count_label.setText("تعداد فایل‌ها: 0")
+            
+            self.start_drive_scan()
+            self.load_drives_tree()
+            self.show_toast("لیست فایل‌ها بروزرسانی شد", "success")
+        except Exception as e:
+            print(f"Error refreshing files: {e}")
+    
+    def on_file_double_click(self, item, column):
+        """کلیک دوگانه روی فایل"""
+        try:
+            file_path = item.text(1)  # Path column
+            if os.path.exists(file_path):
+                os.startfile(file_path)  # Open file with default program
+        except Exception as e:
+            print(f"Error opening file: {e}")
+    
+    def show_license_restriction(self):
+        """نمایش محدودیت لایسنس"""
+        license_info = self.license_manager.get_license_info()
+        
+        if license_info['type'] == 'آزمایشی':
+            message = f"محدودیت نسخه آزمایشی!\n\nحداکثر {self.license_manager.trial_file_limit} فایل قابل کپی\nبرای کپی نامحدود، نسخه کامل تهیه کنید."
+        else:
+            message = "لایسنس نامعتبر یا منقضی شده است."
+        
+        self.show_toast(message, "warning")
+    
     def format_size(self, size: int) -> str:
         """فرمت اندازه فایل"""
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
@@ -3128,6 +3360,90 @@ class PersianFileCopierPyQt5(QMainWindow):
         except Exception as e:
             print(f"Error applying settings: {e}")
             self.show_toast(f"خطا در اعمال تنظیمات: {e}", "error")
+    
+    def pause_all_tasks(self):
+        """مکث همه تسک‌ها"""
+        try:
+            for task_id in list(self.active_tasks.keys()):
+                self.pause_task(task_id)
+            self.show_toast("همه تسک‌ها متوقف شدند", "info")
+        except Exception as e:
+            print(f"Error pausing all tasks: {e}")
+    
+    def resume_all_tasks(self):
+        """ادامه همه تسک‌ها"""
+        try:
+            for task_id in list(self.active_tasks.keys()):
+                self.resume_task(task_id)
+            self.show_toast("همه تسک‌ها ادامه یافتند", "info")
+        except Exception as e:
+            print(f"Error resuming all tasks: {e}")
+    
+    def cancel_all_tasks(self):
+        """لغو همه تسک‌ها"""
+        try:
+            for task_id in list(self.active_tasks.keys()):
+                self.cancel_task(task_id)
+            self.show_toast("همه تسک‌ها لغو شدند", "warning")
+        except Exception as e:
+            print(f"Error cancelling all tasks: {e}")
+    
+    def clear_completed_tasks(self):
+        """پاک کردن تسک‌های تکمیل شده"""
+        try:
+            completed_tasks = []
+            for task_id, task in self.active_tasks.items():
+                if task.get('status') in ['completed', 'failed', 'cancelled']:
+                    completed_tasks.append(task_id)
+            
+            for task_id in completed_tasks:
+                self.remove_completed_task(task_id)
+            
+            if completed_tasks:
+                self.show_toast(f"{len(completed_tasks)} تسک پاک شد", "success")
+            else:
+                self.show_toast("تسک تکمیل شده‌ای یافت نشد", "info")
+        except Exception as e:
+            print(f"Error clearing completed tasks: {e}")
+    
+    def pause_task(self, task_id: str):
+        """مکث تسک"""
+        try:
+            if task_id in self.active_tasks:
+                task = self.active_tasks[task_id]
+                worker = task.get('worker')
+                if worker and hasattr(worker, 'pause'):
+                    worker.pause()
+                    task['status'] = 'paused'
+        except Exception as e:
+            print(f"Error pausing task {task_id}: {e}")
+    
+    def resume_task(self, task_id: str):
+        """ادامه تسک"""
+        try:
+            if task_id in self.active_tasks:
+                task = self.active_tasks[task_id]
+                worker = task.get('worker')
+                if worker and hasattr(worker, 'resume'):
+                    worker.resume()
+                    task['status'] = 'running'
+        except Exception as e:
+            print(f"Error resuming task {task_id}: {e}")
+    
+    def cancel_task(self, task_id: str):
+        """لغو تسک"""
+        try:
+            if task_id in self.active_tasks:
+                task = self.active_tasks[task_id]
+                worker = task.get('worker')
+                if worker and hasattr(worker, 'cancel'):
+                    worker.cancel()
+                    task['status'] = 'cancelled'
+                
+                # Remove from table immediately
+                self.remove_completed_task(task_id)
+        except Exception as e:
+            print(f"Error cancelling task {task_id}: {e}")
     
     def closeEvent(self, event):
         """رویداد بستن برنامه"""
