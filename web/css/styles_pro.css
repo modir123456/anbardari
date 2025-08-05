@@ -1682,6 +1682,46 @@ input:focus + .slider {
     min-width: auto;
 }
 
+/* Context Menu Override */
+.context-menu {
+    display: none !important;
+    position: fixed;
+    z-index: 10000;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px var(--shadow-heavy);
+    padding: var(--spacing-xs);
+    min-width: 200px;
+}
+
+.context-menu.show {
+    display: block !important;
+}
+
+.context-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.context-item:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.context-separator {
+    height: 1px;
+    background: var(--border-color);
+    margin: var(--spacing-xs) 0;
+}
+
 /* Responsive Design for Settings */
 @media (max-width: 1200px) {
     .settings-nav-modern {

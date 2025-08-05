@@ -41,10 +41,11 @@ async function initializeApp() {
         applyTheme(appConfig.ui_settings?.theme || 'dark');
         applyFont(appConfig.ui_settings?.font_family || 'Vazirmatn');
         
-        // Initialize UI components
-        initializeTabNavigation();
-        initializeSearchAndFilters();
-        initializeAdvancedSettingsAutoSave();
+            // Initialize UI components
+    initializeTabNavigation();
+    initializeSearchAndFilters();
+    initializeSettingsNavigation();
+    initializeAdvancedSettingsAutoSave();
         
         // Load initial data
         await Promise.all([
@@ -89,6 +90,35 @@ function initializeTabNavigation() {
             
             // Load tab-specific data
             loadTabData(tabId);
+        });
+    });
+}
+
+/**
+ * Initialize settings navigation
+ */
+function initializeSettingsNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const settingSections = document.querySelectorAll('.settings-section');
+    
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const sectionId = item.getAttribute('data-section');
+            
+            // Remove active class from all nav items
+            navItems.forEach(nav => nav.classList.remove('active'));
+            
+            // Remove active class from all sections
+            settingSections.forEach(section => section.classList.remove('active'));
+            
+            // Add active class to clicked nav item
+            item.classList.add('active');
+            
+            // Show corresponding section
+            const targetSection = document.getElementById(`${sectionId}-settings`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
         });
     });
 }
@@ -1154,22 +1184,35 @@ function showAbout() {
  */
 function showContextMenu(event, filePath) {
     event.preventDefault();
+    event.stopPropagation();
+    
+    // Hide any existing context menu first
+    hideContextMenu();
     
     const contextMenu = document.getElementById('context-menu');
-    contextMenu.style.display = 'block';
+    if (!contextMenu) return;
+    
+    // Position menu
     contextMenu.style.left = event.pageX + 'px';
     contextMenu.style.top = event.pageY + 'px';
     
     // Store current file path
     contextMenu.dataset.filePath = filePath;
     
-    // Hide on click outside
-    document.addEventListener('click', hideContextMenu, { once: true });
+    // Show menu
+    contextMenu.classList.add('show');
+    
+    // Hide on click outside (delay to prevent immediate hiding)
+    setTimeout(() => {
+        document.addEventListener('click', hideContextMenu, { once: true });
+    }, 10);
 }
 
 function hideContextMenu() {
     const contextMenu = document.getElementById('context-menu');
-    contextMenu.style.display = 'none';
+    if (contextMenu) {
+        contextMenu.classList.remove('show');
+    }
 }
 
 function copyFilePath() {
@@ -1440,7 +1483,8 @@ async function saveAdvancedSettings() {
 
 // Auto-save when settings change
 function initializeAdvancedSettingsAutoSave() {
-    const settingsInputs = [
+    // Advanced settings
+    const advancedInputs = [
         'debug-logging',
         'auto-save', 
         'memory-optimization',
@@ -1448,16 +1492,126 @@ function initializeAdvancedSettingsAutoSave() {
         'cleanup-days'
     ];
     
-    settingsInputs.forEach(id => {
+    advancedInputs.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.addEventListener('change', () => {
-                if (document.getElementById('auto-save').checked) {
+                if (document.getElementById('auto-save')?.checked) {
                     setTimeout(saveAdvancedSettings, 500); // Debounce
                 }
             });
         }
     });
+    
+    // File operation settings
+    const fileOpInputs = [
+        'max-tasks',
+        'chunk-size',
+        'verify-copy',
+        'auto-retry',
+        'max-retry',
+        'skip-existing',
+        'preserve-timestamps',
+        'show-hidden',
+        'follow-symlinks'
+    ];
+    
+    fileOpInputs.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', () => {
+                setTimeout(saveFileOperationSettings, 500); // Debounce
+            });
+        }
+    });
+    
+    // UI settings
+    const uiInputs = [
+        'font-family-select',
+        'font-size-slider',
+        'font-weight-select',
+        'theme-select',
+        'direction-select',
+        'compact-mode',
+        'startup-maximized',
+        'show-tooltips',
+        'animation-speed'
+    ];
+    
+    uiInputs.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', () => {
+                setTimeout(saveUISettings, 500); // Debounce
+            });
+        }
+    });
+}
+
+// Save file operation settings
+async function saveFileOperationSettings() {
+    try {
+        const settings = {
+            max_concurrent_tasks: parseInt(document.getElementById('max-tasks')?.value) || 5,
+            chunk_size: parseInt(document.getElementById('chunk-size')?.value) * 1024 || 65536, // Convert KB to bytes
+            verify_copy: document.getElementById('verify-copy')?.checked || false,
+            auto_retry: document.getElementById('auto-retry')?.checked || false,
+            retry_attempts: parseInt(document.getElementById('max-retry')?.value) || 3,
+            skip_existing: document.getElementById('skip-existing')?.checked || false,
+            preserve_permissions: document.getElementById('preserve-timestamps')?.checked || false,
+            show_hidden_files: document.getElementById('show-hidden')?.checked || false,
+            follow_symlinks: document.getElementById('follow-symlinks')?.checked || false
+        };
+        
+        const result = await eel.save_file_operation_settings(settings)();
+        
+        if (result.success) {
+            showToast('✅ تنظیمات عملیات فایل ذخیره شد', 'success');
+        } else {
+            showToast(`❌ خطا در ذخیره: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving file operation settings:', error);
+        showToast('❌ خطا در ذخیره تنظیمات', 'error');
+    }
+}
+
+// Save UI settings
+async function saveUISettings() {
+    try {
+        const settings = {
+            font_family: document.getElementById('font-family-select')?.value || 'Vazirmatn',
+            font_size: parseInt(document.getElementById('font-size-slider')?.value) || 14,
+            font_weight: document.getElementById('font-weight-select')?.value || 'normal',
+            theme: document.getElementById('theme-select')?.value || 'dark',
+            direction: document.getElementById('direction-select')?.value || 'rtl',
+            compact_mode: document.getElementById('compact-mode')?.checked || false,
+            startup_maximized: document.getElementById('startup-maximized')?.checked || true,
+            show_tooltips: document.getElementById('show-tooltips')?.checked || true,
+            animation_speed: document.getElementById('animation-speed')?.value || 'normal'
+        };
+        
+        const result = await eel.save_ui_settings(settings)();
+        
+        if (result.success) {
+            showToast('✅ تنظیمات رابط کاربری ذخیره شد', 'success');
+            
+            // Apply changes immediately
+            applyFont(settings.font_family);
+            applyTheme(settings.theme);
+            
+            // Update font size display
+            const fontSizeValue = document.getElementById('font-size-value');
+            if (fontSizeValue) {
+                fontSizeValue.textContent = settings.font_size + 'px';
+            }
+        } else {
+            showToast(`❌ خطا در ذخیره: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving UI settings:', error);
+        showToast('❌ خطا در ذخیره تنظیمات', 'error');
+    }
 }
 
 // Export functions to window
@@ -1486,3 +1640,5 @@ window.saveAdvancedSettings = saveAdvancedSettings;
 
 // Utility functions
 window.resetFilters = resetFilters;
+window.saveFileOperationSettings = saveFileOperationSettings;
+window.saveUISettings = saveUISettings;

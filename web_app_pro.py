@@ -671,7 +671,8 @@ class LicenseManager:
             'PFC-PRO-2024-FULL',
             'PFC-PRO-UNLIMITED',
             'PERSIAN-FILE-COPIER-PRO',
-            'PFC-PREMIUM-2024'
+            'PFC-PREMIUM-2024',
+            'PFC-PRO-UNLIMITED-1754433649983-N6103H22'  # User's generated key
         ]
         
         return license_key in valid_keys
@@ -1569,6 +1570,30 @@ def save_advanced_settings(settings):
         return {'success': True, 'message': 'تنظیمات ذخیره شد'}
     except Exception as e:
         logger.error(f"Error saving advanced settings: {e}")
+        return {'success': False, 'message': str(e)}
+
+@eel.expose
+def save_file_operation_settings(settings):
+    """ذخیره تنظیمات عملیات فایل"""
+    try:
+        for key, value in settings.items():
+            config_manager.set('file_operations', key, value)
+        
+        return {'success': True, 'message': 'تنظیمات عملیات فایل ذخیره شد'}
+    except Exception as e:
+        logger.error(f"Error saving file operation settings: {e}")
+        return {'success': False, 'message': str(e)}
+
+@eel.expose  
+def save_ui_settings(settings):
+    """ذخیره تنظیمات رابط کاربری"""
+    try:
+        for key, value in settings.items():
+            config_manager.set('ui_settings', key, value)
+        
+        return {'success': True, 'message': 'تنظیمات رابط کاربری ذخیره شد'}
+    except Exception as e:
+        logger.error(f"Error saving UI settings: {e}")
         return {'success': False, 'message': str(e)}
 
 @eel.expose

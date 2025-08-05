@@ -519,49 +519,143 @@
                 
                 <!-- File Operations Settings -->
                 <div id="file-ops-settings" class="settings-section">
-                    <h3>📁 تنظیمات عملیات فایل</h3>
-                    
-                    <div class="settings-group">
-                        <h4>🚀 عملکرد کپی</h4>
-                        <div class="setting-row">
-                            <label>حداکثر تسک همزمان:</label>
-                            <input type="number" id="max-tasks" min="1" max="20" value="5" />
+                    <div class="settings-content">
+                        <div class="section-header">
+                            <h3>📁 تنظیمات عملیات فایل</h3>
+                            <p>تنظیمات کپی، انتقال و مدیریت فایل‌ها</p>
                         </div>
-                        <div class="setting-row">
-                            <label>اندازه بافر (KB):</label>
-                            <input type="number" id="chunk-size" min="1" max="1024" value="64" />
-                        </div>
-                        <div class="setting-row">
-                            <label>تأیید یکپارچگی:</label>
-                            <input type="checkbox" id="verify-copy" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>تلاش مجدد خودکار:</label>
-                            <input type="checkbox" id="auto-retry" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>حداکثر تلاش مجدد:</label>
-                            <input type="number" id="max-retry" min="1" max="10" value="3" />
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>📂 رفتار فایل</h4>
-                        <div class="setting-row">
-                            <label>رد کردن فایل‌های موجود:</label>
-                            <input type="checkbox" id="skip-existing" />
-                        </div>
-                        <div class="setting-row">
-                            <label>حفظ زمان‌بندی فایل‌ها:</label>
-                            <input type="checkbox" id="preserve-timestamps" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>نمایش فایل‌های مخفی:</label>
-                            <input type="checkbox" id="show-hidden" />
-                        </div>
-                        <div class="setting-row">
-                            <label>دنبال کردن لینک‌ها:</label>
-                            <input type="checkbox" id="follow-symlinks" />
+                        
+                        <div class="settings-cards-grid">
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>🚀 عملکرد کپی</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>⚡ حداکثر تسک همزمان</label>
+                                            <small>تعداد فایل‌هایی که همزمان کپی می‌شوند</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <div class="number-input">
+                                                <input type="number" id="max-tasks" min="1" max="20" value="5">
+                                                <span class="input-suffix">تسک</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>💾 اندازه بافر</label>
+                                            <small>اندازه بلوک‌های خوانده شده در هر مرحله</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <div class="number-input">
+                                                <input type="number" id="chunk-size" min="8" max="1024" value="64">
+                                                <span class="input-suffix">KB</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>✅ تأیید یکپارچگی</label>
+                                            <small>بررسی صحت فایل‌های کپی شده</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="verify-copy" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🔄 تلاش مجدد خودکار</label>
+                                            <small>تلاش مجدد در صورت بروز خطا</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="auto-retry" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🔢 حداکثر تلاش مجدد</label>
+                                            <small>تعداد دفعات تلاش مجدد</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <div class="number-input">
+                                                <input type="number" id="max-retry" min="1" max="10" value="3">
+                                                <span class="input-suffix">بار</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h4>📂 رفتار فایل</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>⏭️ رد کردن فایل‌های موجود</label>
+                                            <small>عدم کپی فایل‌هایی که قبلاً موجودند</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="skip-existing">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🕐 حفظ زمان‌بندی</label>
+                                            <small>حفظ تاریخ ایجاد و تغییر فایل‌ها</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="preserve-timestamps" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>👻 نمایش فایل‌های مخفی</label>
+                                            <small>نمایش فایل‌ها و پوشه‌های مخفی</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="show-hidden">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label>🔗 دنبال کردن لینک‌ها</label>
+                                            <small>دنبال کردن symbolic linkها</small>
+                                        </div>
+                                        <div class="setting-control">
+                                            <label class="switch">
+                                                <input type="checkbox" id="follow-symlinks">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
