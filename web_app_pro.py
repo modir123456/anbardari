@@ -376,12 +376,18 @@ class BackgroundIndexer:
             self.executor.submit(self.index_drive, drive_path)
         
         # Notify frontend
-        eel.on_drive_connected(drive_path)
+        try:
+            eel.on_drive_connected(drive_path)
+        except AttributeError:
+            pass  # Function not exposed yet
     
     def on_drive_disconnected(self, drive_path):
         """رویداد قطع اتصال درایو"""
         logger.info(f"Drive disconnected: {drive_path}")
-        eel.on_drive_disconnected(drive_path)
+        try:
+            eel.on_drive_disconnected(drive_path)
+        except AttributeError:
+            pass  # Function not exposed yet
     
     def process_file_update(self, update):
         """پردازش بروزرسانی فایل"""
@@ -450,7 +456,10 @@ class BackgroundIndexer:
                         self.db_manager.add_file(file_info)
             
             logger.info(f"Completed indexing drive: {drive_path}")
-            eel.on_drive_indexed(drive_path)
+            try:
+                eel.on_drive_indexed(drive_path)
+            except AttributeError:
+                pass  # Function not exposed yet
             
         except Exception as e:
             logger.error(f"Error indexing drive {drive_path}: {e}")
@@ -519,7 +528,7 @@ class ConfigManager:
                 'key': '',
                 'type': 'trial',
                 'status': 'active',
-                'machine_id': self.get_machine_id(),
+                'machine_id': '',
                 'trial_start': None
             }
         }
@@ -564,19 +573,16 @@ class ConfigManager:
         if self.get('advanced', 'auto_save_settings', True):
             self.save_config()
     
-    def get_machine_id(self):
-        """دریافت شناسه منحصر به فرد دستگاه"""
-        try:
-            machine_info = f"{platform.node()}-{platform.processor()}-{platform.machine()}"
-            return hashlib.md5(machine_info.encode()).hexdigest()
-        except:
-            return str(uuid.uuid4())
-
 class LicenseManager:
     """مدیریت لایسنس پیشرفته"""
     
     def __init__(self, config: ConfigManager):
         self.config = config
+        
+        # Set machine_id if not exists
+        if not self.config.get('license', 'machine_id', ''):
+            self.config.set('license', 'machine_id', self.get_machine_id())
+        
         # Check if already has valid license
         current_key = self.config.get('license', 'key', '')
         if current_key and self.validate_license(current_key):
@@ -647,6 +653,23 @@ class LicenseManager:
             return {'success': True, 'message': 'لایسنس با موفقیت فعال شد! تمام امکانات آزاد شدند.'}
         else:
             return {'success': False, 'message': 'کلید لایسنس نامعتبر است. لطفاً کلید صحیح را وارد کنید.'}
+    
+    def get_machine_id(self):
+        """دریافت شناسه منحصر به فرد دستگاه"""
+        try:
+            # Try to get existing machine_id first
+            existing_id = self.config.get('license', 'machine_id', None)
+            if existing_id and existing_id != 'default-pro-machine':
+                return existing_id
+            
+            # Generate based on stable system info
+            import hashlib
+            machine_info = f"{platform.node()}-{platform.machine()}"
+            if not machine_info or machine_info == "-":
+                machine_info = "default-pro-machine"
+            return hashlib.md5(machine_info.encode()).hexdigest()
+        except:
+            return "default-pro-machine"
 
 class FileManager:
     """مدیریت پیشرفته فایل‌ها"""
@@ -703,7 +726,7 @@ class FileManager:
                 try:
                     import win32api
                     return win32api.GetVolumeInformation(partition.mountpoint)[0] or partition.mountpoint
-                except ImportError:
+                except (ImportError, ModuleNotFoundError):
                     # Fallback if win32api is not available
                     return f"Drive {partition.mountpoint}"
             else:
@@ -1317,8 +1340,23 @@ def main():
         background_indexer.start()
         
         # Start the web app
-        eel.start('index.html', size=(1400, 900), port=8080, host='localhost', 
-                 close_callback=lambda page, sockets: background_indexer.stop())
+        print("🚀 سرور وب در حال اجرا...")
+        print("🌐 برای دسترسی به برنامه به آدرس زیر بروید:")
+        print("   http://localhost:8080")
+        print("⏹️ برای خروج Ctrl+C را فشار دهید")
+        
+        try:
+            # Try to start with browser if available
+            eel.start('index.html', size=(1400, 900), port=8080, host='localhost', 
+                     close_callback=lambda page, sockets: background_indexer.stop(),
+                     block=True)
+        except Exception as browser_error:
+            print(f"⚠️ مرورگر به طور خودکار باز نشد: {browser_error}")
+            print("🌐 لطفاً دستی به آدرس http://localhost:8080 بروید")
+            
+            # Start without browser (headless mode)
+            import bottle
+            bottle.run(host='localhost', port=8080, debug=False, quiet=True)
         
     except Exception as e:
         logger.error(f"Error starting web app: {e}")

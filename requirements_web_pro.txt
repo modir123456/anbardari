@@ -3,3 +3,4 @@ psutil>=5.8.0
 requests>=2.25.0
 Pillow>=8.0.0
 watchdog>=2.1.0
+pywin32>=304; platform_system=="Windows"
