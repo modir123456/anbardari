@@ -545,6 +545,111 @@ class FileCopierApp:
             
         except Exception as e:
             self.show_toast(f"خطا در بازگردانی فونت پیش‌فرض: {e}", "error")
+    
+    def activate_license(self):
+        """فعال‌سازی لایسنس با کد وارد شده"""
+        try:
+            license_key = self.license_key_entry.get().strip()
+            
+            if not license_key:
+                self.show_toast("لطفاً کد لایسنس را وارد کنید", "warning")
+                return
+            
+            # اعتبارسنجی فرمت کد
+            if not license_key.startswith("PFC-") or len(license_key) != 24:
+                self.show_toast("فرمت کد لایسنس صحیح نیست", "error")
+                return
+            
+            # بررسی اعتبار کد لایسنس
+            if self.license_manager.validate_serial(license_key):
+                # ذخیره اطلاعات لایسنس
+                customer_info = {
+                    "activation_date": datetime.now().isoformat(),
+                    "version": "2.0",
+                    "type": "commercial"
+                }
+                
+                if self.license_manager.save_license(license_key, customer_info):
+                    # به‌روزرسانی وضعیت در UI
+                    self.license_status_label.configure(
+                        text=f"🟢 فعال - سریال: {license_key}",
+                        fg_color=("green", "darkgreen")
+                    )
+                    
+                    # پاک کردن فیلد ورودی
+                    self.license_key_entry.delete(0, 'end')
+                    
+                    self.show_toast("لایسنس با موفقیت فعال شد! 🎉", "success")
+                else:
+                    self.show_toast("خطا در ذخیره اطلاعات لایسنس", "error")
+            else:
+                self.show_toast("کد لایسنس نامعتبر است", "error")
+                
+        except Exception as e:
+            self.show_toast(f"خطا در فعال‌سازی: {e}", "error")
+    
+    def purchase_license(self):
+        """راهنمای خرید لایسنس"""
+        try:
+            import webbrowser
+            # اطلاعات خرید لایسنس
+            purchase_info = """
+🛒 خرید لایسنس Persian File Copier Pro
+
+📞 راه‌های تماس:
+• تلفن: +98 21 1234 5678
+• ایمیل: sales@persianfile.ir
+• تلگرام: @PersianFileSupport
+
+💰 قیمت‌ها:
+• نسخه شخصی: 500,000 تومان
+• نسخه تجاری: 1,200,000 تومان
+• نسخه سازمانی: 2,500,000 تومان
+
+🎁 مزایای نسخه کامل:
+• کپی نامحدود فایل‌ها
+• پشتیبانی 24/7
+• بروزرسانی رایگان مادام‌العمر
+• امکانات پیشرفته کپی
+
+آیا می‌خواهید به سایت فروش منتقل شوید؟
+            """
+            
+            # نمایش اطلاعات خرید
+            import tkinter.messagebox
+            result = tkinter.messagebox.askyesno(
+                "خرید لایسنس", 
+                purchase_info,
+                icon='question'
+            )
+            
+            if result:
+                # باز کردن سایت فروش
+                webbrowser.open("https://persianfile.ir/purchase")
+                self.show_toast("در حال انتقال به سایت فروش...", "info")
+            
+        except Exception as e:
+            self.show_toast(f"خطا در نمایش اطلاعات خرید: {e}", "error")
+    
+    def show_license_help(self):
+        """نمایش راهنمای لایسنس"""
+        help_text = """
+🔑 راهنمای فعال‌سازی لایسنس
+
+1️⃣ کد لایسنس را در فیلد مربوطه وارد کنید
+2️⃣ روی دکمه "فعال‌سازی لایسنس" کلیک کنید
+3️⃣ اتصال اینترنت برای تأیید لازم است
+
+📋 فرمت کد: PFC-XXXX-XXXX-XXXX-XXXX
+
+❓ مشکل دارید؟
+• کد را دقیقاً وارد کنید (با خط فاصله‌ها)
+• اتصال اینترنت را بررسی کنید
+• با پشتیبانی تماس بگیرید: @PersianFileSupport
+        """
+        
+        self.show_toast("راهنمای تفصیلی در کنسول نمایش داده شد", "info")
+        print(help_text)
 
     # New callback methods for enhanced functionality
     def on_file_drag_drop(self, selected_items):
@@ -777,14 +882,21 @@ class FileCopierApp:
         return True  # Basic features are always available
     
     def show_license_restriction_message(self, feature_name):
-        """Show message about license restriction"""
-        messagebox.showwarning(
-            "قابلیت محدود شده", 
-            f"این قابلیت ({feature_name}) فقط در نسخه لایسنس شده موجود است.\n"
-            "برای فعال‌سازی نرم‌افزار، لطفاً سریال نامبر معتبر وارد کنید.\n\n"
-            "برای خرید لایسنس با ما تماس بگیرید:\n"
-            "info@persianfile.ir"
-        )
+        """نمایش پیام محدودیت لایسنس با toast notification"""
+        restriction_message = f"قابلیت {feature_name} فقط در نسخه لایسنس شده موجود است"
+        self.show_toast(restriction_message, "warning")
+        
+        # نمایش اطلاعات تکمیلی در کنسول
+        print(f"""
+🔒 قابلیت محدود شده: {feature_name}
+
+این قابلیت فقط در نسخه لایسنس شده موجود است.
+برای فعال‌سازی نرم‌افزار، لطفاً سریال نامبر معتبر وارد کنید.
+
+📞 برای خرید لایسنس با ما تماس بگیرید:
+• ایمیل: info@persianfile.ir
+• تلگرام: @PersianFileSupport
+        """)
     
     def enforce_license_restriction(self, feature_name):
         """Enforce license restriction for a feature"""
@@ -1628,19 +1740,35 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             ).pack(padx=15, pady=10)
 
     def load_about_content(self):
-        """بارگذاری محتوای فایل درباره ما"""
+        """بارگذاری و پردازش محتوای فایل HTML برای نمایش زیبا"""
         try:
             about_file = "about_us.html"
             if os.path.exists(about_file):
                 with open(about_file, 'r', encoding='utf-8') as f:
                     html_content = f.read()
-                    # Extract text content from HTML (basic parsing)
+                    
+                    # استخراج محتوای متنی با حفظ ساختار
                     import re
-                    # Remove HTML tags
-                    text_content = re.sub('<[^<]+?>', '', html_content)
-                    # Clean up extra whitespace
-                    text_content = re.sub(r'\s+', ' ', text_content).strip()
-                    return text_content[:2000] + "..." if len(text_content) > 2000 else text_content
+                    
+                    # حذف تگ‌های style و script
+                    text_content = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL)
+                    text_content = re.sub(r'<script[^>]*>.*?</script>', '', text_content, flags=re.DOTALL)
+                    
+                    # تبدیل تگ‌های مهم به متن فارسی
+                    text_content = re.sub(r'<h[1-6][^>]*>(.*?)</h[1-6]>', r'\n📌 \1\n', text_content)
+                    text_content = re.sub(r'<p[^>]*>(.*?)</p>', r'\1\n', text_content)
+                    text_content = re.sub(r'<li[^>]*>(.*?)</li>', r'• \1\n', text_content)
+                    text_content = re.sub(r'<br[^>]*>', '\n', text_content)
+                    
+                    # حذف سایر تگ‌های HTML
+                    text_content = re.sub(r'<[^>]+>', '', text_content)
+                    
+                    # تمیز کردن فضاهای اضافی
+                    text_content = re.sub(r'\n\s*\n\s*\n', '\n\n', text_content)
+                    text_content = re.sub(r'[ \t]+', ' ', text_content)
+                    text_content = text_content.strip()
+                    
+                    return text_content
         except Exception as e:
             print(f"خطا در بارگذاری فایل درباره ما: {e}")
         return None
@@ -2179,6 +2307,114 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
             fg_color=("orange", "darkorange"),
             hover_color=("darkorange", "lightorange")
+        ).pack(side="left", padx=5)
+        
+        # License Management Section - بخش مدیریت لایسنس
+        license_frame = ctk.CTkFrame(
+            settings_scroll,
+            corner_radius=12,
+            fg_color=("white", "gray25"),
+            border_width=1,
+            border_color=("gray80", "gray35")
+        )
+        license_frame.pack(fill="x", pady=10)
+        
+        license_header = ctk.CTkFrame(license_frame, fg_color="transparent")
+        license_header.pack(fill="x", padx=15, pady=(15, 5))
+        
+        ctk.CTkLabel(
+            license_header, 
+            text="🔑 مدیریت لایسنس و فعال‌سازی", 
+            font=ctk.CTkFont(family=self.current_font_family, size=18, weight="bold")
+        ).pack(side="left")
+        
+        # Current license status
+        license_status_frame = ctk.CTkFrame(license_frame, fg_color="transparent")
+        license_status_frame.pack(fill="x", padx=15, pady=8)
+        
+        ctk.CTkLabel(
+            license_status_frame, 
+            text="وضعیت فعلی:", 
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold")
+        ).pack(side="right", padx=5)
+        
+        # Show current license status
+        license_data = self.license_manager.load_license()
+        if license_data:
+            if license_data.get("serial") == "TRIAL-MODE":
+                status_text = "🟡 نسخه آزمایشی (30 روزه)"
+                status_color = ("orange", "darkorange")
+            else:
+                status_text = f"🟢 فعال - سریال: {license_data.get('serial', 'نامشخص')}"
+                status_color = ("green", "darkgreen")
+        else:
+            status_text = "🔴 غیرفعال - نیاز به فعال‌سازی"
+            status_color = ("red", "darkred")
+        
+        self.license_status_label = ctk.CTkLabel(
+            license_status_frame,
+            text=status_text,
+            font=ctk.CTkFont(family=self.current_font_family, size=12),
+            fg_color=status_color,
+            corner_radius=8,
+            height=30
+        )
+        self.license_status_label.pack(side="left", fill="x", expand=True, padx=5)
+        
+        # License key input
+        license_input_frame = ctk.CTkFrame(license_frame, fg_color="transparent")
+        license_input_frame.pack(fill="x", padx=15, pady=8)
+        
+        ctk.CTkLabel(
+            license_input_frame, 
+            text="کد لایسنس:", 
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold")
+        ).pack(side="right", padx=5)
+        
+        self.license_key_entry = ctk.CTkEntry(
+            license_input_frame,
+            placeholder_text="PFC-XXXX-XXXX-XXXX-XXXX",
+            font=ctk.CTkFont(family=self.current_font_family, size=11),
+            width=250,
+            height=35
+        )
+        self.license_key_entry.pack(side="left", fill="x", expand=True, padx=5)
+        
+        # License action buttons
+        license_buttons_frame = ctk.CTkFrame(license_frame, fg_color="transparent")
+        license_buttons_frame.pack(fill="x", padx=15, pady=(5, 15))
+        
+        ctk.CTkButton(
+            license_buttons_frame,
+            text="✅ فعال‌سازی لایسنس",
+            command=self.activate_license,
+            width=150,
+            height=35,
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
+            fg_color=("green", "darkgreen"),
+            hover_color=("darkgreen", "lightgreen")
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            license_buttons_frame,
+            text="🛒 خرید لایسنس",
+            command=self.purchase_license,
+            width=120,
+            height=35,
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
+            fg_color=("blue", "darkblue"),
+            hover_color=("darkblue", "lightblue")
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            license_buttons_frame,
+            text="❓ راهنما",
+            command=self.show_license_help,
+            width=80,
+            height=35,
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
+            fg_color=("gray", "darkgray"),
+            hover_color=("darkgray", "lightgray")
         ).pack(side="left", padx=5)
         
         # Performance Settings (Licensed Feature)
