@@ -381,7 +381,7 @@ class FileCopierApp:
         self.root = root  # ذخیره مرجع پنجره اصلی برای استفاده در سایر متدها
         
         # تنظیم عنوان پنجره برنامه با نام فارسی و انگلیسی
-        self.root.title("مدیریت فایل ایرانی پیشرفته - Persian File Copier Pro v2.0")
+        self.root.title("مدیریت فایل ایرانی پیشرفته - Persian File Copier Pro v2.0 - شرکت فناوری نوآئران مثبت سبز")
         
         # تنظیم اندازه پیش‌فرض پنجره (عرض × ارتفاع)
         self.root.geometry("1600x1000")
