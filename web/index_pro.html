@@ -1,762 +1,0 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Persian File Copier Pro - شرکت فناوری نوآئران مثبت سبز</title>
-    
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- CSS -->
-    <link rel="stylesheet" href="css/styles_pro.css">
-    <link rel="stylesheet" href="css/themes.css">
-    <link rel="stylesheet" href="css/components_pro.css">
-    
-    <!-- Eel -->
-    <script type="text/javascript" src="/eel.js"></script>
-</head>
-<body class="theme-dark">
-    <!-- Header -->
-    <header class="app-header">
-        <div class="header-content">
-            <div class="logo-section">
-                <div class="app-icon">🌟</div>
-                <div class="app-title">
-                    <h1>Persian File Copier Pro</h1>
-                    <p>شرکت فناوری نوآئران مثبت سبز</p>
-                </div>
-            </div>
-            
-            <div class="header-status">
-                <div class="status-item">
-                    <span class="status-label">درایوهای فعال:</span>
-                    <span id="drives-count" class="status-value">0</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">فایل‌های ایندکس شده:</span>
-                    <span id="indexed-files-count" class="status-value">0</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">تسک‌های فعال:</span>
-                    <span id="active-tasks-count" class="status-value">0</span>
-                </div>
-            </div>
-            
-            <div class="header-controls">
-                <button class="btn btn-secondary" onclick="showSettings()">
-                    ⚙️ تنظیمات
-                </button>
-                <button class="btn btn-primary" onclick="showAbout()">
-                    ℹ️ درباره ما
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <!-- Navigation Tabs -->
-        <nav class="tab-navigation">
-            <button class="tab-btn active" data-tab="files">📁 مدیریت فایل‌ها</button>
-            <button class="tab-btn" data-tab="drives">🖥️ مدیریت درایوها</button>
-            <button class="tab-btn" data-tab="settings">⚙️ تنظیمات پیشرفته</button>
-            <button class="tab-btn" data-tab="about">ℹ️ درباره ما</button>
-        </nav>
-
-        <!-- Files Tab -->
-        <div id="files-tab" class="tab-content active">
-            <div class="main-layout">
-                <!-- Left Section: File Browser -->
-                <div class="left-section">
-                    <div class="section-header">
-                        <h3>📁 مرورگر فایل‌ها</h3>
-                        <div class="header-controls">
-                            <div class="view-options">
-                                <button class="btn btn-small" onclick="toggleView('list')" title="نمای لیست">📋</button>
-                                <button class="btn btn-small" onclick="toggleView('grid')" title="نمای شبکه">⊞</button>
-                            </div>
-                            <button class="btn btn-small" onclick="refreshFiles()">🔄</button>
-                            <button class="btn btn-small" onclick="selectAllFiles()">☑️</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Search and Filters -->
-                    <div class="search-filters">
-                        <div class="search-row">
-                            <div class="search-box">
-                                <input type="text" id="search-input" placeholder="جستجوی سریع در فایل‌ها..." />
-                                <span class="search-icon">🔍</span>
-                                <button class="search-clear" onclick="clearSearch()" style="display: none;">×</button>
-                            </div>
-                            <button class="btn btn-small" onclick="showAdvancedSearch()">📊 جستجوی پیشرفته</button>
-                        </div>
-                        
-                        <div class="filter-row">
-                            <select id="format-filter" class="filter-select">
-                                <option value="همه فرمت‌ها">همه فرمت‌ها</option>
-                                <option value="📷 تصاویر">📷 تصاویر</option>
-                                <option value="🎬 ویدیوها">🎬 ویدیوها</option>
-                                <option value="🎵 صوتی">🎵 صوتی</option>
-                                <option value="📄 اسناد">📄 اسناد</option>
-                                <option value="📊 جداول">📊 جداول</option>
-                                <option value="📋 ارائه">📋 ارائه</option>
-                                <option value="📦 آرشیو">📦 آرشیو</option>
-                                <option value="⚙️ برنامه">⚙️ برنامه</option>
-                                <option value="💻 کد">💻 کد</option>
-                                <option value="🔤 فونت">🔤 فونت</option>
-                                <option value="🗄️ دیتابیس">🗄️ دیتابیس</option>
-                            </select>
-                            
-                            <select id="size-filter" class="filter-select">
-                                <option value="همه اندازه‌ها">همه اندازه‌ها</option>
-                                <option value="🟢 کوچک">🟢 کوچک (&lt; 1MB)</option>
-                                <option value="🟡 متوسط">🟡 متوسط (1-100MB)</option>
-                                <option value="🟠 بزرگ">🟠 بزرگ (100MB-1GB)</option>
-                                <option value="🔴 خیلی بزرگ">🔴 خیلی بزرگ (&gt; 1GB)</option>
-                            </select>
-                            
-                            <select id="date-filter" class="filter-select">
-                                <option value="همه تاریخ‌ها">همه تاریخ‌ها</option>
-                                <option value="امروز">امروز</option>
-                                <option value="این هفته">این هفته</option>
-                                <option value="این ماه">این ماه</option>
-                                <option value="سال جاری">سال جاری</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- File Statistics -->
-                    <div class="file-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">تعداد فایل‌ها:</span>
-                            <span id="file-count-text" class="stat-value">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">انتخاب شده:</span>
-                            <span id="selected-count-text" class="stat-value">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">حجم کل:</span>
-                            <span id="total-size-text" class="stat-value">0 B</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">درایو فعال:</span>
-                            <span id="current-drive-text" class="stat-value">-</span>
-                        </div>
-                    </div>
-                    
-                    <!-- File List -->
-                    <div class="file-list-container">
-                        <div class="file-list-header">
-                            <div class="file-col-check">
-                                <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll()">
-                            </div>
-                            <div class="file-col-name sortable" onclick="sortFiles('name')">
-                                📁 نام <span class="sort-indicator"></span>
-                            </div>
-                            <div class="file-col-path sortable" onclick="sortFiles('path')">
-                                📂 مسیر <span class="sort-indicator"></span>
-                            </div>
-                            <div class="file-col-type sortable" onclick="sortFiles('type')">
-                                📄 نوع <span class="sort-indicator"></span>
-                            </div>
-                            <div class="file-col-size sortable" onclick="sortFiles('size')">
-                                💾 اندازه <span class="sort-indicator"></span>
-                            </div>
-                            <div class="file-col-date sortable" onclick="sortFiles('modified')">
-                                📅 تاریخ <span class="sort-indicator"></span>
-                            </div>
-                        </div>
-                        <div id="file-list" class="file-list">
-                            <div class="loading-indicator">
-                                <div class="spinner"></div>
-                                <p>در حال بارگذاری فایل‌ها...</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Pagination -->
-                    <div class="pagination-container">
-                        <div class="pagination-info">
-                            <span id="pagination-text">نمایش 0 از 0 فایل</span>
-                        </div>
-                        <div class="pagination-controls">
-                            <button class="btn btn-small" onclick="previousPage()" disabled>⟨ قبلی</button>
-                            <span id="page-numbers"></span>
-                            <button class="btn btn-small" onclick="nextPage()" disabled>بعدی ⟩</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Section: Drives & Tasks -->
-                <div class="right-section">
-                    <!-- Quick Drive Access -->
-                    <div class="quick-drives-section">
-                        <div class="section-header">
-                            <h3>🚀 دسترسی سریع</h3>
-                            <button class="btn btn-small" onclick="refreshDrives()">🔄</button>
-                        </div>
-                        <div id="quick-drives" class="quick-drives-grid">
-                            <!-- Quick drives will be populated here -->
-                        </div>
-                    </div>
-
-                    <!-- Main Drives Section -->
-                    <div class="drives-section">
-                        <div class="section-header">
-                            <h3>🖥️ درایوها و مقصدها</h3>
-                            <div class="drives-controls">
-                                <button class="btn btn-small" onclick="showDriveSettings()">⚙️</button>
-                                <button class="btn btn-small" onclick="refreshDrives()">🔄</button>
-                            </div>
-                        </div>
-                        
-                        <div id="drives-list" class="drives-list">
-                            <div class="loading-indicator">
-                                <div class="spinner"></div>
-                                <p>در حال اسکن درایوها...</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tasks Section -->
-                    <div class="tasks-section">
-                        <div class="section-header">
-                            <h3>📊 تسک‌های کپی</h3>
-                            <div class="task-controls">
-                                <button class="btn btn-small" onclick="pauseAllTasks()" title="توقف همه">⏸️</button>
-                                <button class="btn btn-small" onclick="resumeAllTasks()" title="ادامه همه">▶️</button>
-                                <button class="btn btn-small" onclick="cancelAllTasks()" title="لغو همه">❌</button>
-                                <button class="btn btn-small" onclick="clearCompletedTasks()" title="پاک کردن تکمیل شده">🧹</button>
-                            </div>
-                        </div>
-                        
-                        <div id="tasks-list" class="tasks-list">
-                            <div class="empty-state">
-                                <div class="empty-icon">📋</div>
-                                <p>هیچ تسک فعالی وجود ندارد</p>
-                                <small>فایل‌هایی را انتخاب کنید و روی مقصد کلیک کنید</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Drives Tab -->
-        <div id="drives-tab" class="tab-content">
-            <div class="drives-management">
-                <h2>🖥️ مدیریت درایوها و ایندکس‌گذاری</h2>
-                
-                <div class="drives-overview">
-                    <div class="overview-card">
-                        <div class="card-icon">💾</div>
-                        <div class="card-content">
-                            <h3>درایوهای سیستم</h3>
-                            <p id="system-drives-count">0 درایو</p>
-                        </div>
-                    </div>
-                    <div class="overview-card">
-                        <div class="card-icon">🔌</div>
-                        <div class="card-content">
-                            <h3>دستگاه‌های متصل</h3>
-                            <p id="external-devices-count">0 دستگاه</p>
-                        </div>
-                    </div>
-                    <div class="overview-card">
-                        <div class="card-icon">📁</div>
-                        <div class="card-content">
-                            <h3>فایل‌های ایندکس شده</h3>
-                            <p id="total-indexed-files">0 فایل</p>
-                        </div>
-                    </div>
-                    <div class="overview-card">
-                        <div class="card-icon">⚡</div>
-                        <div class="card-content">
-                            <h3>وضعیت ایندکس‌گذاری</h3>
-                            <p id="indexing-status">آماده</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="drives-detailed">
-                    <div class="section-header">
-                        <h3>تنظیمات تفصیلی درایوها</h3>
-                        <div class="drives-actions">
-                            <button class="btn btn-primary" onclick="startFullReindex()">🔄 ایندکس‌گذاری کامل</button>
-                            <button class="btn btn-secondary" onclick="cleanupDatabase()">🧹 پاک‌سازی پایگاه داده</button>
-                        </div>
-                    </div>
-                    
-                    <div id="drives-detailed-list" class="drives-detailed-list">
-                        <!-- Detailed drives list will be populated here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Settings Tab -->
-        <div id="settings-tab" class="tab-content">
-            <div class="settings-container">
-                <h2>⚙️ تنظیمات پیشرفته</h2>
-                
-                <!-- Settings Navigation -->
-                <div class="settings-nav">
-                    <button class="settings-nav-btn active" data-section="ui">🎨 رابط کاربری</button>
-                    <button class="settings-nav-btn" data-section="file-ops">📁 عملیات فایل</button>
-                    <button class="settings-nav-btn" data-section="indexing">🔍 ایندکس‌گذاری</button>
-                    <button class="settings-nav-btn" data-section="notifications">🔔 اعلان‌ها</button>
-                    <button class="settings-nav-btn" data-section="advanced">⚙️ پیشرفته</button>
-                    <button class="settings-nav-btn" data-section="license">🔐 لایسنس</button>
-                </div>
-                
-                <!-- UI Settings -->
-                <div id="ui-settings" class="settings-section active">
-                    <h3>🎨 تنظیمات رابط کاربری</h3>
-                    
-                    <div class="settings-group">
-                        <h4>🔤 فونت و متن</h4>
-                        <div class="setting-row">
-                            <label>خانواده فونت:</label>
-                            <select id="font-family-select">
-                                <option value="Vazirmatn">Vazirmatn</option>
-                                <option value="B Nazanin">B Nazanin</option>
-                                <option value="Tahoma">Tahoma</option>
-                                <option value="Arial">Arial</option>
-                                <option value="IRANSans">IRANSans</option>
-                            </select>
-                        </div>
-                        <div class="setting-row">
-                            <label>اندازه فونت:</label>
-                            <input type="range" id="font-size-slider" min="10" max="24" value="14" />
-                            <span id="font-size-value">14px</span>
-                        </div>
-                        <div class="setting-row">
-                            <label>وزن فونت:</label>
-                            <select id="font-weight-select">
-                                <option value="normal">عادی</option>
-                                <option value="500">متوسط</option>
-                                <option value="600">نیمه‌ضخیم</option>
-                                <option value="700">ضخیم</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>🎨 ظاهر و تم</h4>
-                        <div class="setting-row">
-                            <label>تم رنگی:</label>
-                            <select id="theme-select">
-                                <option value="dark">🌙 تیره</option>
-                                <option value="light">☀️ روشن</option>
-                                <option value="blue">🔵 آبی</option>
-                                <option value="green">🟢 سبز</option>
-                                <option value="purple">🟣 بنفش</option>
-                                <option value="orange">🟠 نارنجی</option>
-                            </select>
-                        </div>
-                        <div class="setting-row">
-                            <label>جهت رابط:</label>
-                            <select id="direction-select">
-                                <option value="rtl">راست به چپ (فارسی)</option>
-                                <option value="ltr">چپ به راست (انگلیسی)</option>
-                            </select>
-                        </div>
-                        <div class="setting-row">
-                            <label>حالت فشرده:</label>
-                            <input type="checkbox" id="compact-mode">
-                        </div>
-                        <div class="setting-row">
-                            <label>شروع در حالت ماکسیمم:</label>
-                            <input type="checkbox" id="startup-maximized" checked>
-                        </div>
-                        <div class="setting-row">
-                            <label>نمایش راهنما:</label>
-                            <input type="checkbox" id="show-tooltips" checked>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>⚡ انیمیشن و عملکرد</h4>
-                        <div class="setting-row">
-                            <label>سرعت انیمیشن:</label>
-                            <select id="animation-speed">
-                                <option value="slow">آهسته</option>
-                                <option value="normal">عادی</option>
-                                <option value="fast">سریع</option>
-                                <option value="none">بدون انیمیشن</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- File Operations Settings -->
-                <div id="file-ops-settings" class="settings-section">
-                    <h3>📁 تنظیمات عملیات فایل</h3>
-                    
-                    <div class="settings-group">
-                        <h4>🚀 عملکرد کپی</h4>
-                        <div class="setting-row">
-                            <label>حداکثر تسک همزمان:</label>
-                            <input type="number" id="max-tasks" min="1" max="20" value="5" />
-                        </div>
-                        <div class="setting-row">
-                            <label>اندازه بافر (KB):</label>
-                            <input type="number" id="chunk-size" min="1" max="1024" value="64" />
-                        </div>
-                        <div class="setting-row">
-                            <label>تأیید یکپارچگی:</label>
-                            <input type="checkbox" id="verify-copy" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>تلاش مجدد خودکار:</label>
-                            <input type="checkbox" id="auto-retry" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>حداکثر تلاش مجدد:</label>
-                            <input type="number" id="max-retry" min="1" max="10" value="3" />
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>📂 رفتار فایل</h4>
-                        <div class="setting-row">
-                            <label>رد کردن فایل‌های موجود:</label>
-                            <input type="checkbox" id="skip-existing" />
-                        </div>
-                        <div class="setting-row">
-                            <label>حفظ زمان‌بندی فایل‌ها:</label>
-                            <input type="checkbox" id="preserve-timestamps" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>نمایش فایل‌های مخفی:</label>
-                            <input type="checkbox" id="show-hidden" />
-                        </div>
-                        <div class="setting-row">
-                            <label>دنبال کردن لینک‌ها:</label>
-                            <input type="checkbox" id="follow-symlinks" />
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Indexing Settings -->
-                <div id="indexing-settings" class="settings-section">
-                    <h3>🔍 تنظیمات ایندکس‌گذاری</h3>
-                    
-                    <div class="settings-group">
-                        <h4>🖥️ درایوها</h4>
-                        <div class="setting-row">
-                            <label>ایندکس خودکار درایوهای جدید:</label>
-                            <input type="checkbox" id="auto-index-new" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>ایندکس درایو سیستم (C:):</label>
-                            <input type="checkbox" id="index-system" />
-                            <small>⚠️ ممکن است سرعت سیستم را کاهش دهد</small>
-                        </div>
-                        <div class="setting-row">
-                            <label>ایندکس‌گذاری پس‌زمینه:</label>
-                            <input type="checkbox" id="background-indexing" checked />
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>📊 محدودیت‌ها</h4>
-                        <div class="setting-row">
-                            <label>حداکثر فایل‌های کش:</label>
-                            <input type="number" id="max-cache" min="10000" max="10000000" value="1000000" />
-                        </div>
-                        <div class="setting-row">
-                            <label>عمق اسکن:</label>
-                            <input type="number" id="scan-depth" min="1" max="50" value="10" />
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>🚫 استثناها</h4>
-                        <div class="setting-row">
-                            <label>پسوندهای استثنا:</label>
-                            <input type="text" id="exclude-extensions" value=".tmp,.cache,.log" />
-                            <small>با کاما جدا کنید</small>
-                        </div>
-                        <div class="setting-row">
-                            <label>پوشه‌های استثنا:</label>
-                            <input type="text" id="exclude-folders" value="$Recycle.Bin,System Volume Information" />
-                            <small>با کاما جدا کنید</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Notifications Settings -->
-                <div id="notifications-settings" class="settings-section">
-                    <h3>🔔 تنظیمات اعلان‌ها</h3>
-                    
-                    <div class="settings-group">
-                        <h4>🍞 Toast Notifications</h4>
-                        <div class="setting-row">
-                            <label>مدت نمایش (میلی‌ثانیه):</label>
-                            <input type="number" id="toast-duration" min="1000" max="60000" value="10000" />
-                        </div>
-                        <div class="setting-row">
-                            <label>صدای اعلان:</label>
-                            <input type="checkbox" id="sound-enabled" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>اعلان‌های پیشرفت:</label>
-                            <input type="checkbox" id="progress-notifications" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>صدای تکمیل:</label>
-                            <input type="checkbox" id="completion-sound" checked />
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>💻 سیستم</h4>
-                        <div class="setting-row">
-                            <label>اعلان‌های سینی سیستم:</label>
-                            <input type="checkbox" id="system-tray" checked />
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Advanced Settings -->
-                <div id="advanced-settings" class="settings-section">
-                    <h3>⚙️ تنظیمات پیشرفته</h3>
-                    
-                    <div class="settings-group">
-                        <h4>🔧 سیستم</h4>
-                        <div class="setting-row">
-                            <label>لاگ دیباگ:</label>
-                            <input type="checkbox" id="debug-logging" />
-                        </div>
-                        <div class="setting-row">
-                            <label>ذخیره خودکار تنظیمات:</label>
-                            <input type="checkbox" id="auto-save" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>بهینه‌سازی حافظه:</label>
-                            <input type="checkbox" id="memory-optimization" checked />
-                        </div>
-                        <div class="setting-row">
-                            <label>حالت عملکرد:</label>
-                            <select id="performance-mode">
-                                <option value="economy">اقتصادی</option>
-                                <option value="balanced">متعادل</option>
-                                <option value="performance">عملکرد</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>🗄️ پایگاه داده</h4>
-                        <div class="setting-row">
-                            <label>پاک‌سازی خودکار (روز):</label>
-                            <input type="number" id="cleanup-days" min="1" max="365" value="30" />
-                        </div>
-                        <div class="setting-row">
-                            <label>اعمال تغییرات:</label>
-                            <button class="btn btn-secondary" onclick="optimizeDatabase()">🔧 بهینه‌سازی</button>
-                            <button class="btn btn-warning" onclick="resetDatabase()">⚠️ بازنشانی</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- License Settings -->
-                <div id="license-settings" class="settings-section">
-                    <h3>🔐 مدیریت لایسنس</h3>
-                    
-                    <div class="license-info-card">
-                        <div class="license-icon">🏆</div>
-                        <div class="license-details">
-                            <h4 id="license-type">نسخه آزمایشی</h4>
-                            <p id="license-status">وضعیت: فعال</p>
-                            <p id="license-limits">محدودیت: 100 فایل</p>
-                            <p id="license-machine">شناسه دستگاه: ...</p>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h4>🔑 فعال‌سازی لایسنس</h4>
-                        <div class="setting-row">
-                            <label>کلید لایسنس:</label>
-                            <input type="text" id="license-key" placeholder="PFC-PRO-XXXX-XXXX-XXXX-XXXX" />
-                            <button class="btn btn-primary" onclick="activateLicense()">فعال‌سازی</button>
-                        </div>
-                        <div class="setting-row">
-                            <button class="btn btn-success btn-large" onclick="purchaseLicense()">
-                                🛒 خرید نسخه کامل
-                            </button>
-                        </div>
-                        <div class="purchase-info">
-                            <h5>📋 راهنمای خرید:</h5>
-                            <ol>
-                                <li>روی دکمه "خرید نسخه کامل" کلیک کنید</li>
-                                <li>پرداخت را در درگاه زرین‌پال انجام دهید</li>
-                                <li>رسید پرداخت را به <a href="https://t.me/PersianFileSupport" target="_blank">@PersianFileSupport</a> ارسال کنید</li>
-                                <li>کلید لایسنس دریافتی را در کادر بالا وارد و فعال کنید</li>
-                            </ol>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Apply Settings -->
-                <div class="settings-actions">
-                    <button class="btn btn-primary btn-large" onclick="applyAllSettings()">
-                        ✅ اعمال همه تغییرات
-                    </button>
-                    <button class="btn btn-secondary" onclick="resetSettings()">
-                        🔄 بازگردانی به پیش‌فرض
-                    </button>
-                    <button class="btn btn-success" onclick="exportSettings()">
-                        💾 صادر کردن تنظیمات
-                    </button>
-                    <button class="btn btn-warning" onclick="importSettings()">
-                        📥 وارد کردن تنظیمات
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- About Tab -->
-        <div id="about-tab" class="tab-content">
-            <div class="about-container">
-                <div class="about-hero">
-                    <div class="app-logo">🌟</div>
-                    <h1>Persian File Copier Pro</h1>
-                    <p class="version">نسخه 2.0 - Professional Web Edition</p>
-                    <p class="company">شرکت فناوری نوآئران مثبت سبز</p>
-                </div>
-                
-                <div class="about-content">
-                    <div class="feature-grid">
-                        <div class="feature-card">
-                            <div class="feature-icon">⚡</div>
-                            <h3>کپی پرسرعت</h3>
-                            <p>کپی همزمان تا 20 فایل با نمایش پیشرفت real-time و قابلیت مکث/ادامه</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">🗄️</div>
-                            <h3>ایندکس‌گذاری هوشمند</h3>
-                            <p>ایندکس خودکار میلیون‌ها فایل با پایگاه داده SQLite و جستجوی فوق‌العاده سریع</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">🔍</div>
-                            <h3>جستجوی پیشرفته</h3>
-                            <p>فیلتر پیشرفته بر اساس نوع، اندازه، تاریخ با highlighting و مرتب‌سازی</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">📱</div>
-                            <h3>پشتیبانی MTP</h3>
-                            <p>تشخیص خودکار گوشی‌ها، دوربین‌ها و دستگاه‌های قابل حمل</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">🎨</div>
-                            <h3>رابط مدرن</h3>
-                            <p>طراحی responsive با 6 تم زیبا، فونت‌های فارسی و انیمیشن‌های smooth</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">🔧</div>
-                            <h3>تنظیمات حرفه‌ای</h3>
-                            <p>بیش از 50 تنظیم پیشرفته برای شخصی‌سازی کامل تجربه کاربری</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">🌐</div>
-                            <h3>وب‌محور</h3>
-                            <p>ساخته شده با HTML/CSS/JS مدرن، عملکرد بالا و قابلیت توسعه آسان</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">🛡️</div>
-                            <h3>امنیت پیشرفته</h3>
-                            <p>سیستم لایسنس machine-bound و حفاظت از داده‌های کاربر</p>
-                        </div>
-                    </div>
-                    
-                    <div class="technical-specs">
-                        <h3>🔧 مشخصات فنی</h3>
-                        <div class="specs-grid">
-                            <div class="spec-item">
-                                <strong>Frontend:</strong> HTML5, CSS3, JavaScript ES6+
-                            </div>
-                            <div class="spec-item">
-                                <strong>Backend:</strong> Python + Eel Framework
-                            </div>
-                            <div class="spec-item">
-                                <strong>Database:</strong> SQLite3 with indexing
-                            </div>
-                            <div class="spec-item">
-                                <strong>Performance:</strong> Multi-threaded, async operations
-                            </div>
-                            <div class="spec-item">
-                                <strong>Compatibility:</strong> Windows 10+, Linux, macOS
-                            </div>
-                            <div class="spec-item">
-                                <strong>File Limit:</strong> Unlimited (Pro), 100 (Trial)
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="contact-info">
-                        <h3>📞 اطلاعات تماس</h3>
-                        <div class="contact-grid">
-                            <div class="contact-item">
-                                <strong>پشتیبانی:</strong> 
-                                <a href="https://t.me/PersianFileSupport" target="_blank">@PersianFileSupport</a>
-                            </div>
-                            <div class="contact-item">
-                                <strong>وب‌سایت:</strong> 
-                                <a href="https://persianfile.ir" target="_blank">persianfile.ir</a>
-                            </div>
-                            <div class="contact-item">
-                                <strong>خرید:</strong> 
-                                <a href="https://zarinp.al/735413" target="_blank">درگاه پرداخت</a>
-                            </div>
-                            <div class="contact-item">
-                                <strong>ویدیوهای آموزشی:</strong> 
-                                <a href="#" target="_blank">YouTube Channel</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Toast Notifications -->
-    <div id="toast-container" class="toast-container"></div>
-
-    <!-- Context Menu -->
-    <div id="context-menu" class="context-menu">
-        <div class="context-item" onclick="copyFilePath()">📋 کپی مسیر</div>
-        <div class="context-item" onclick="openFile()">📂 باز کردن فایل</div>
-        <div class="context-item" onclick="openFileLocation()">📁 باز کردن پوشه</div>
-        <div class="context-item" onclick="showFileProperties()">🔍 ویژگی‌ها</div>
-        <div class="context-separator"></div>
-        <div class="context-item" onclick="deleteFile()">🗑️ حذف</div>
-        <div class="context-item" onclick="renameFile()">✏️ تغییر نام</div>
-    </div>
-
-    <!-- Modals -->
-    <div id="drive-settings-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>⚙️ تنظیمات درایو</h3>
-                <button class="modal-close" onclick="closeDriveSettings()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="drive-settings-content">
-                    <!-- Drive settings content -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- JavaScript -->
-    <script src="js/app_pro.js"></script>
-    <script src="js/ui_pro.js"></script>
-    <script src="js/file-manager_pro.js"></script>
-    <script src="js/task-manager_pro.js"></script>
-    <script src="js/settings_pro.js"></script>
-</body>
-</html>
