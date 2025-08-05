@@ -44,11 +44,13 @@ async function initializeApp() {
         // Initialize UI components
         initializeTabNavigation();
         initializeSearchAndFilters();
+        initializeAdvancedSettingsAutoSave();
         
         // Load initial data
         await Promise.all([
             loadDrives(),
-            loadLicenseInfo()
+            loadLicenseInfo(),
+            loadAdvancedSettings()
         ]);
         
         // Start monitoring services
@@ -1247,6 +1249,157 @@ window.clearCompletedTasks = clearCompletedTasks;
 window.activateLicense = activateLicense;
 window.purchaseLicense = purchaseLicense;
 window.showSettings = showSettings;
+/**
+ * Advanced Settings Functions
+ */
+
+// Check database status
+async function checkDatabaseStatus() {
+    try {
+        const statusElement = document.getElementById('db-status');
+        statusElement.textContent = 'در حال بررسی...';
+        
+        const status = await eel.get_database_status()();
+        const { files_count, size, last_cleanup } = status;
+        
+        const sizeInMB = (size / (1024 * 1024)).toFixed(2);
+        statusElement.innerHTML = `
+            📊 ${files_count.toLocaleString('fa-IR')} فایل ایندکس شده<br>
+            💾 ${sizeInMB} مگابایت فضا<br>
+            🧹 آخرین پاک‌سازی: ${last_cleanup || 'هیچ‌وقت'}
+        `;
+        
+        showToast('✅ وضعیت پایگاه داده بررسی شد', 'success');
+    } catch (error) {
+        console.error('Error checking database status:', error);
+        document.getElementById('db-status').textContent = '❌ خطا در بررسی';
+        showToast('❌ خطا در بررسی وضعیت پایگاه داده', 'error');
+    }
+}
+
+// Optimize database
+async function optimizeDatabase() {
+    try {
+        showToast('🔧 شروع بهینه‌سازی پایگاه داده...', 'info');
+        
+        const result = await eel.optimize_database()();
+        
+        if (result.success) {
+            showToast(`✅ بهینه‌سازی کامل شد. ${result.message}`, 'success');
+            await checkDatabaseStatus(); // Refresh status
+        } else {
+            showToast(`❌ خطا در بهینه‌سازی: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error optimizing database:', error);
+        showToast('❌ خطا در بهینه‌سازی پایگاه داده', 'error');
+    }
+}
+
+// Confirm database reset
+function confirmDatabaseReset() {
+    const confirmed = confirm(
+        '⚠️ هشدار!\n\n' +
+        'این عمل تمام داده‌های ایندکس شده را پاک می‌کند.\n' +
+        'آیا مطمئن هستید که می‌خواهید ادامه دهید؟\n\n' +
+        'این عمل غیرقابل بازگشت است!'
+    );
+    
+    if (confirmed) {
+        resetDatabase();
+    }
+}
+
+// Reset database
+async function resetDatabase() {
+    try {
+        showToast('⚠️ در حال بازنشانی پایگاه داده...', 'warning');
+        
+        const result = await eel.reset_database()();
+        
+        if (result.success) {
+            showToast('✅ پایگاه داده با موفقیت بازنشانی شد', 'success');
+            await checkDatabaseStatus(); // Refresh status
+            await loadDrives(); // Reload drives
+        } else {
+            showToast(`❌ خطا در بازنشانی: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error resetting database:', error);
+        showToast('❌ خطا در بازنشانی پایگاه داده', 'error');
+    }
+}
+
+// Load advanced settings
+async function loadAdvancedSettings() {
+    try {
+        const config = await eel.get_config()();
+        
+        // System settings
+        document.getElementById('debug-logging').checked = config.advanced?.debug_logging || false;
+        document.getElementById('auto-save').checked = config.advanced?.auto_save_settings !== false;
+        document.getElementById('memory-optimization').checked = config.advanced?.memory_optimization !== false;
+        document.getElementById('performance-mode').value = config.advanced?.performance_mode || 'balanced';
+        
+        // Database settings
+        document.getElementById('cleanup-days').value = config.advanced?.database_cleanup_days || 30;
+        
+        // Load database status
+        await checkDatabaseStatus();
+        
+    } catch (error) {
+        console.error('Error loading advanced settings:', error);
+        showToast('❌ خطا در بارگیری تنظیمات پیشرفته', 'error');
+    }
+}
+
+// Save advanced settings
+async function saveAdvancedSettings() {
+    try {
+        const settings = {
+            debug_logging: document.getElementById('debug-logging').checked,
+            auto_save_settings: document.getElementById('auto-save').checked,
+            memory_optimization: document.getElementById('memory-optimization').checked,
+            performance_mode: document.getElementById('performance-mode').value,
+            database_cleanup_days: parseInt(document.getElementById('cleanup-days').value) || 30
+        };
+        
+        const result = await eel.save_advanced_settings(settings)();
+        
+        if (result.success) {
+            showToast('✅ تنظیمات پیشرفته ذخیره شد', 'success');
+        } else {
+            showToast(`❌ خطا در ذخیره تنظیمات: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving advanced settings:', error);
+        showToast('❌ خطا در ذخیره تنظیمات', 'error');
+    }
+}
+
+// Auto-save when settings change
+function initializeAdvancedSettingsAutoSave() {
+    const settingsInputs = [
+        'debug-logging',
+        'auto-save', 
+        'memory-optimization',
+        'performance-mode',
+        'cleanup-days'
+    ];
+    
+    settingsInputs.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', () => {
+                if (document.getElementById('auto-save').checked) {
+                    setTimeout(saveAdvancedSettings, 500); // Debounce
+                }
+            });
+        }
+    });
+}
+
+// Export functions to window
 window.showAbout = showAbout;
 window.showContextMenu = showContextMenu;
 window.hideContextMenu = hideContextMenu;
@@ -1261,3 +1414,11 @@ window.showAdvancedSearch = showAdvancedSearch;
 window.goToPage = goToPage;
 window.previousPage = previousPage;
 window.nextPage = nextPage;
+
+// Advanced Settings
+window.checkDatabaseStatus = checkDatabaseStatus;
+window.optimizeDatabase = optimizeDatabase;
+window.confirmDatabaseReset = confirmDatabaseReset;
+window.resetDatabase = resetDatabase;
+window.loadAdvancedSettings = loadAdvancedSettings;
+window.saveAdvancedSettings = saveAdvancedSettings;

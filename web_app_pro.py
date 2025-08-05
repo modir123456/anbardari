@@ -44,6 +44,11 @@ class DatabaseManager:
         self.db_file = db_file
         self.init_database()
     
+    @property
+    def db_path(self):
+        """دریافت مسیر فایل پایگاه داده"""
+        return self.db_file
+    
     def init_database(self):
         """ایجاد جداول پایگاه داده"""
         conn = sqlite3.connect(self.db_file)
@@ -256,6 +261,21 @@ class DatabaseManager:
             conn.commit()
         finally:
             conn.close()
+    
+    def reset_database(self):
+        """بازنشانی کامل پایگاه داده"""
+        try:
+            import os
+            # Close any existing connections
+            if os.path.exists(self.db_file):
+                os.remove(self.db_file)
+            
+            # Recreate database
+            self.init_database()
+            logger.info("Database reset successfully")
+        except Exception as e:
+            logger.error(f"Error resetting database: {e}")
+            raise
 
 class FileSystemWatcher(FileSystemEventHandler):
     """نظارت بر تغییرات فایل سیستم"""
@@ -724,14 +744,31 @@ class FileManager:
         try:
             if platform.system() == "Windows":
                 try:
-                    import win32api
-                    return win32api.GetVolumeInformation(partition.mountpoint)[0] or partition.mountpoint
-                except (ImportError, ModuleNotFoundError):
-                    # Fallback if win32api is not available
+                    # Use subprocess to get drive label on Windows
+                    import subprocess
+                    drive_letter = partition.mountpoint.rstrip('\\/')
+                    if ':' in drive_letter:
+                        result = subprocess.run(
+                            ['vol', drive_letter], 
+                            capture_output=True, 
+                            text=True, 
+                            shell=True
+                        )
+                        if result.returncode == 0 and result.stdout:
+                            lines = result.stdout.strip().split('\n')
+                            for line in lines:
+                                if 'is' in line and drive_letter in line:
+                                    parts = line.split('is')
+                                    if len(parts) > 1:
+                                        label = parts[1].strip()
+                                        return label if label else f"Drive {partition.mountpoint}"
+                    return f"Drive {partition.mountpoint}"
+                except (OSError, subprocess.SubprocessError):
+                    # Fallback if subprocess fails
                     return f"Drive {partition.mountpoint}"
             else:
                 return partition.mountpoint
-        except:
+        except Exception:
             return partition.mountpoint
     
     def get_drive_icon(self, partition):
@@ -1245,6 +1282,93 @@ def save_config(config):
     config_manager.config = config
     config_manager.save_config()
     return True
+
+@eel.expose
+def get_database_status():
+    """دریافت وضعیت پایگاه داده"""
+    try:
+        conn = sqlite3.connect(db_manager.db_path)
+        cursor = conn.cursor()
+        
+        # Get files count
+        cursor.execute("SELECT COUNT(*) FROM files")
+        files_count = cursor.fetchone()[0]
+        
+        # Get database size
+        import os
+        db_size = os.path.getsize(db_manager.db_path) if os.path.exists(db_manager.db_path) else 0
+        
+        # Get last cleanup (dummy for now)
+        last_cleanup = config_manager.get('advanced', 'last_cleanup', None)
+        
+        conn.close()
+        
+        return {
+            'files_count': files_count,
+            'size': db_size,
+            'last_cleanup': last_cleanup
+        }
+    except Exception as e:
+        logger.error(f"Error getting database status: {e}")
+        return {'files_count': 0, 'size': 0, 'last_cleanup': None}
+
+@eel.expose
+def optimize_database():
+    """بهینه‌سازی پایگاه داده"""
+    try:
+        conn = sqlite3.connect(db_manager.db_path)
+        cursor = conn.cursor()
+        
+        # Vacuum database
+        cursor.execute("VACUUM")
+        
+        # Analyze database
+        cursor.execute("ANALYZE")
+        
+        # Reindex
+        cursor.execute("REINDEX")
+        
+        conn.close()
+        
+        # Update last optimization time
+        import datetime
+        config_manager.set('advanced', 'last_optimization', datetime.datetime.now().isoformat())
+        
+        return {'success': True, 'message': 'پایگاه داده بهینه‌سازی شد'}
+    except Exception as e:
+        logger.error(f"Error optimizing database: {e}")
+        return {'success': False, 'message': str(e)}
+
+@eel.expose  
+def reset_database():
+    """بازنشانی کامل پایگاه داده"""
+    try:
+        # Stop background indexer
+        background_indexer.stop()
+        
+        # Reset database
+        db_manager.reset_database()
+        
+        # Restart background indexer
+        background_indexer.start()
+        
+        return {'success': True, 'message': 'پایگاه داده بازنشانی شد'}
+    except Exception as e:
+        logger.error(f"Error resetting database: {e}")
+        return {'success': False, 'message': str(e)}
+
+@eel.expose
+def save_advanced_settings(settings):
+    """ذخیره تنظیمات پیشرفته"""
+    try:
+        # Save each setting
+        for key, value in settings.items():
+            config_manager.set('advanced', key, value)
+        
+        return {'success': True, 'message': 'تنظیمات ذخیره شد'}
+    except Exception as e:
+        logger.error(f"Error saving advanced settings: {e}")
+        return {'success': False, 'message': str(e)}
 
 @eel.expose
 def get_license_info():
