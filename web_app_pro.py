@@ -516,10 +516,11 @@ class ConfigManager:
                 'auto_index_settings': {}
             },
             'license': {
-                'key': 'FREE-FULL-VERSION',
-                'type': 'professional',
+                'key': '',
+                'type': 'trial',
                 'status': 'active',
-                'machine_id': self.get_machine_id()
+                'machine_id': self.get_machine_id(),
+                'trial_start': None
             }
         }
         
@@ -572,44 +573,80 @@ class ConfigManager:
             return str(uuid.uuid4())
 
 class LicenseManager:
-    """مدیریت لایسنس - نسخه کامل رایگان"""
+    """مدیریت لایسنس پیشرفته"""
     
     def __init__(self, config: ConfigManager):
         self.config = config
-        # Set professional license by default
-        self.config.set('license', 'type', 'professional')
-        self.config.set('license', 'status', 'active')
+        # Check if already has valid license
+        current_key = self.config.get('license', 'key', '')
+        if current_key and self.validate_license(current_key):
+            self.config.set('license', 'type', 'professional')
+            self.config.set('license', 'status', 'active')
     
     def get_license_info(self):
         """دریافت اطلاعات کامل لایسنس"""
+        license_type = self.config.get('license', 'type', 'trial')
         return {
-            'type': 'professional',
-            'status': 'active',
-            'key': 'FREE-FULL-VERSION',
-            'machine_id': '',
-            'trial_files_limit': None,
+            'type': license_type,
+            'status': self.config.get('license', 'status', 'active'),
+            'key': self.config.get('license', 'key', ''),
+            'machine_id': self.config.get('license', 'machine_id', ''),
+            'trial_files_limit': 100 if license_type == 'trial' else None,
             'professional_files_limit': None,
-            'trial_days_left': None
+            'trial_days_left': self.get_trial_days_left() if license_type == 'trial' else None
         }
     
     def get_trial_days_left(self):
         """محاسبه روزهای باقی‌مانده از نسخه آزمایشی"""
-        return None  # No trial, full version
+        # Check if trial start date is set
+        trial_start = self.config.get('license', 'trial_start', None)
+        if not trial_start:
+            # Set trial start date
+            from datetime import datetime
+            trial_start = datetime.now().timestamp()
+            self.config.set('license', 'trial_start', trial_start)
+        
+        # Calculate days left (30 day trial)
+        from datetime import datetime, timedelta
+        start_date = datetime.fromtimestamp(trial_start)
+        end_date = start_date + timedelta(days=30)
+        days_left = (end_date - datetime.now()).days
+        return max(0, days_left)
     
     def check_file_limit(self, file_count):
         """بررسی محدودیت تعداد فایل"""
-        return True  # No file limit in free professional version
+        license_type = self.config.get('license', 'type', 'trial')
+        if license_type == 'trial':
+            trial_days = self.get_trial_days_left()
+            if trial_days <= 0:
+                return False  # Trial expired
+            return file_count <= 100  # Trial limit: 100 files
+        return True  # Professional: unlimited
     
     def validate_license(self, license_key):
         """اعتبارسنجی کلید لایسنس"""
-        return True  # Always valid in free version
+        if not license_key or len(license_key) < 10:
+            return False
+        
+        # Valid license keys (you can add more)
+        valid_keys = [
+            'PFC-PRO-2024-FULL',
+            'PFC-PRO-UNLIMITED',
+            'PERSIAN-FILE-COPIER-PRO',
+            'PFC-PREMIUM-2024'
+        ]
+        
+        return license_key in valid_keys
     
     def activate_license(self, license_key):
         """فعال‌سازی لایسنس"""
-        self.config.set('license', 'key', 'FREE-FULL-VERSION')
-        self.config.set('license', 'type', 'professional')
-        self.config.set('license', 'status', 'active')
-        return {'success': True, 'message': 'نسخه کامل رایگان فعال است'}
+        if self.validate_license(license_key):
+            self.config.set('license', 'key', license_key)
+            self.config.set('license', 'type', 'professional')
+            self.config.set('license', 'status', 'active')
+            return {'success': True, 'message': 'لایسنس با موفقیت فعال شد! تمام امکانات آزاد شدند.'}
+        else:
+            return {'success': False, 'message': 'کلید لایسنس نامعتبر است. لطفاً کلید صحیح را وارد کنید.'}
 
 class FileManager:
     """مدیریت پیشرفته فایل‌ها"""
@@ -1135,7 +1172,16 @@ def scan_directory(path, search="", format_filter="همه فرمت‌ها", size
 @eel.expose
 def start_copy(source_files, destination):
     """شروع کپی"""
-    # No license check - full version is free
+    # Check license limitations
+    if not license_manager.check_file_limit(len(source_files)):
+        license_info = license_manager.get_license_info()
+        if license_info['type'] == 'trial':
+            if license_info['trial_days_left'] <= 0:
+                return {'error': 'نسخه آزمایشی منقضی شده است. لطفاً لایسنس تهیه کنید.', 'expired': True}
+            else:
+                return {'error': f'محدودیت نسخه آزمایشی: حداکثر {license_info["trial_files_limit"]} فایل', 'limit': license_info["trial_files_limit"]}
+        return {'error': 'خطا در بررسی لایسنس', 'limit': 0}
+    
     task_id = file_manager.start_copy_task(source_files, destination)
     return {'task_id': task_id, 'success': True}
 

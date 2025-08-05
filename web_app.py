@@ -51,7 +51,8 @@ class ConfigManager:
             'license': {
                 'key': '',
                 'type': 'trial',
-                'status': 'active'
+                'status': 'active',
+                'trial_start': None
             }
         }
         
@@ -97,21 +98,75 @@ class LicenseManager:
     
     def __init__(self, config: ConfigManager):
         self.config = config
+        # Check if already has valid license
+        current_key = self.config.get('license', 'key', '')
+        if current_key and self.validate_license(current_key):
+            self.config.set('license', 'type', 'professional')
+            self.config.set('license', 'status', 'active')
     
     def get_license_info(self):
         """دریافت اطلاعات لایسنس"""
+        license_type = self.config.get('license', 'type', 'trial')
         return {
-            'type': self.config.get('license', 'type', 'trial'),
+            'type': license_type,
             'status': self.config.get('license', 'status', 'active'),
-            'key': self.config.get('license', 'key', '')
+            'key': self.config.get('license', 'key', ''),
+            'trial_files_limit': 50 if license_type == 'trial' else None,
+            'professional_files_limit': None,
+            'trial_days_left': self.get_trial_days_left() if license_type == 'trial' else None
         }
+    
+    def get_trial_days_left(self):
+        """محاسبه روزهای باقی‌مانده از نسخه آزمایشی"""
+        # Check if trial start date is set
+        trial_start = self.config.get('license', 'trial_start', None)
+        if not trial_start:
+            # Set trial start date
+            from datetime import datetime
+            trial_start = datetime.now().timestamp()
+            self.config.set('license', 'trial_start', trial_start)
+        
+        # Calculate days left (15 day trial for basic version)
+        from datetime import datetime, timedelta
+        start_date = datetime.fromtimestamp(trial_start)
+        end_date = start_date + timedelta(days=15)
+        days_left = (end_date - datetime.now()).days
+        return max(0, days_left)
     
     def check_file_limit(self, file_count):
         """بررسی محدودیت فایل"""
         license_type = self.config.get('license', 'type', 'trial')
         if license_type == 'trial':
-            return file_count <= 100
-        return True
+            trial_days = self.get_trial_days_left()
+            if trial_days <= 0:
+                return False  # Trial expired
+            return file_count <= 50  # Basic trial limit: 50 files
+        return True  # Professional: unlimited
+    
+    def validate_license(self, license_key):
+        """اعتبارسنجی کلید لایسنس"""
+        if not license_key or len(license_key) < 10:
+            return False
+        
+        # Valid license keys (you can add more)
+        valid_keys = [
+            'PFC-PRO-2024-FULL',
+            'PFC-PRO-UNLIMITED', 
+            'PERSIAN-FILE-COPIER-PRO',
+            'PFC-PREMIUM-2024'
+        ]
+        
+        return license_key in valid_keys
+    
+    def activate_license(self, license_key):
+        """فعال‌سازی لایسنس"""
+        if self.validate_license(license_key):
+            self.config.set('license', 'key', license_key)
+            self.config.set('license', 'type', 'professional')
+            self.config.set('license', 'status', 'active')
+            return {'success': True, 'message': 'لایسنس با موفقیت فعال شد! تمام امکانات آزاد شدند.'}
+        else:
+            return {'success': False, 'message': 'کلید لایسنس نامعتبر است. لطفاً کلید صحیح را وارد کنید.'}
 
 class FileManager:
     """مدیریت فایل‌ها و عملیات کپی"""
@@ -515,9 +570,15 @@ def scan_directory(path, search="", format_filter="همه فرمت‌ها", size
 @eel.expose
 def start_copy(source_files, destination):
     """شروع کپی"""
-    # Check license
+    # Check license limitations
     if not license_manager.check_file_limit(len(source_files)):
-        return {'error': 'محدودیت نسخه آزمایشی', 'limit': 100}
+        license_info = license_manager.get_license_info()
+        if license_info['type'] == 'trial':
+            if license_info['trial_days_left'] <= 0:
+                return {'error': 'نسخه آزمایشی منقضی شده است. لطفاً لایسنس تهیه کنید.', 'expired': True}
+            else:
+                return {'error': f'محدودیت نسخه آزمایشی: حداکثر {license_info["trial_files_limit"]} فایل', 'limit': license_info["trial_files_limit"]}
+        return {'error': 'خطا در بررسی لایسنس', 'limit': 0}
     
     task_id = file_manager.start_copy_task(source_files, destination)
     return {'task_id': task_id, 'success': True}
@@ -561,14 +622,7 @@ def get_license_info():
 @eel.expose
 def activate_license(license_key):
     """فعال‌سازی لایسنس"""
-    # Simple validation (در نسخه واقعی باید پیچیده‌تر باشد)
-    if license_key and len(license_key) > 10:
-        config_manager.set('license', 'key', license_key)
-        config_manager.set('license', 'type', 'professional')
-        config_manager.set('license', 'status', 'active')
-        return {'success': True, 'message': 'لایسنس با موفقیت فعال شد'}
-    else:
-        return {'success': False, 'message': 'کلید لایسنس نامعتبر است'}
+    return license_manager.activate_license(license_key)
 
 @eel.expose
 def open_payment_gateway():
