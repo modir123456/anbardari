@@ -229,7 +229,8 @@ async function loadTabData(tabId) {
             await refreshFiles();
             break;
         case 'drives':
-            await loadDrivesDetailed();
+            // Drives tab doesn't need additional loading
+            console.log('💾 Drives tab selected - data already loaded');
             break;
         case 'settings':
             await loadSettingsData();
@@ -1012,7 +1013,7 @@ function startDriveMonitoring() {
     
     driveMonitorInterval = setInterval(async () => {
         await loadDrives();
-    }, 5000); // Check every 5 seconds
+    }, 30000); // Check every 30 seconds
 }
 
 /**
@@ -1785,3 +1786,210 @@ function updateLicenseInfo(info) {
 
 // Export settings functions
 window.loadSettingsData = loadSettingsData;
+
+/**
+ * Apply all settings
+ */
+async function applyAllSettings() {
+    try {
+        showToast('🔄 در حال اعمال تنظیمات...', 'info');
+        
+        // Save all settings sections
+        await Promise.all([
+            saveUISettings(),
+            saveFileOperationSettings(), 
+            saveAdvancedSettings()
+        ]);
+        
+        showToast('✅ همه تنظیمات اعمال شد', 'success');
+    } catch (error) {
+        console.error('Error applying settings:', error);
+        showToast('❌ خطا در اعمال تنظیمات', 'error');
+    }
+}
+
+/**
+ * Reset settings to default
+ */
+async function resetSettings() {
+    if (!confirm('آیا از بازگردانی تنظیمات به حالت پیش‌فرض مطمئن هستید؟')) {
+        return;
+    }
+    
+    try {
+        showToast('🔄 بازگردانی تنظیمات...', 'info');
+        
+        // Reset to default values by reloading
+        await loadSettingsData();
+        
+        showToast('✅ تنظیمات به حالت پیش‌فرض بازگردانده شد', 'success');
+    } catch (error) {
+        console.error('Error resetting settings:', error);
+        showToast('❌ خطا در بازگردانی تنظیمات', 'error');
+    }
+}
+
+/**
+ * Export settings
+ */
+async function exportSettings() {
+    try {
+        const settings = await eel.get_config()();
+        
+        const dataStr = JSON.stringify(settings, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = 'persian_file_copier_settings.json';
+        link.click();
+        
+        showToast('✅ تنظیمات صادر شد', 'success');
+    } catch (error) {
+        console.error('Error exporting settings:', error);
+        showToast('❌ خطا در صادر کردن تنظیمات', 'error');
+    }
+}
+
+/**
+ * Import settings
+ */
+async function importSettings() {
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const settings = JSON.parse(text);
+                
+                const result = await eel.save_config(settings)();
+                
+                if (result.success) {
+                    await loadSettingsData();
+                    showToast('✅ تنظیمات وارد شد', 'success');
+                } else {
+                    showToast('❌ خطا در وارد کردن تنظیمات', 'error');
+                }
+            } catch (error) {
+                console.error('Error importing settings:', error);
+                showToast('❌ فایل تنظیمات نامعتبر است', 'error');
+            }
+        };
+        
+        input.click();
+    } catch (error) {
+        console.error('Error importing settings:', error);
+        showToast('❌ خطا در وارد کردن تنظیمات', 'error');
+    }
+}
+
+/**
+ * Context menu functions
+ */
+function openFileLocation() {
+    const contextMenu = document.getElementById('context-menu');
+    const filePath = contextMenu?.dataset.filePath;
+    
+    if (filePath) {
+        try {
+            eel.open_file_location(filePath)();
+            hideContextMenu();
+            showToast('📁 پوشه فایل باز شد', 'success');
+        } catch (error) {
+            console.error('Error opening file location:', error);
+            showToast('❌ خطا در باز کردن پوشه', 'error');
+        }
+    }
+}
+
+function openFile() {
+    const contextMenu = document.getElementById('context-menu');
+    const filePath = contextMenu?.dataset.filePath;
+    
+    if (filePath) {
+        try {
+            eel.open_file(filePath)();
+            hideContextMenu();
+            showToast('📂 فایل باز شد', 'success');
+        } catch (error) {
+            console.error('Error opening file:', error);
+            showToast('❌ خطا در باز کردن فایل', 'error');
+        }
+    }
+}
+
+function renameFile() {
+    const contextMenu = document.getElementById('context-menu');
+    const filePath = contextMenu?.dataset.filePath;
+    
+    if (filePath) {
+        const fileName = filePath.split(/[/\\]/).pop();
+        const newName = prompt('نام جدید فایل:', fileName);
+        
+        if (newName && newName !== fileName) {
+            try {
+                eel.rename_file(filePath, newName)();
+                hideContextMenu();
+                showToast('✏️ فایل تغییر نام داد', 'success');
+                // Refresh file list
+                scanCurrentDirectory();
+            } catch (error) {
+                console.error('Error renaming file:', error);
+                showToast('❌ خطا در تغییر نام فایل', 'error');
+            }
+        }
+    }
+}
+
+function deleteFile() {
+    const contextMenu = document.getElementById('context-menu');
+    const filePath = contextMenu?.dataset.filePath;
+    
+    if (filePath) {
+        if (confirm('آیا از حذف این فایل مطمئن هستید؟')) {
+            try {
+                eel.delete_file(filePath)();
+                hideContextMenu();
+                showToast('🗑️ فایل حذف شد', 'success');
+                // Refresh file list
+                scanCurrentDirectory();
+            } catch (error) {
+                console.error('Error deleting file:', error);
+                showToast('❌ خطا در حذف فایل', 'error');
+            }
+        }
+    }
+}
+
+function showFileProperties() {
+    const contextMenu = document.getElementById('context-menu');
+    const filePath = contextMenu?.dataset.filePath;
+    
+    if (filePath) {
+        try {
+            eel.show_file_properties(filePath)();
+            hideContextMenu();
+            showToast('🔍 ویژگی‌های فایل نمایش داده شد', 'success');
+        } catch (error) {
+            console.error('Error showing file properties:', error);
+            showToast('❌ خطا در نمایش ویژگی‌ها', 'error');
+        }
+    }
+}
+
+// Export all functions
+window.applyAllSettings = applyAllSettings;
+window.resetSettings = resetSettings;
+window.exportSettings = exportSettings;
+window.importSettings = importSettings;
+window.openFileLocation = openFileLocation;
+window.openFile = openFile;
+window.renameFile = renameFile;
+window.deleteFile = deleteFile;
+window.showFileProperties = showFileProperties;
