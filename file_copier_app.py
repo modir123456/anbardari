@@ -148,8 +148,8 @@ class FileCopierApp:
     def __init__(self, root):
         self.root = root
         self.root.title("مدیریت فایل ایرانی پیشرفته - Persian File Copier Pro v2.0")
-        self.root.geometry("1400x900")
-        self.root.minsize(1200, 800)
+        self.root.geometry("1600x1000")
+        self.root.minsize(1400, 900)
         
         # Initialize license manager
         self.license_manager = LicenseManager()
@@ -267,14 +267,13 @@ class FileCopierApp:
         self.update_status(f"تسک کپی اضافه شد: {os.path.basename(source)}")
 
     def update_recent_operations(self, operation, status):
-        """Update recent operations list"""
+        """Update recent operations list - now shows in status bar instead"""
         current_time = datetime.now().strftime("%H:%M")
-        self.recent_tree.insert("", 0, values=(current_time, operation, status))
+        # Show recent operation in status bar instead of removed recent tree
+        self.update_status(f"[{current_time}] {operation} - {status}")
         
-        # Keep only last 50 operations
-        children = self.recent_tree.get_children()
-        if len(children) > 50:
-            self.recent_tree.delete(children[-1])
+        # Log the operation for debugging
+        print(f"Recent Operation: [{current_time}] {operation} - {status}")
 
     def contact_support(self):
         """Open support contact information"""
@@ -572,8 +571,8 @@ class FileCopierApp:
                 print(f"🔍 Scanning {mountpoint}...")
                 
                 try:
-                    # Scan drive with depth limit for performance
-                    drive_files = self.scan_directory_recursive(mountpoint, max_depth=3)
+                    # Scan drive completely without depth limit to list ALL files
+                    drive_files = self.scan_directory_recursive(mountpoint, max_depth=None)
                     all_files.update(drive_files)
                     drive_file_count = len(drive_files)
                     total_files += drive_file_count
@@ -595,18 +594,17 @@ class FileCopierApp:
             print(f"❌ Error scanning files: {e}")
             self.logger.error(f"File scan error: {e}")
 
-    def scan_directory_recursive(self, directory, max_depth=3, current_depth=0):
-        """Recursively scan directory with depth limit"""
+    def scan_directory_recursive(self, directory, max_depth=None, current_depth=0):
+        """Recursively scan directory completely - no depth limit, include hidden files"""
         files_dict = {}
         
-        if current_depth >= max_depth:
+        # Remove depth limitation when max_depth is None
+        if max_depth is not None and current_depth >= max_depth:
             return files_dict
             
         try:
             for item in os.listdir(directory):
-                if item.startswith('.'):  # Skip hidden files/folders
-                    continue
-                    
+                # Include ALL files and folders, including hidden ones starting with '.'
                 item_path = os.path.join(directory, item)
                 
                 try:
@@ -619,21 +617,25 @@ class FileCopierApp:
                             "raw_size": size,
                             "drive": directory.split(os.sep)[0] if os.sep in directory else directory
                         }
-                    elif os.path.isdir(item_path) and current_depth < max_depth - 1:
-                        # Recursively scan subdirectories
-                        sub_files = self.scan_directory_recursive(item_path, max_depth, current_depth + 1)
-                        files_dict.update(sub_files)
-                        
-                        # Also add the directory itself
-                        files_dict[item_path] = {
-                            "name": item,
-                            "type": "Directory",
-                            "size": "",
-                            "raw_size": 0,
-                            "drive": directory.split(os.sep)[0] if os.sep in directory else directory
-                        }
+                    elif os.path.isdir(item_path):
+                        # Skip some system directories to avoid infinite loops and permission issues
+                        skip_dirs = {'/proc', '/sys', '/dev', '/run', '/tmp/tmp'}
+                        if item_path not in skip_dirs and not item_path.startswith('/proc/') and not item_path.startswith('/sys/'):
+                            # Recursively scan subdirectories without depth limit
+                            sub_files = self.scan_directory_recursive(item_path, max_depth, current_depth + 1)
+                            files_dict.update(sub_files)
+                            
+                            # Also add the directory itself
+                            files_dict[item_path] = {
+                                "name": item,
+                                "type": "Directory",
+                                "size": "",
+                                "raw_size": 0,
+                                "drive": directory.split(os.sep)[0] if os.sep in directory else directory
+                            }
                         
                 except (OSError, PermissionError):
+                    # Continue scanning even if we can't access some files/folders
                     continue
                     
         except (OSError, PermissionError):
@@ -1131,7 +1133,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         self.drive_combo.pack(side="left", fill="x", expand=True, padx=5)
         
         ctk.CTkButton(drive_frame, text="🔄", command=self.refresh_drives,
-                     width=30, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
+                     width=45, height=32, font=ctk.CTkFont(family="B Nazanin", size=14)).pack(side="left", padx=5)
         
         # Search and navigation frame
         nav_frame = ctk.CTkFrame(browser_frame)
@@ -1151,9 +1153,9 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         buttons_frame.pack(fill="x", pady=5)
         
         ctk.CTkButton(buttons_frame, text="🔄 بروزرسانی", command=self.refresh_all_files, 
-                     width=100, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
+                     width=140, height=35, font=ctk.CTkFont(family="B Nazanin", size=12)).pack(side="left", padx=3)
         ctk.CTkButton(buttons_frame, text="🗑️ پاک کردن", command=self.clear_search, 
-                     width=100, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
+                     width=140, height=35, font=ctk.CTkFont(family="B Nazanin", size=12)).pack(side="left", padx=3)
         
         # File tree with improved styling
         tree_frame = ctk.CTkFrame(browser_frame)
@@ -1167,19 +1169,20 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             tree_container,
             columns=("Name", "Path", "Type", "Size"),
             show="headings",
-            height=12
+            height=18
         )
         
-        # Configure columns - simplified for better fit
+        # Configure columns - improved sizing for better visibility
         self.file_tree.heading("Name", text="📁 نام فایل")
         self.file_tree.heading("Path", text="📂 مسیر")
         self.file_tree.heading("Type", text="📄 نوع")
         self.file_tree.heading("Size", text="💾 اندازه")
         
-        self.file_tree.column("Name", width=150, minwidth=100)
-        self.file_tree.column("Path", width=200, minwidth=150)
-        self.file_tree.column("Type", width=60, minwidth=50)
-        self.file_tree.column("Size", width=80, minwidth=60)
+        # Increased column widths for better visibility
+        self.file_tree.column("Name", width=220, minwidth=180)
+        self.file_tree.column("Path", width=300, minwidth=250)
+        self.file_tree.column("Type", width=100, minwidth=80)
+        self.file_tree.column("Size", width=120, minwidth=100)
         
         # Scrollbars
         v_scrollbar = ttk.Scrollbar(tree_container, orient="vertical", command=self.file_tree.yview)
@@ -1229,7 +1232,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         self.destination_combo.pack(fill="x", padx=5, pady=2)
         
         ctk.CTkButton(dest_frame, text="📁 انتخاب پوشه جدید", command=self.select_destination,
-                     font=ctk.CTkFont(family="B Nazanin")).pack(fill="x", padx=5, pady=2)
+                     font=ctk.CTkFont(family="B Nazanin", size=12), height=35).pack(fill="x", padx=5, pady=3)
         
         # Quick copy buttons
         quick_frame = ctk.CTkFrame(copy_frame)
@@ -1251,7 +1254,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         for text, folder in common_destinations:
             ctk.CTkButton(quick_frame, text=text, 
                          command=lambda f=folder: self.quick_copy_to_folder(f),
-                         font=ctk.CTkFont(family="B Nazanin"), width=150).pack(fill="x", padx=5, pady=1)
+                         font=ctk.CTkFont(family="B Nazanin", size=12), width=180, height=32).pack(fill="x", padx=5, pady=2)
         
         # Copy progress section
         progress_frame = ctk.CTkFrame(copy_frame)
@@ -1288,27 +1291,27 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         self.start_btn = ctk.CTkButton(main_controls, text="▶ شروع", command=self.start_selected_task,
                                       fg_color="green", hover_color="darkgreen", 
-                                      font=ctk.CTkFont(family="B Nazanin"), width=60, height=25)
-        self.start_btn.pack(side="left", padx=1)
+                                      font=ctk.CTkFont(family="B Nazanin", size=12), width=80, height=32)
+        self.start_btn.pack(side="left", padx=3)
         
         self.pause_btn = ctk.CTkButton(main_controls, text="⏸ توقف", command=self.pause_selected_task,
                                       fg_color="orange", hover_color="darkorange", 
-                                      font=ctk.CTkFont(family="B Nazanin"), width=60, height=25)
-        self.pause_btn.pack(side="left", padx=1)
+                                      font=ctk.CTkFont(family="B Nazanin", size=12), width=80, height=32)
+        self.pause_btn.pack(side="left", padx=3)
         
         self.cancel_btn = ctk.CTkButton(main_controls, text="⏹ لغو", command=self.cancel_selected_task,
                                        fg_color="red", hover_color="darkred", 
-                                       font=ctk.CTkFont(family="B Nazanin"), width=60, height=25)
-        self.cancel_btn.pack(side="left", padx=1)
+                                       font=ctk.CTkFont(family="B Nazanin", size=12), width=80, height=32)
+        self.cancel_btn.pack(side="left", padx=3)
         
         # Task management buttons
         task_controls = ctk.CTkFrame(control_frame)
         task_controls.pack(fill="x")
         
         ctk.CTkButton(task_controls, text="🗑 پاک همه", command=self.clear_all_tasks, 
-                     font=ctk.CTkFont(family="B Nazanin"), width=80, height=25).pack(side="left", padx=1)
+                     font=ctk.CTkFont(family="B Nazanin", size=12), width=100, height=32).pack(side="left", padx=3)
         ctk.CTkButton(task_controls, text="✓ تکمیل شده", command=self.clear_completed, 
-                     font=ctk.CTkFont(family="B Nazanin"), width=80, height=25).pack(side="left", padx=1)
+                     font=ctk.CTkFont(family="B Nazanin", size=12), width=120, height=32).pack(side="left", padx=3)
         
         # Progress overview
         progress_frame = ctk.CTkFrame(task_frame)
@@ -1333,21 +1336,21 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             tasks_container,
             columns=("File", "Destination", "Progress", "Size", "Status"),
             show="headings",
-            height=12
+            height=16
         )
         
-        # Configure task tree columns (optimized for smaller space)
+        # Configure task tree columns with improved sizing
         self.task_tree.heading("File", text="📁 فایل")
         self.task_tree.heading("Destination", text="📂 مقصد")
         self.task_tree.heading("Progress", text="📊 %")
         self.task_tree.heading("Size", text="💾 حجم")
         self.task_tree.heading("Status", text="🔄 وضعیت")
         
-        self.task_tree.column("File", width=120, minwidth=80)
-        self.task_tree.column("Destination", width=100, minwidth=80)
-        self.task_tree.column("Progress", width=50, minwidth=40)
-        self.task_tree.column("Size", width=70, minwidth=50)
-        self.task_tree.column("Status", width=80, minwidth=60)
+        self.task_tree.column("File", width=180, minwidth=140)
+        self.task_tree.column("Destination", width=150, minwidth=120)
+        self.task_tree.column("Progress", width=80, minwidth=60)
+        self.task_tree.column("Size", width=100, minwidth=80)
+        self.task_tree.column("Status", width=120, minwidth=100)
         
         # Task tree scrollbars
         task_v_scrollbar = ttk.Scrollbar(tasks_container, orient="vertical", command=self.task_tree.yview)
@@ -1385,9 +1388,10 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             text="🔄 بروزرسانی مقاصد",
             command=self.refresh_destinations,
             font=ctk.CTkFont(family="B Nazanin", size=12),
-            width=150
+            width=180,
+            height=35
         )
-        refresh_dest_btn.pack(pady=5)
+        refresh_dest_btn.pack(pady=8)
         
         # Destinations scrollable frame
         self.dest_folders_frame = ctk.CTkScrollableFrame(
