@@ -1,23 +1,177 @@
-import os
-import shutil
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-import customtkinter as ctk
-import threading
-import queue
-import time
-import json
-import sys
-import psutil
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import logging
-import re
-from typing import Dict, List, Optional
-from datetime import datetime
-import uuid
-import hashlib
-import base64
+# وارد کردن کتابخانه‌های مورد نیاز برای عملکرد برنامه
+import os  # برای عملیات سیستم‌عامل و مدیریت فایل‌ها و پوشه‌ها
+import shutil  # برای کپی کردن فایل‌ها و پوشه‌ها به صورت پیشرفته
+import tkinter as tk  # کتابخانه رابط کاربری پایه
+from tkinter import filedialog, messagebox, ttk  # ابزارهای انتخاب فایل، پیام‌ها و ویجت‌های پیشرفته
+import customtkinter as ctk  # کتابخانه رابط کاربری مدرن و زیبا
+import threading  # برای اجرای همزمان عملیات و جلوگیری از قفل شدن رابط کاربری
+import queue  # برای مدیریت صف کارها و ارتباط بین thread ها
+import time  # برای عملیات زمان‌بندی و محاسبه مدت زمان
+import json  # برای ذخیره و بارگذاری تنظیمات و داده‌ها به فرمت JSON
+import sys  # برای دسترسی به اطلاعات سیستم و آرگومان‌های خط فرمان
+import psutil  # برای دریافت اطلاعات سیستم، درایوها و فضای خالی
+from pathlib import Path  # برای مدیریت مسیرها به صورت شیء‌گرا
+from concurrent.futures import ThreadPoolExecutor, as_completed  # برای اجرای همزمان کارهای متعدد
+import logging  # برای ثبت لاگ‌ها و رخدادهای مهم برنامه
+import re  # برای عملیات regex و پردازش متن
+from typing import Dict, List, Optional  # برای تعریف نوع داده‌ها و بهبود کیفیت کد
+from datetime import datetime  # برای کار با تاریخ و زمان
+import uuid  # برای تولید شناسه‌های منحصر به فرد
+import hashlib  # برای ایجاد hash و رمزنگاری
+import base64  # برای تبدیل داده‌ها به فرمت base64
+import tkinter.messagebox  # برای نمایش پیام‌های سیستمی
+from tkinter import BOTH, TOP, BOTTOM, LEFT, RIGHT  # ثابت‌های جهت‌دهی ویجت‌ها
+
+# سیستم اعلانات شبیه SweetAlert که خودکار ناپدید می‌شوند
+class ToastNotification:
+    def __init__(self, parent, message, toast_type="info", duration=20000):
+        """
+        ایجاد اعلان تست شبیه SweetAlert
+        parent: پنجره والد
+        message: متن پیام
+        toast_type: نوع پیام (success, error, warning, info)
+        duration: مدت زمان نمایش به میلی‌ثانیه (پیش‌فرض 20 ثانیه)
+        """
+        self.parent = parent
+        self.message = message
+        self.toast_type = toast_type
+        self.duration = duration
+        
+        # تنظیم رنگ‌ها و آیکون‌ها بر اساس نوع پیام
+        self.colors = {
+            "success": {"bg": "#d4edda", "border": "#c3e6cb", "text": "#155724", "icon": "✅"},
+            "error": {"bg": "#f8d7da", "border": "#f5c6cb", "text": "#721c24", "icon": "❌"},
+            "warning": {"bg": "#fff3cd", "border": "#ffeaa7", "text": "#856404", "icon": "⚠️"},
+            "info": {"bg": "#d1ecf1", "border": "#bee5eb", "text": "#0c5460", "icon": "ℹ️"}
+        }
+        
+        self.create_toast()
+        
+    def create_toast(self):
+        """ایجاد پنجره اعلان"""
+        # ایجاد پنجره بالاپوپ
+        self.toast_window = tk.Toplevel(self.parent)
+        self.toast_window.title("")
+        
+        # حذف دکمه‌های پنجره و تنظیم ظاهر
+        self.toast_window.overrideredirect(True)
+        self.toast_window.attributes('-topmost', True)
+        
+        # محاسبه موقعیت نمایش (گوشه بالا راست)
+        screen_width = self.parent.winfo_screenwidth()
+        toast_width = 400
+        toast_height = 100
+        x = screen_width - toast_width - 20
+        y = 20
+        
+        self.toast_window.geometry(f"{toast_width}x{toast_height}+{x}+{y}")
+        
+        # دریافت رنگ‌های مربوط به نوع پیام
+        color_config = self.colors.get(self.toast_type, self.colors["info"])
+        
+        # فریم اصلی با حاشیه رنگی
+        main_frame = tk.Frame(
+            self.toast_window,
+            bg=color_config["border"],
+            padx=2,
+            pady=2
+        )
+        main_frame.pack(fill=BOTH, expand=True)
+        
+        # فریم داخلی با پس‌زمینه
+        content_frame = tk.Frame(
+            main_frame,
+            bg=color_config["bg"],
+            padx=15,
+            pady=10
+        )
+        content_frame.pack(fill=BOTH, expand=True)
+        
+        # فریم آیکون و متن
+        message_frame = tk.Frame(content_frame, bg=color_config["bg"])
+        message_frame.pack(fill=BOTH, expand=True)
+        
+        # آیکون
+        icon_label = tk.Label(
+            message_frame,
+            text=color_config["icon"],
+            font=("B Nazanin", 20),
+            bg=color_config["bg"],
+            fg=color_config["text"]
+        )
+        icon_label.pack(side=LEFT, padx=(0, 10))
+        
+        # متن پیام
+        message_label = tk.Label(
+            message_frame,
+            text=self.message,
+            font=("B Nazanin", 12),
+            bg=color_config["bg"],
+            fg=color_config["text"],
+            wraplength=300,
+            justify=RIGHT,
+            anchor="e"
+        )
+        message_label.pack(side=RIGHT, fill=BOTH, expand=True)
+        
+        # انیمیشن فید اين (شفافیت تدریجی)
+        self.fade_in()
+        
+        # برنامه‌ریزی برای بستن خودکار
+        self.parent.after(self.duration, self.fade_out)
+        
+        # امکان بستن با کلیک
+        self.toast_window.bind("<Button-1>", lambda e: self.close_toast())
+        main_frame.bind("<Button-1>", lambda e: self.close_toast())
+        content_frame.bind("<Button-1>", lambda e: self.close_toast())
+        message_frame.bind("<Button-1>", lambda e: self.close_toast())
+        icon_label.bind("<Button-1>", lambda e: self.close_toast())
+        message_label.bind("<Button-1>", lambda e: self.close_toast())
+    
+    def fade_in(self):
+        """انیمیشن ظاهر شدن تدریجی"""
+        try:
+            self.toast_window.attributes('-alpha', 0.0)
+            self.animate_alpha(0.0, 1.0, 0.1)
+        except:
+            # در صورت عدم پشتیبانی از شفافیت، بدون انیمیشن نمایش داده می‌شود
+            pass
+    
+    def fade_out(self):
+        """انیمیشن ناپدید شدن تدریجی"""
+        try:
+            self.animate_alpha(1.0, 0.0, -0.1, callback=self.close_toast)
+        except:
+            # در صورت عدم پشتیبانی از شفافیت، مستقیماً بسته می‌شود
+            self.close_toast()
+    
+    def animate_alpha(self, start, end, step, callback=None):
+        """انیمیشن تغییر شفافیت"""
+        current = start
+        
+        def update_alpha():
+            nonlocal current
+            try:
+                self.toast_window.attributes('-alpha', current)
+                current += step
+                
+                if (step > 0 and current < end) or (step < 0 and current > end):
+                    self.parent.after(50, update_alpha)
+                elif callback:
+                    callback()
+            except:
+                if callback:
+                    callback()
+        
+        update_alpha()
+    
+    def close_toast(self):
+        """بستن پنجره اعلان"""
+        try:
+            if self.toast_window and self.toast_window.winfo_exists():
+                self.toast_window.destroy()
+        except:
+            pass
 
 # Native drag and drop implementation - more reliable than tkinterdnd2
 class NativeDragDrop:
@@ -127,73 +281,168 @@ class LicenseManager:
             return license_data.get("license_type", "standard")
         return "trial"
 
-# Enhanced theme configurations - lighter and more colorful
+# تنظیمات تم‌های پیشرفته و زیبا - مجموعه کاملی از تم‌های مدرن
 THEMES = {
-    "dark_blue": {"mode": "dark", "color": "blue"},
-    "dark_green": {"mode": "dark", "color": "green"},
-    "light_blue": {"mode": "light", "color": "blue"},
-    "light_green": {"mode": "light", "color": "green"},
-    "cyberpunk": {"mode": "light", "color": "blue"},  # Changed to light
-    "sunset": {"mode": "light", "color": "green"},    # Changed to light
-    "ocean": {"mode": "light", "color": "blue"},
-    "forest": {"mode": "light", "color": "green"},    # Changed to light
-    "system": {"mode": "system", "color": "blue"}
+    # تم‌های کلاسیک
+    "dark_blue": {"mode": "dark", "color": "blue", "name": "آبی تیره کلاسیک"},
+    "dark_green": {"mode": "dark", "color": "green", "name": "سبز تیره طبیعی"},
+    "light_blue": {"mode": "light", "color": "blue", "name": "آبی روشن آسمانی"},
+    "light_green": {"mode": "light", "color": "green", "name": "سبز روشن بهاری"},
+    
+    # تم‌های مدرن و شیک
+    "cyberpunk": {"mode": "dark", "color": "blue", "name": "سایبرپانک نئونی"},
+    "sunset": {"mode": "light", "color": "green", "name": "غروب طلایی"},
+    "ocean": {"mode": "light", "color": "blue", "name": "اقیانوس آرام"},
+    "forest": {"mode": "dark", "color": "green", "name": "جنگل عمیق"},
+    
+    # تم‌های جدید و خاص
+    "royal_purple": {"mode": "dark", "color": "blue", "name": "بنفش شاهانه"},
+    "emerald_dream": {"mode": "light", "color": "green", "name": "رویای زمردین"},
+    "midnight_blue": {"mode": "dark", "color": "blue", "name": "آبی نیمه‌شب"},
+    "cherry_blossom": {"mode": "light", "color": "blue", "name": "شکوفه گیلاس"},
+    "persian_carpet": {"mode": "dark", "color": "green", "name": "فرش ایرانی"},
+    "tehran_sky": {"mode": "light", "color": "blue", "name": "آسمان تهران"},
+    "caspian_sea": {"mode": "light", "color": "green", "name": "دریای خزر"},
+    "alborz_mountain": {"mode": "dark", "color": "blue", "name": "کوه البرز"},
+    
+    # تم سیستم
+    "system": {"mode": "system", "color": "blue", "name": "پیروی از سیستم"}
 }
 
 # Set initial appearance - lighter theme
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
+# کلاس اصلی برنامه مدیریت فایل ایرانی - شامل تمامی عملکردها و رابط کاربری
 class FileCopierApp:
     def __init__(self, root):
-        self.root = root
+        """
+        سازنده کلاس برنامه - تنظیم اولیه پنجره اصلی و متغیرها
+        root: پنجره اصلی tkinter یا customtkinter
+        """
+        self.root = root  # ذخیره مرجع پنجره اصلی برای استفاده در سایر متدها
+        
+        # تنظیم عنوان پنجره برنامه با نام فارسی و انگلیسی
         self.root.title("مدیریت فایل ایرانی پیشرفته - Persian File Copier Pro v2.0")
+        
+        # تنظیم اندازه پیش‌فرض پنجره (عرض × ارتفاع)
         self.root.geometry("1600x1000")
+        
+        # تنظیم حداقل اندازه پنجره که کاربر می‌تواند آن را تغییر دهد
         self.root.minsize(1400, 900)
         
-        # Initialize license manager
+        # ماکسیمایز کردن پنجره در زمان اجرا برای استفاده بهتر از فضای صفحه
+        self.root.state('zoomed')  # دستور ماکسیمایز برای Windows
+        
+        try:
+            # تلاش برای ماکسیمایز در سیستم‌عامل‌های مختلف
+            self.root.wm_state('zoomed')  # روش دیگر برای ماکسیمایز
+        except:
+            # در صورت عدم پشتیبانی از دستور zoomed، از روش‌های جایگزین استفاده می‌شود
+            try:
+                self.root.attributes('-zoomed', True)  # روش ماکسیمایز برای Linux
+            except:
+                # در نهایت اگر هیچ روش کار نکرد، اندازه کامل صفحه تنظیم می‌شود
+                self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
+        
+        # راه‌اندازی مدیر لایسنس برای کنترل مجوز استفاده از نرم‌افزار
         self.license_manager = LicenseManager()
         
-        # Set application icon
+        # تنظیم آیکون برنامه در نوار وظیف و عنوان پنجره
         self.setup_app_icon()
         
-        # Initialize variables
-        self.copy_tasks = []
-        self.task_queue = queue.Queue()
-        self.executor = None
-        self.is_copying = False
-        self.clipboard_files = []
-        self.current_dir = os.getcwd()
-        self.settings = self.load_settings()
-        self.file_cache = self.load_cache()
-        self.all_drives = []
-        self.destination_folders = []
-        self.native_drag_drop = None
+        # مقداردهی اولیه متغیرهای اصلی برنامه
+        self.copy_tasks = []  # لیست تسک‌های کپی که در صف انتظار یا در حال اجرا هستند
+        self.task_queue = queue.Queue()  # صف thread-safe برای مدیریت کارهای پس‌زمینه
+        self.executor = None  # pool thread ها برای اجرای همزمان کپی‌ها
+        self.is_copying = False  # فلگ نشان‌دهنده وضعیت کپی (فعال/غیرفعال)
+        self.clipboard_files = []  # لیست فایل‌های کپی شده در کلیپ‌بورد داخلی
+        self.current_dir = os.getcwd()  # مسیر دایرکتوری جاری برنامه
+        self.settings = self.load_settings()  # بارگذاری تنظیمات ذخیره شده کاربر
+        self.file_cache = self.load_cache()  # بارگذاری کش فایل‌ها برای عملکرد سریع‌تر
+        self.all_drives = []  # لیست تمام درایوهای سیستم (هارد، USB و غیره)
+        self.destination_folders = []  # لیست پوشه‌های مقصد پیشنهادی برای کپی
+        self.native_drag_drop = None  # سیستم درگ اند دراپ بومی
         
-        # Setup components
-        self.setup_logging()
-        self.setup_executor()
+        # راه‌اندازی اجزای اصلی برنامه
+        self.setup_logging()  # تنظیم سیستم ثبت لاگ برای رخدادها و خطاها
+        self.setup_executor()  # راه‌اندازی thread pool برای اجرای همزمان کارها
         
-        # Show loading screen before setting up GUI
+        # نمایش صفحه بارگذاری قبل از ساخت رابط کاربری
         self.show_loading_screen()
         
-        # Perform initial drive scan BEFORE setting up GUI to prevent layout issues
-        self.update_status("Scanning system drives...")
-        self.scan_all_drives()  # Synchronous drive scan first
+        # اسکن اولیه درایوها قبل از ساخت GUI برای جلوگیری از مشکلات layout
+        self.update_status("اسکن درایوهای سیستم...")  # به‌روزرسانی وضعیت برای کاربر
+        self.scan_all_drives()  # اسکن همزمان درایوها در thread اصلی
         
-        # Now setup GUI with pre-scanned drive data
-        self.setup_gui()
-        self.setup_bindings()
+        # ساخت رابط کاربری با داده‌های از پیش اسکن شده درایوها
+        self.setup_gui()  # ساخت تمام عناصر رابط کاربری
+        self.setup_bindings()  # تنظیم event handler ها و کلیدهای میانبر
         
-        # Start auto-cleanup of completed tasks
+        # شروع تمیزکاری خودکار تسک‌های تکمیل شده
         self.start_auto_cleanup()
         
-        # Check license on startup
+        # بررسی وضعیت لایسنس در زمان راه‌اندازی
         self.check_license_on_startup()
         
-        # Continue with file scanning in background after GUI is ready
-        self.update_status("Scanning files...")
+        # لیست اعلانات فعال برای مدیریت موقعیت‌ها و جلوگیری از همپوشانی
+        self.active_toasts = []
+        
+        # ادامه اسکن فایل‌ها در پس‌زمینه پس از آماده شدن رابط کاربری
+        self.update_status("اسکن فایل‌ها...")  # اطلاع‌رسانی به کاربر
+        # ایجاد thread جداگانه برای اسکن کامل فایل‌ها بدون مسدود کردن رابط کاربری
         threading.Thread(target=self.complete_system_scan, daemon=True).start()
+
+    def show_toast(self, message, toast_type="info", duration=20000):
+        """
+        نمایش اعلان تست شبیه SweetAlert
+        message: متن پیام
+        toast_type: نوع پیام (success, error, warning, info)
+        duration: مدت زمان نمایش به میلی‌ثانیه
+        """
+        try:
+            # محاسبه موقعیت Y برای اعلان جدید (در صورت وجود اعلانات قبلی)
+            y_offset = len(self.active_toasts) * 120 + 20
+            
+            # ایجاد اعلان جدید
+            toast = ToastNotification(self.root, message, toast_type, duration)
+            
+            # تنظیم موقعیت Y جدید
+            if hasattr(toast, 'toast_window') and toast.toast_window:
+                screen_width = self.root.winfo_screenwidth()
+                toast_width = 400
+                x = screen_width - toast_width - 20
+                toast.toast_window.geometry(f"{toast_width}x100+{x}+{y_offset}")
+            
+            # اضافه کردن به لیست اعلانات فعال
+            self.active_toasts.append(toast)
+            
+            # حذف از لیست پس از مدت زمان مشخص
+            def remove_toast():
+                if toast in self.active_toasts:
+                    self.active_toasts.remove(toast)
+                # بازآرایی موقعیت اعلانات باقی‌مانده
+                self.rearrange_toasts()
+            
+            self.root.after(duration + 1000, remove_toast)
+            
+        except Exception as e:
+            # در صورت خطا، از messagebox معمولی استفاده می‌شود
+            print(f"خطا در نمایش اعلان: {e}")
+            messagebox.showinfo("اطلاع", message)
+    
+    def rearrange_toasts(self):
+        """بازآرایی موقعیت اعلانات فعال"""
+        try:
+            for i, toast in enumerate(self.active_toasts):
+                if hasattr(toast, 'toast_window') and toast.toast_window and toast.toast_window.winfo_exists():
+                    screen_width = self.root.winfo_screenwidth()
+                    toast_width = 400
+                    x = screen_width - toast_width - 20
+                    y = i * 120 + 20
+                    toast.toast_window.geometry(f"{toast_width}x100+{x}+{y}")
+        except Exception as e:
+            print(f"خطا در بازآرایی اعلانات: {e}")
 
     # New callback methods for enhanced functionality
     def on_file_drag_drop(self, selected_items):
@@ -205,7 +454,8 @@ class FileCopierApp:
         """Copy selected files from the file tree"""
         selected_items = self.file_tree.selection()
         if not selected_items:
-            messagebox.showwarning("هشدار", "لطفاً فایل‌هایی را برای کپی انتخاب کنید")
+            # نمایش اعلان هشدار به جای پیام باکس سنتی
+            self.show_toast("لطفاً فایل‌هایی را برای کپی انتخاب کنید", "warning")
             return
         
         # Check if bulk copy is allowed (more than 5 files)
@@ -216,7 +466,8 @@ class FileCopierApp:
         # Get destination from drive list section
         destination = self.get_selected_destination()
         if not destination:
-            messagebox.showwarning("هشدار", "لطفاً از ستون انتخاب مقصد، یک پوشه مقصد انتخاب کنید")
+            # نمایش اعلان هشدار برای انتخاب مقصد
+            self.show_toast("لطفاً از ستون انتخاب مقصد، یک پوشه مقصد انتخاب کنید", "warning")
             return
         
         # Add to copy queue
@@ -357,10 +608,10 @@ class FileCopierApp:
         frame.pack(fill="both", expand=True, padx=20, pady=20)
         
         ctk.CTkLabel(frame, text="🔑 فعال‌سازی نرم‌افزار", 
-                    font=ctk.CTkFont(family="sans-serif", size=20, weight="bold")).pack(pady=20)
+                    font=ctk.CTkFont(family="B Nazanin", size=20, weight="bold")).pack(pady=20)
         
         ctk.CTkLabel(frame, text="برای استفاده از نرم‌افزار، لطفاً سریال نامبر خود را وارد کنید:",
-                    font=ctk.CTkFont(family="sans-serif", size=12)).pack(pady=10)
+                    font=ctk.CTkFont(family="B Nazanin", size=12)).pack(pady=10)
         
         serial_entry = ctk.CTkEntry(frame, width=300, placeholder_text="PFC-XXXX-XXXX-XXXX-XXXX")
         serial_entry.pack(pady=10)
@@ -528,14 +779,14 @@ class FileCopierApp:
             loading_frame.pack(fill="both", expand=True, padx=20, pady=20)
             
             ctk.CTkLabel(loading_frame, text="🔍 در حال اسکن درایوها...", 
-                        font=ctk.CTkFont(family="sans-serif", size=16, weight="bold")).pack(pady=10)
+                        font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=10)
             
             self.loading_progress = ctk.CTkProgressBar(loading_frame)
             self.loading_progress.pack(fill="x", padx=20, pady=10)
             self.loading_progress.set(0.3)  # Show some progress
             
             self.loading_status = ctk.CTkLabel(loading_frame, text="در حال شناسایی درایوها...", 
-                                              font=ctk.CTkFont(family="sans-serif", size=12))
+                                              font=ctk.CTkFont(family="B Nazanin", size=12))
             self.loading_status.pack(pady=5)
             
             self.root.update()
@@ -1044,16 +1295,21 @@ class FileCopierApp:
         except Exception as e:
             print(f"Warning: Could not configure root window: {e}")
         
-        # Set default font for the entire application - using sans-serif
+        # تنظیم فونت پیش‌فرض برای کل برنامه - استفاده از B Nazanin
         try:
-            # Use system sans-serif font for better compatibility
-            default_font = ctk.CTkFont(family="sans-serif", size=12)
+            # استفاده از فونت B Nazanin برای بهتر نمایش متن فارسی
+            default_font = ctk.CTkFont(family="B Nazanin", size=12)
             self.default_font = default_font
         except:
-            # Fallback to system default
-            default_font = ctk.CTkFont(size=12)
-            self.default_font = default_font
-            print("Using system default font")
+            # در صورت عدم وجود فونت B Nazanin، از فونت‌های فارسی جایگزین استفاده می‌شود
+            try:
+                default_font = ctk.CTkFont(family="Tahoma", size=12)
+                self.default_font = default_font
+                print("استفاده از فونت Tahoma به عنوان جایگزین")
+            except:
+                default_font = ctk.CTkFont(size=12)
+                self.default_font = default_font
+                print("استفاده از فونت پیش‌فرض سیستم")
         
         # Main container with gradient effect
         self.main_frame = ctk.CTkFrame(
@@ -1078,7 +1334,7 @@ class FileCopierApp:
                           borderwidth=0)
             style.configure("TNotebook.Tab",
                           padding=[15, 8],
-                          font=('sans-serif', 10, 'bold'))
+                          font=('B Nazanin', 10, 'bold'))
             
             print("✓ Basic tab styling applied")
         except Exception as e:
@@ -1120,10 +1376,10 @@ class FileCopierApp:
         header_frame.pack(fill="x", pady=(0, 20))
         
         ctk.CTkLabel(header_frame, text="🏢 شرکت فناوری پارس فایل", 
-                    font=ctk.CTkFont(family="sans-serif", size=24, weight="bold")).pack(pady=15)
+                    font=ctk.CTkFont(family="B Nazanin", size=24, weight="bold")).pack(pady=15)
         
         ctk.CTkLabel(header_frame, text="Persian File Technology Company", 
-                    font=ctk.CTkFont(family="sans-serif", size=16, weight="bold")).pack(pady=5)
+                    font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=5)
         
         # Company information
         info_frame = ctk.CTkFrame(main_container)
@@ -1141,9 +1397,9 @@ class FileCopierApp:
             info_row = ctk.CTkFrame(info_frame)
             info_row.pack(fill="x", padx=10, pady=5)
             
-            ctk.CTkLabel(info_row, text=label, font=ctk.CTkFont(family="sans-serif", weight="bold"), 
+            ctk.CTkLabel(info_row, text=label, font=ctk.CTkFont(family="B Nazanin", weight="bold"), 
                         anchor="e").pack(side="right", padx=10)
-            ctk.CTkLabel(info_row, text=value, font=ctk.CTkFont(family="sans-serif"), 
+            ctk.CTkLabel(info_row, text=value, font=ctk.CTkFont(family="B Nazanin"), 
                         anchor="w").pack(side="left", padx=10)
         
         # Product information
@@ -1151,7 +1407,7 @@ class FileCopierApp:
         product_frame.pack(fill="x", pady=(0, 20))
         
         ctk.CTkLabel(product_frame, text="📦 درباره محصول", 
-                    font=ctk.CTkFont(family="sans-serif", size=18, weight="bold")).pack(pady=10)
+                    font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")).pack(pady=10)
         
         product_text = """
 Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف تسهیل کار کاربران ایرانی طراحی شده است.
@@ -1174,7 +1430,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         """
         
         ctk.CTkLabel(product_frame, text=product_text, 
-                    font=ctk.CTkFont(family="sans-serif", size=12),
+                    font=ctk.CTkFont(family="B Nazanin", size=12),
                     justify="right", anchor="e").pack(padx=15, pady=10)
         
         # License information
@@ -1182,7 +1438,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         license_frame.pack(fill="x", pady=(0, 20))
         
         ctk.CTkLabel(license_frame, text="🔑 اطلاعات لایسنس", 
-                    font=ctk.CTkFont(family="sans-serif", size=18, weight="bold")).pack(pady=10)
+                    font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")).pack(pady=10)
         
         # Show current license status
         license_data = self.license_manager.load_license()
@@ -1195,28 +1451,28 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             status_text = "🔴 غیرفعال"
         
         ctk.CTkLabel(license_frame, text=f"وضعیت لایسنس: {status_text}", 
-                    font=ctk.CTkFont(family="sans-serif", size=14)).pack(pady=5)
+                    font=ctk.CTkFont(family="B Nazanin", size=14)).pack(pady=5)
         
         # Support section
         support_frame = ctk.CTkFrame(main_container)
         support_frame.pack(fill="x", pady=(0, 20))
         
         ctk.CTkLabel(support_frame, text="🛠️ پشتیبانی و خدمات", 
-                    font=ctk.CTkFont(family="sans-serif", size=18, weight="bold")).pack(pady=10)
+                    font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")).pack(pady=10)
         
         support_buttons = ctk.CTkFrame(support_frame)
         support_buttons.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkButton(support_buttons, text="📞 تماس با پشتیبانی", 
-                     font=ctk.CTkFont(family="sans-serif"),
+                     font=ctk.CTkFont(family="B Nazanin"),
                      command=self.contact_support).pack(side="right", padx=5)
         
         ctk.CTkButton(support_buttons, text="🔄 بروزرسانی نرم‌افزار", 
-                     font=ctk.CTkFont(family="sans-serif"),
+                     font=ctk.CTkFont(family="B Nazanin"),
                      command=self.check_updates).pack(side="right", padx=5)
         
         ctk.CTkButton(support_buttons, text="🔑 فعال‌سازی لایسنس", 
-                     font=ctk.CTkFont(family="sans-serif"),
+                     font=ctk.CTkFont(family="B Nazanin"),
                      command=self.show_license_dialog).pack(side="right", padx=5)
         
         # Copyright
@@ -1224,7 +1480,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         copyright_frame.pack(fill="x")
         
         ctk.CTkLabel(copyright_frame, text="© 2024 شرکت فناوری پارس فایل - تمامی حقوق محفوظ است", 
-                    font=ctk.CTkFont(family="sans-serif", size=10)).pack(pady=10)
+                    font=ctk.CTkFont(family="B Nazanin", size=10)).pack(pady=10)
 
     def refresh_destinations(self):
         """Refresh and re-scan destination folders"""
@@ -1285,7 +1541,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         # Title
         title_label = ctk.CTkLabel(browser_frame, text="📁 مرورگر فایل", 
-                                  font=ctk.CTkFont(family="sans-serif", size=16, weight="bold"))
+                                  font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
         title_label.pack(pady=(10, 5))
         
         # Drive selection frame
@@ -1293,19 +1549,19 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         drive_frame.pack(fill="x", padx=10, pady=5)
         
         ctk.CTkLabel(drive_frame, text="💿 انتخاب درایو:", 
-                    font=ctk.CTkFont(family="sans-serif", weight="bold")).pack(side="right", padx=5)
+                    font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="right", padx=5)
         
         self.drive_var = tk.StringVar()
         # Initialize with pre-scanned drives if available
         drive_values = self.get_drive_values() if hasattr(self, 'all_drives') and self.all_drives else ["در حال بارگذاری..."]
         self.drive_combo = ctk.CTkComboBox(drive_frame, variable=self.drive_var,
-                                         font=ctk.CTkFont(family="sans-serif"),
+                                         font=ctk.CTkFont(family="B Nazanin"),
                                          values=drive_values,
                                          command=self.on_drive_selected)
         self.drive_combo.pack(side="left", fill="x", expand=True, padx=5)
         
         ctk.CTkButton(drive_frame, text="🔄", command=self.refresh_drives,
-                     width=45, height=32, font=ctk.CTkFont(family="sans-serif", size=14)).pack(side="left", padx=5)
+                     width=45, height=32, font=ctk.CTkFont(family="B Nazanin", size=14)).pack(side="left", padx=5)
         
         # Search and navigation frame
         nav_frame = ctk.CTkFrame(browser_frame)
@@ -1315,9 +1571,9 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         search_frame = ctk.CTkFrame(nav_frame)
         search_frame.pack(fill="x", pady=5)
         
-        ctk.CTkLabel(search_frame, text="جستجو:", font=ctk.CTkFont(family="sans-serif", weight="bold")).pack(side="right", padx=5)
+        ctk.CTkLabel(search_frame, text="جستجو:", font=ctk.CTkFont(family="B Nazanin", weight="bold")).pack(side="right", padx=5)
         self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="نام فایل یا پسوند وارد کنید", 
-                                        font=ctk.CTkFont(family="sans-serif"), justify="right")
+                                        font=ctk.CTkFont(family="B Nazanin"), justify="right")
         self.search_entry.pack(side="left", fill="x", expand=True, padx=5)
         
         # Buttons frame
@@ -1325,11 +1581,11 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         buttons_frame.pack(fill="x", pady=5)
         
         ctk.CTkButton(buttons_frame, text="🔄 بروزرسانی", command=self.refresh_all_files, 
-                     width=120, height=35, font=ctk.CTkFont(family="sans-serif", size=12)).pack(side="left", padx=2)
+                     width=120, height=35, font=ctk.CTkFont(family="B Nazanin", size=12)).pack(side="left", padx=2)
         ctk.CTkButton(buttons_frame, text="🗑️ پاک کردن", command=self.clear_search, 
-                     width=120, height=35, font=ctk.CTkFont(family="sans-serif", size=12)).pack(side="left", padx=2)
+                     width=120, height=35, font=ctk.CTkFont(family="B Nazanin", size=12)).pack(side="left", padx=2)
         ctk.CTkButton(buttons_frame, text="📁 کپی فایل‌ها", command=self.copy_selected_files, 
-                     width=120, height=35, font=ctk.CTkFont(family="sans-serif", size=12)).pack(side="left", padx=2)
+                     width=120, height=35, font=ctk.CTkFont(family="B Nazanin", size=12)).pack(side="left", padx=2)
         
         # File tree with improved styling
         tree_frame = ctk.CTkFrame(browser_frame)
@@ -1380,9 +1636,9 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         action_frame.pack(fill="x", padx=10, pady=5)
         
         ctk.CTkButton(action_frame, text="📋 کپی انتخاب شده", command=self.copy_selected_files,
-                     width=120, font=ctk.CTkFont(family="sans-serif")).pack(side="left", padx=2)
+                     width=120, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
         ctk.CTkButton(action_frame, text="📁 انتخاب پوشه", command=self.select_folder,
-                     width=120, font=ctk.CTkFont(family="sans-serif")).pack(side="left", padx=2)
+                     width=120, font=ctk.CTkFont(family="B Nazanin")).pack(side="left", padx=2)
 
     # Removed copy operations section - functionality integrated into task management
     # def setup_copy_operations_section(self, copy_frame):
@@ -1396,7 +1652,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         # Title
         title_label = ctk.CTkLabel(task_frame, text="📋 مدیریت کارها", 
-                                  font=ctk.CTkFont(family="sans-serif", size=16, weight="bold"))
+                                  font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
         title_label.pack(pady=(10, 5))
         
         # Control buttons
@@ -1409,17 +1665,17 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         self.start_btn = ctk.CTkButton(main_controls, text="▶ شروع", command=self.start_selected_task,
                                       fg_color="green", hover_color="darkgreen", 
-                                      font=ctk.CTkFont(family="sans-serif", size=10), width=60, height=28)
+                                      font=ctk.CTkFont(family="B Nazanin", size=10), width=60, height=28)
         self.start_btn.pack(side="left", padx=2)
         
         self.pause_btn = ctk.CTkButton(main_controls, text="⏸ توقف", command=self.pause_selected_task,
                                       fg_color="orange", hover_color="darkorange", 
-                                      font=ctk.CTkFont(family="sans-serif", size=10), width=60, height=28)
+                                      font=ctk.CTkFont(family="B Nazanin", size=10), width=60, height=28)
         self.pause_btn.pack(side="left", padx=2)
         
         self.cancel_btn = ctk.CTkButton(main_controls, text="⏹ لغو", command=self.cancel_selected_task,
                                        fg_color="red", hover_color="darkred", 
-                                       font=ctk.CTkFont(family="sans-serif", size=10), width=60, height=28)
+                                       font=ctk.CTkFont(family="B Nazanin", size=10), width=60, height=28)
         self.cancel_btn.pack(side="left", padx=2)
         
         # Task management buttons
@@ -1427,9 +1683,9 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         task_controls.pack(fill="x")
         
         ctk.CTkButton(task_controls, text="🗑 پاک همه", command=self.clear_all_tasks, 
-                     font=ctk.CTkFont(family="sans-serif", size=10), width=80, height=28).pack(side="left", padx=2)
+                     font=ctk.CTkFont(family="B Nazanin", size=10), width=80, height=28).pack(side="left", padx=2)
         ctk.CTkButton(task_controls, text="✓ تکمیل شده", command=self.clear_completed, 
-                     font=ctk.CTkFont(family="sans-serif", size=10), width=90, height=28).pack(side="left", padx=2)
+                     font=ctk.CTkFont(family="B Nazanin", size=10), width=90, height=28).pack(side="left", padx=2)
         
         # Progress overview
         progress_frame = ctk.CTkFrame(task_frame)
@@ -1440,7 +1696,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         self.overall_progress.set(0)
         
         self.progress_label = ctk.CTkLabel(progress_frame, text="هیچ کار فعالی موجود نیست", 
-                                         font=ctk.CTkFont(family="sans-serif", size=11))
+                                         font=ctk.CTkFont(family="B Nazanin", size=11))
         self.progress_label.pack(pady=2)
         
         # Tasks tree (full version)
@@ -1488,14 +1744,14 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         
         # Title
         title_label = ctk.CTkLabel(drive_frame, text="💿 انتخاب مقصد", 
-                                  font=ctk.CTkFont(family="sans-serif", size=16, weight="bold"))
+                                  font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"))
         title_label.pack(pady=(10, 5))
         
         # Instructions
         instruction_label = ctk.CTkLabel(
             drive_frame,
             text="درایو یا پوشه مقصد را انتخاب کنید",
-            font=ctk.CTkFont(family="sans-serif", size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             wraplength=200
         )
         instruction_label.pack(pady=5)
@@ -1505,7 +1761,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             drive_frame,
             text="📁 انتخاب پوشه مقصد",
             command=self.select_destination,
-            font=ctk.CTkFont(family="sans-serif", size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             width=180,
             height=35
         )
@@ -1515,7 +1771,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         self.current_dest_label = ctk.CTkLabel(
             drive_frame,
             text="هیچ مقصدی انتخاب نشده",
-            font=ctk.CTkFont(family="sans-serif", size=10),
+            font=ctk.CTkFont(family="B Nazanin", size=10),
             wraplength=200
         )
         self.current_dest_label.pack(pady=5)
@@ -1525,7 +1781,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             drive_frame,
             text="🔄 بروزرسانی مقاصد",
             command=self.refresh_destinations,
-            font=ctk.CTkFont(family="sans-serif", size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             width=180,
             height=35
         )
@@ -1536,7 +1792,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             drive_frame,
             label_text="📁 پوشه‌های مقصد",
             height=400,
-            label_font=ctk.CTkFont(family="sans-serif", size=14, weight="bold")
+            label_font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
         )
         self.dest_folders_frame.pack(fill="both", expand=True, padx=5, pady=(10, 10))
         
@@ -1554,7 +1810,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         title_label = ctk.CTkLabel(
             sidebar_frame,
             text="🎯 کپی سریع",
-            font=ctk.CTkFont(family="sans-serif", size=18, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")
         )
         title_label.pack(pady=(10, 5))
         
@@ -1562,7 +1818,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         instruction_label = ctk.CTkLabel(
             sidebar_frame,
             text="فایل‌ها را از لیست انتخاب کنید\nسپس روی پوشه مقصد کلیک کنید",
-            font=ctk.CTkFont(family="sans-serif", size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             wraplength=300
         )
         instruction_label.pack(pady=5)
@@ -1572,7 +1828,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             sidebar_frame,
             text="🔄 بروزرسانی مقاصد",
             command=self.refresh_destinations,
-            font=ctk.CTkFont(family="sans-serif", size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             width=200
         )
         refresh_dest_btn.pack(pady=5)
@@ -1582,7 +1838,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             sidebar_frame,
             label_text="📁 پوشه‌های مقصد (شناسایی خودکار)",
             height=500,
-            label_font=ctk.CTkFont(family="sans-serif", size=14, weight="bold")
+            label_font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
         )
         self.dest_folders_frame.pack(fill="both", expand=True, padx=10, pady=(10, 10))
         
@@ -1624,7 +1880,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         perf_title = ctk.CTkLabel(
             perf_header, 
             text=license_text, 
-            font=ctk.CTkFont(family="sans-serif", size=18, weight="bold"),
+            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold"),
             text_color=("red", "orange") if not self.check_feature_license("advanced_settings") else ("gray10", "white")
         )
         perf_title.pack(side="left")
@@ -1650,7 +1906,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             buffer_header, 
             text="🔧 Buffer Size:", 
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(side="left")
         
         self.buffer_var = tk.StringVar(value=str(self.settings.get("buffer_size", 64 * 1024) // 1024))
@@ -1681,7 +1937,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         buffer_rec = ctk.CTkLabel(
             buffer_frame,
             text="💡 Recommended: SSD=256KB, HDD=64KB, Network=32KB",
-            font=ctk.CTkFont(family="sans-serif", size=10),
+            font=ctk.CTkFont(family="B Nazanin", size=10),
             text_color=("gray50", "gray60")
         )
         buffer_rec.pack(pady=(2, 0))
@@ -1696,7 +1952,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             threads_header, 
             text="👥 Max Threads:", 
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(side="left")
         
         self.threads_var = tk.StringVar(value=str(self.settings.get("max_threads", 4)))
@@ -1722,7 +1978,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         threads_rec = ctk.CTkLabel(
             threads_frame,
             text="💡 Recommended: Large files=1-2, Small files=4-6, Network=2-3",
-            font=ctk.CTkFont(family="sans-serif", size=10),
+            font=ctk.CTkFont(family="B Nazanin", size=10),
             text_color=("gray50", "gray60")
         )
         threads_rec.pack(pady=(2, 0))
@@ -1737,7 +1993,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             progress_header, 
             text="⏱ Update Interval:", 
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(side="left")
         
         self.progress_interval_var = tk.StringVar(value=str(self.settings.get("progress_update_interval", 0.5)))
@@ -1778,7 +2034,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             behavior_header, 
             text="🎯 Behavior Settings", 
-            font=ctk.CTkFont(family="sans-serif", size=18, weight="bold"),
+            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold"),
             text_color=("gray10", "white")
         ).pack(side="left")
         
@@ -1798,7 +2054,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             overwrite_frame, 
             text="📁 File Exists Policy:", 
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(side="left", padx=5)
         
         self.overwrite_var = tk.StringVar(value=self.settings.get("overwrite_policy", "prompt"))
@@ -1820,7 +2076,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             retry_frame,
             text="🔄 Auto Retry Failed Operations",
             variable=self.auto_retry_var,
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         retry_checkbox.pack(side="left")
         
@@ -1838,7 +2094,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             verify_frame,
             text="✅ Verify Copy Integrity (slower but safer)",
             variable=self.verify_copy_var,
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         verify_checkbox.pack(side="left")
         
@@ -1851,7 +2107,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             hidden_frame,
             text="🗂 Show Hidden Files and Folders",
             variable=self.show_hidden_var,
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         hidden_checkbox.pack(side="left")
         
@@ -1864,7 +2120,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             backup_frame,
             text="💾 Create Backup Before Overwriting",
             variable=self.create_backup_var,
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         backup_checkbox.pack(side="left")
         
@@ -1877,7 +2133,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             perm_frame,
             text="🔐 Preserve File Permissions",
             variable=self.preserve_permissions_var,
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         perm_checkbox.pack(side="left")
         
@@ -1897,7 +2153,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             appearance_header, 
             text="🎨 Appearance Settings", 
-            font=ctk.CTkFont(family="sans-serif", size=18, weight="bold"),
+            font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold"),
             text_color=("gray10", "white")
         ).pack(side="left")
         
@@ -1920,7 +2176,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             theme_header, 
             text="🎨 Theme:", 
-            font=ctk.CTkFont(family="sans-serif", size=14, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
         ).pack(side="left", padx=5)
         
         # Theme help button
@@ -1934,12 +2190,15 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ).pack(side="right")
         
         self.theme_var = tk.StringVar(value=self.settings.get("theme", "dark_blue"))
+        # ایجاد لیست نام‌های فارسی تم‌ها برای نمایش
+        theme_display_names = [f"{theme_id}: {config.get('name', theme_id)}" for theme_id, config in THEMES.items()]
         theme_combo = ctk.CTkComboBox(
             theme_section, 
-            values=list(THEMES.keys()),
+            values=theme_display_names,
             variable=self.theme_var, 
-            width=200,
-            command=self.preview_theme
+            width=300,
+            command=self.preview_theme,
+            font=ctk.CTkFont(family="B Nazanin", size=12)
         )
         theme_combo.pack(fill="x", padx=5, pady=5)
         
@@ -1956,7 +2215,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             self.theme_preview,
             text="🎨 Theme Preview",
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         ).pack(pady=20)
         
         # Additional appearance settings
@@ -1969,7 +2228,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             notification_frame,
             text="🔔 Play Completion Sound",
             variable=self.notification_sound_var,
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         notification_checkbox.pack(side="left")
         
@@ -1982,7 +2241,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             graph_frame,
             text="📊 Show Speed Graph",
             variable=self.show_speed_graph_var,
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         graph_checkbox.pack(side="left")
         
@@ -1995,7 +2254,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             auto_clear_frame,
             text="🗑 Auto Clear Completed Tasks",
             variable=self.auto_clear_completed_var,
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold")
         )
         auto_clear_checkbox.pack(side="left")
         
@@ -2010,7 +2269,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             save_frame, 
             text="💾 Save All Settings", 
             command=self.save_settings_from_gui,
-            font=ctk.CTkFont(family="sans-serif", size=16, weight="bold"), 
+            font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold"), 
             height=50,
             corner_radius=25,
             fg_color=("green", "darkgreen"),
@@ -2023,7 +2282,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             save_frame,
             text="🔄 Reset to Defaults",
             command=self.reset_settings_to_defaults,
-            font=ctk.CTkFont(family="sans-serif", size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             height=35,
             corner_radius=17,
             fg_color=("orange", "darkorange"),
@@ -2374,27 +2633,37 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             messagebox.showinfo("خطا", f"این تسک قابل شروع نیست! وضعیت فعلی: {task['status']}")
 
     def preview_theme(self, theme_name: str):
-        """Preview selected theme"""
+        """پیش‌نمایش تم انتخاب شده"""
         try:
-            theme_config = THEMES.get(theme_name, THEMES["dark_blue"])
+            # استخراج شناسه تم از نام نمایشی (format: "theme_id: نام فارسی")
+            if ":" in theme_name:
+                theme_id = theme_name.split(":")[0].strip()
+            else:
+                theme_id = theme_name
             
-            # Update preview colors based on theme
-            if "dark" in theme_name.lower():
+            theme_config = THEMES.get(theme_id, THEMES["dark_blue"])
+            
+            # به‌روزرسانی رنگ‌های پیش‌نمایش بر اساس تم
+            if theme_config["mode"] == "dark":
                 preview_color = ("gray20", "gray30")
                 text_color = ("white", "gray90")
             else:
-                preview_color = ("gray90", "gray80")
+                preview_color = ("gray90", "gray80") 
                 text_color = ("gray10", "gray20")
             
+            # اعمال رنگ‌ها به پیش‌نمایش
             self.theme_preview.configure(fg_color=preview_color)
             
-            # Update preview text
+            # به‌روزرسانی متن پیش‌نمایش
             for widget in self.theme_preview.winfo_children():
                 if isinstance(widget, ctk.CTkLabel):
                     widget.configure(text_color=text_color)
+            
+            # ذخیره شناسه تم واقعی برای استفاده در تنظیمات
+            self.current_preview_theme = theme_id
                     
         except Exception as e:
-            self.logger.error(f"Error previewing theme: {e}")
+            self.logger.error(f"خطا در پیش‌نمایش تم: {e}")
 
     def copy_task(self, task: Dict):
         """Copy a single file/directory with enhanced error handling"""
@@ -2892,7 +3161,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             ctk.CTkLabel(
                 success_window,
                 text="✅ Settings Saved Successfully!",
-                font=ctk.CTkFont(family="sans-serif", size=16, weight="bold")
+                font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")
             ).pack(pady=30)
             
             ctk.CTkButton(
@@ -3126,7 +3395,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         ctk.CTkLabel(
             help_frame,
             text=help_text,
-            font=ctk.CTkFont(family="sans-serif", size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             justify="left",
             wraplength=550
         ).pack(pady=10, padx=10, anchor="w")
@@ -3136,7 +3405,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             help_window,
             text="✅ Got it!",
             command=help_window.destroy,
-            font=ctk.CTkFont(family="sans-serif", weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", weight="bold")
         ).pack(pady=10)
     
     def update_buffer_from_slider(self, value):
@@ -3257,7 +3526,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
                 no_folders_label = ctk.CTkLabel(
                     self.dest_folders_frame,
                     text="🔍 در حال شناسایی درایوها...\n\nاگر درایوی نمایش داده نمی‌شود،\nروی دکمه بروزرسانی مقاصد کلیک کنید",
-                    font=ctk.CTkFont(family="sans-serif", size=12),
+                    font=ctk.CTkFont(family="B Nazanin", size=12),
                     text_color="gray"
                 )
                 no_folders_label.pack(pady=50)
@@ -3310,7 +3579,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             icon_label = ctk.CTkLabel(
                 top_frame,
                 text=icon,
-                font=ctk.CTkFont(family="sans-serif", size=20)
+                font=ctk.CTkFont(family="B Nazanin", size=20)
             )
             icon_label.pack(side="left", padx=(0, 10))
             
@@ -3318,7 +3587,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             name_label = ctk.CTkLabel(
                 top_frame,
                 text=folder_name,
-                font=ctk.CTkFont(family="sans-serif", size=14, weight="bold")
+                font=ctk.CTkFont(family="B Nazanin", size=14, weight="bold")
             )
             name_label.pack(side="left", anchor="w")
             
@@ -3329,7 +3598,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             path_label = ctk.CTkLabel(
                 bottom_frame,
                 text=folder_path,
-                font=ctk.CTkFont(family="sans-serif", size=10),
+                font=ctk.CTkFont(family="B Nazanin", size=10),
                 text_color="gray"
             )
             path_label.pack(side="left", anchor="w")
@@ -3338,7 +3607,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             click_label = ctk.CTkLabel(
                 bottom_frame,
                 text="🎯 کلیک برای کپی فایل‌های انتخابی",
-                font=ctk.CTkFont(family="sans-serif", size=10, weight="bold"),
+                font=ctk.CTkFont(family="B Nazanin", size=10, weight="bold"),
                 text_color=("blue", "lightblue")
             )
             click_label.pack(side="right")
@@ -3479,14 +3748,14 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         name_label = ctk.CTkLabel(
             info_frame,
             text=f"📁 {folder_name}",
-            font=ctk.CTkFont(family="sans-serif", size=16, weight="bold")
+            font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")
         )
         name_label.pack(anchor="w")
         
         path_label = ctk.CTkLabel(
             info_frame,
             text=folder_path,
-            font=ctk.CTkFont(family="sans-serif", size=12),
+            font=ctk.CTkFont(family="B Nazanin", size=12),
             text_color="gray"
         )
         path_label.pack(anchor="w", pady=(0, 10))
@@ -3499,7 +3768,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
         click_label = ctk.CTkLabel(
             controls_frame,
             text="🎯 فایل بکشید اینجا یا کلیک کنید",
-            font=ctk.CTkFont(family="sans-serif", size=12, weight="bold"),
+            font=ctk.CTkFont(family="B Nazanin", size=12, weight="bold"),
             text_color=("blue", "lightblue")
         )
         click_label.pack(side="left")
@@ -3568,7 +3837,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             ctk.CTkLabel(
                 choice_window,
                 text="چه چیزی می‌خواهید کپی کنید؟",
-                font=ctk.CTkFont(family="sans-serif", size=16, weight="bold")
+                font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")
             ).pack(pady=20)
             
             def select_files():
@@ -3736,9 +4005,11 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             
             if added_count > 0:
                 self.update_status(f"🚀 شروع خودکار: {added_count} فایل/پوشه")
-                messagebox.showinfo("شروع کپی", f"{added_count} فایل/پوشه به صورت خودکار شروع به کپی شدند!")
+                # نمایش اعلان موفقیت برای شروع کپی
+                self.show_toast(f"{added_count} فایل/پوشه به صورت خودکار شروع به کپی شدند!", "success")
             else:
-                messagebox.showinfo("هشدار", "همه فایل‌ها قبلاً در صف کپی موجود هستند!")
+                # نمایش اعلان اطلاعات برای فایل‌های تکراری
+                self.show_toast("همه فایل‌ها قبلاً در صف کپی موجود هستند!", "info")
                 
         except Exception as e:
             self.logger.error(f"Error handling dropped files: {e}")
