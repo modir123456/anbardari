@@ -249,7 +249,7 @@ async function loadDrives() {
         console.log('💾 Drives loaded:', drives);
         
         updateDrivesDisplay(drives);
-        updateQuickDrives(drives);
+        // Quick drives removed - using full drives list only
         updateHeaderStats();
         
     } catch (error) {
@@ -302,35 +302,7 @@ function updateDrivesDisplay(drives) {
     document.getElementById('drives-count').textContent = drives.length;
 }
 
-/**
- * Update quick drives section
- */
-function updateQuickDrives(drives) {
-    const quickDrives = document.getElementById('quick-drives');
-    
-    // Filter for quick access (common folders, external devices)
-    const quickItems = drives.filter(drive => 
-        drive.type === 'quick_folder' || 
-        drive.type === 'phone' || 
-        drive.type === 'usb'
-    ).slice(0, 6);
-    
-    if (quickItems.length === 0) {
-        quickDrives.innerHTML = `
-            <div class="empty-state">
-                <p>پوشه‌های دسترسی سریع یافت نشد</p>
-            </div>
-        `;
-        return;
-    }
-    
-    quickDrives.innerHTML = quickItems.map(item => `
-        <div class="quick-drive-item" onclick="selectDrive('${item.path}')">
-            <div class="quick-drive-icon">${item.icon}</div>
-            <div class="quick-drive-name">${item.name}</div>
-        </div>
-    `).join('');
-}
+// Quick drives function removed - using full drives list only
 
 /**
  * Select a drive and scan its files
@@ -1642,3 +1614,136 @@ window.saveAdvancedSettings = saveAdvancedSettings;
 window.resetFilters = resetFilters;
 window.saveFileOperationSettings = saveFileOperationSettings;
 window.saveUISettings = saveUISettings;
+
+/**
+ * Load settings data
+ */
+async function loadSettingsData() {
+    try {
+        // Load UI settings
+        const uiSettings = await eel.get_config('ui_settings')();
+        if (uiSettings) {
+            updateUISettingsForm(uiSettings);
+        }
+        
+        // Load file operation settings
+        const fileOpSettings = await eel.get_config('file_operations')();
+        if (fileOpSettings) {
+            updateFileOperationSettingsForm(fileOpSettings);
+        }
+        
+        // Load advanced settings
+        const advancedSettings = await eel.get_config('advanced')();
+        if (advancedSettings) {
+            updateAdvancedSettingsForm(advancedSettings);
+        }
+        
+        // Load license info
+        const licenseInfo = await eel.get_license_info()();
+        if (licenseInfo) {
+            updateLicenseInfo(licenseInfo);
+        }
+        
+        console.log('⚙️ Settings data loaded');
+    } catch (error) {
+        console.error('❌ Error loading settings data:', error);
+        showToast('خطا در بارگزاری تنظیمات', 'error');
+    }
+}
+
+function updateUISettingsForm(settings) {
+    const elements = {
+        'font-family-select': settings.font_family,
+        'font-size-slider': settings.font_size,
+        'font-weight-select': settings.font_weight,
+        'theme-select': settings.theme,
+        'direction-select': settings.direction,
+        'compact-mode': settings.compact_mode,
+        'startup-maximized': settings.startup_maximized,
+        'show-tooltips': settings.show_tooltips,
+        'animation-speed': settings.animation_speed
+    };
+    
+    for (const [id, value] of Object.entries(elements)) {
+        const element = document.getElementById(id);
+        if (element) {
+            if (element.type === 'checkbox') {
+                element.checked = value;
+            } else {
+                element.value = value;
+            }
+        }
+    }
+    
+    // Update font size display
+    const fontSizeValue = document.getElementById('font-size-value');
+    if (fontSizeValue && settings.font_size) {
+        fontSizeValue.textContent = settings.font_size + 'px';
+    }
+}
+
+function updateFileOperationSettingsForm(settings) {
+    const elements = {
+        'max-tasks': settings.max_concurrent_tasks,
+        'chunk-size': Math.floor(settings.chunk_size / 1024), // Convert bytes to KB
+        'verify-copy': settings.verify_copy,
+        'auto-retry': settings.auto_retry,
+        'max-retry': settings.retry_attempts,
+        'skip-existing': settings.skip_existing,
+        'preserve-timestamps': settings.preserve_permissions,
+        'show-hidden': settings.show_hidden_files,
+        'follow-symlinks': settings.follow_symlinks
+    };
+    
+    for (const [id, value] of Object.entries(elements)) {
+        const element = document.getElementById(id);
+        if (element) {
+            if (element.type === 'checkbox') {
+                element.checked = value;
+            } else {
+                element.value = value;
+            }
+        }
+    }
+}
+
+function updateAdvancedSettingsForm(settings) {
+    const elements = {
+        'debug-logging': settings.debug_logging,
+        'auto-save': settings.auto_save_settings,
+        'memory-optimization': settings.memory_optimization,
+        'performance-mode': settings.performance_mode,
+        'cleanup-days': settings.database_cleanup_days
+    };
+    
+    for (const [id, value] of Object.entries(elements)) {
+        const element = document.getElementById(id);
+        if (element) {
+            if (element.type === 'checkbox') {
+                element.checked = value;
+            } else {
+                element.value = value;
+            }
+        }
+    }
+}
+
+function updateLicenseInfo(info) {
+    const statusElement = document.querySelector('.license-status');
+    const keyElement = document.getElementById('license-key');
+    
+    if (statusElement) {
+        statusElement.innerHTML = `
+            <div class="status-badge ${info.status === 'active' ? 'status-active' : 'status-inactive'}">
+                ${info.status === 'active' ? '✅ فعال' : '❌ غیرفعال'}
+            </div>
+        `;
+    }
+    
+    if (keyElement && info.key) {
+        keyElement.value = info.key;
+    }
+}
+
+// Export settings functions
+window.loadSettingsData = loadSettingsData;

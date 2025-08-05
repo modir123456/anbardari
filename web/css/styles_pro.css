@@ -1682,6 +1682,41 @@ input:focus + .slider {
     min-width: auto;
 }
 
+/* Drives Section Full Size */
+.drives-section-full {
+    flex: 1;
+    min-height: 500px;
+    max-height: none !important;
+}
+
+.drives-list-expanded {
+    max-height: none !important;
+    min-height: 450px;
+    overflow-y: auto;
+}
+
+.drives-list-expanded .drive-item {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-lg);
+    min-height: 120px;
+}
+
+.drives-list-expanded .drive-info h4 {
+    font-size: 1.1rem;
+    margin-bottom: var(--spacing-sm);
+}
+
+.drives-list-expanded .drive-stats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.drives-list-expanded .progress-bar {
+    height: 8px;
+    margin: var(--spacing-sm) 0;
+}
+
 /* Context Menu Override */
 .context-menu {
     display: none !important;

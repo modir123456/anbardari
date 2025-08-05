@@ -11,7 +11,7 @@
     <!-- CSS -->
     <link rel="stylesheet" href="css/styles_pro.css">
     <link rel="stylesheet" href="css/themes.css">
-    <link rel="stylesheet" href="css/components_pro.css">
+    <link rel="stylesheet" href="css/components.css">
     
     <!-- Eel -->
     <script type="text/javascript" src="/eel.js"></script>
@@ -191,19 +191,8 @@
 
                 <!-- Right Section: Drives & Tasks -->
                 <div class="right-section">
-                    <!-- Quick Drive Access -->
-                    <div class="quick-drives-section">
-                        <div class="section-header">
-                            <h3>🚀 دسترسی سریع</h3>
-                            <button class="btn btn-small" onclick="refreshDrives()">🔄</button>
-                        </div>
-                        <div id="quick-drives" class="quick-drives-grid">
-                            <!-- Quick drives will be populated here -->
-                        </div>
-                    </div>
-
-                    <!-- Main Drives Section -->
-                    <div class="drives-section">
+                    <!-- Main Drives Section - Full Size -->
+                    <div class="drives-section drives-section-full">
                         <div class="section-header">
                             <h3>🖥️ درایوها و مقصدها</h3>
                             <div class="drives-controls">
@@ -212,7 +201,7 @@
                             </div>
                         </div>
                         
-                        <div id="drives-list" class="drives-list">
+                        <div id="drives-list" class="drives-list drives-list-expanded">
                             <div class="loading-indicator">
                                 <div class="spinner"></div>
                                 <p>در حال اسکن درایوها...</p>
@@ -1043,9 +1032,5 @@
 
     <!-- JavaScript -->
     <script src="js/app_pro.js"></script>
-    <script src="js/ui_pro.js"></script>
-    <script src="js/file-manager_pro.js"></script>
-    <script src="js/task-manager_pro.js"></script>
-    <script src="js/settings_pro.js"></script>
 </body>
 </html>

@@ -770,9 +770,8 @@ class FileManager:
                         except:
                             pass
             
-            # Add MTP devices and common folders  
+            # Add MTP devices only
             drives.extend(self.scan_mtp_devices())
-            drives.extend(self.get_quick_access_folders())
             
         except Exception as e:
             logger.error(f"Error scanning drives: {e}")
@@ -882,92 +881,64 @@ class FileManager:
             return "💾"
     
     def scan_mtp_devices(self):
-        """اسکن پیشرفته دستگاه‌های MTP"""
+        """اسکن دستگاه‌های MTP (موبایل، دوربین، و...)"""
         devices = []
         try:
+            # Only detect actual MTP/mobile devices, not regular drives
             if platform.system() == "Windows":
-                # Enhanced Windows MTP detection
-                result = subprocess.run([
-                    "wmic", "logicaldisk", "get", "deviceid,drivetype,volumename,size,freespace"
-                ], capture_output=True, text=True, timeout=15)
-                
-                if result.returncode == 0:
-                    lines = result.stdout.strip().split('\n')[1:]
-                    for line in lines:
-                        if line.strip():
-                            parts = line.strip().split(None, 4)
-                            if len(parts) >= 2:
-                                device_id = parts[0]
-                                drive_type = parts[1]
-                                volume_name = parts[2] if len(parts) > 2 else "دستگاه"
-                                
-                                if device_id and ':' in device_id:
+                # Check for mobile devices using WMI
+                try:
+                    result = subprocess.run([
+                        "wmic", "logicaldisk", "where", "drivetype=2", "get", "deviceid,volumename"
+                    ], capture_output=True, text=True, timeout=10)
+                    
+                    if result.returncode == 0:
+                        lines = result.stdout.strip().split('\n')[1:]
+                        for line in lines:
+                            line = line.strip()
+                            if line and ':' in line:
+                                parts = line.split(None, 1)
+                                if parts:
+                                    device_id = parts[0]
+                                    volume_name = parts[1] if len(parts) > 1 else "USB Device"
+                                    
                                     try:
                                         test_path = device_id + "\\"
                                         if os.path.exists(test_path):
                                             contents = os.listdir(test_path)
                                             content_upper = [name.upper() for name in contents]
                                             
-                                            icon = "💾"
-                                            device_type = "device"
-                                            
-                                            if any(folder in content_upper for folder in ['DCIM', 'ANDROID']):
-                                                icon = "📱"
-                                                device_type = "phone"
-                                            elif any(folder in content_upper for folder in ['CAMERA', 'PICTURES']):
-                                                icon = "📷"
-                                                device_type = "camera"
-                                            elif drive_type == "2":  # Removable
-                                                icon = "🔌"
-                                                device_type = "usb"
-                                            
-                                            devices.append({
-                                                'path': test_path,
-                                                'name': f"{icon} {volume_name}",
-                                                'icon': icon,
-                                                'type': device_type,
-                                                'auto_index': True
-                                            })
+                                            # Only add if it looks like a mobile device
+                                            if any(folder in content_upper for folder in ['DCIM', 'ANDROID', 'IPHONE_INTERNAL']):
+                                                devices.append({
+                                                    'path': test_path,
+                                                    'name': f"📱 {volume_name}",
+                                                    'icon': '📱',
+                                                    'type': 'mobile',
+                                                    'auto_index': True
+                                                })
                                     except:
                                         continue
+                except:
+                    pass
             
             elif platform.system() == "Linux":
-                # Enhanced Linux MTP detection
-                possible_paths = []
-                possible_paths.extend(glob.glob("/media/*/*"))
-                possible_paths.extend(glob.glob("/mnt/*"))
-                possible_paths.extend(glob.glob("/run/user/*/gvfs/*"))
-                possible_paths.extend(glob.glob("/run/media/*/*"))
+                # Linux MTP detection - only mobile devices
+                possible_paths = glob.glob("/run/user/*/gvfs/*")
                 
                 for path in possible_paths:
-                    if os.path.isdir(path):
+                    if os.path.isdir(path) and any(x in path.lower() for x in ['mtp', 'android', 'phone']):
                         try:
-                            contents = os.listdir(path)
-                            content_upper = [name.upper() for name in contents]
-                            
-                            icon = "💾"
-                            device_type = "device"
-                            
-                            if any(folder in content_upper for folder in ['DCIM', 'ANDROID']):
-                                icon = "📱"
-                                device_type = "phone"
-                            elif "gvfs" in path.lower():
-                                icon = "📱"
-                                device_type = "phone"
-                            elif any(folder in content_upper for folder in ['CAMERA', 'PICTURES']):
-                                icon = "📷"
-                                device_type = "camera"
-                            
                             devices.append({
                                 'path': path,
-                                'name': f"{icon} {os.path.basename(path)}",
-                                'icon': icon,
-                                'type': device_type,
+                                'name': f"📱 {os.path.basename(path)}",
+                                'icon': '📱',
+                                'type': 'mobile',
                                 'auto_index': True
                             })
                         except:
                             continue
-                            
+        
         except Exception as e:
             logger.error(f"Error scanning MTP devices: {e}")
         
