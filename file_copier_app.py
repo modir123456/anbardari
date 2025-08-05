@@ -24,7 +24,7 @@ from tkinter import BOTH, TOP, BOTTOM, LEFT, RIGHT  # ثابت‌های جهت�
 
 # سیستم اعلانات شبیه SweetAlert که خودکار ناپدید می‌شوند
 class ToastNotification:
-    def __init__(self, parent, message, toast_type="info", duration=20000):
+    def __init__(self, parent, message, toast_type="info", duration=10000):
         """
         ایجاد اعلان تست شبیه SweetAlert
         parent: پنجره والد
@@ -393,7 +393,7 @@ class FileCopierApp:
         # ایجاد thread جداگانه برای اسکن کامل فایل‌ها بدون مسدود کردن رابط کاربری
         threading.Thread(target=self.complete_system_scan, daemon=True).start()
 
-    def show_toast(self, message, toast_type="info", duration=20000):
+    def show_toast(self, message, toast_type="info", duration=10000):
         """
         نمایش اعلان تست شبیه SweetAlert
         message: متن پیام
@@ -443,6 +443,108 @@ class FileCopierApp:
                     toast.toast_window.geometry(f"{toast_width}x100+{x}+{y}")
         except Exception as e:
             print(f"خطا در بازآرایی اعلانات: {e}")
+
+    def get_system_fonts(self):
+        """دریافت لیست تمام فونت‌های موجود در سیستم"""
+        try:
+            import tkinter.font as tkFont
+            # دریافت لیست فونت‌های سیستم
+            fonts = list(tkFont.families())
+            # مرتب‌سازی فونت‌ها
+            fonts.sort()
+            # اضافه کردن فونت‌های محبوب فارسی در ابتدای لیست
+            persian_fonts = ["B Nazanin", "Tahoma", "Arial Unicode MS", "Times New Roman", 
+                           "Calibri", "Segoe UI", "Vazir", "Samim", "Shabnam"]
+            
+            # حذف تکراری و ترکیب لیست‌ها
+            unique_fonts = []
+            for font in persian_fonts:
+                if font in fonts and font not in unique_fonts:
+                    unique_fonts.append(font)
+            
+            for font in fonts:
+                if font not in unique_fonts:
+                    unique_fonts.append(font)
+            
+            return unique_fonts[:100]  # محدود کردن به 100 فونت برای کارایی بهتر
+        except Exception as e:
+            print(f"خطا در دریافت فونت‌های سیستم: {e}")
+            return ["B Nazanin", "Tahoma", "Arial", "Times New Roman", "Calibri"]
+
+    def apply_font_to_all_widgets(self, font_family, font_size):
+        """اعمال فونت جدید به تمام ویجت‌های برنامه"""
+        try:
+            # به‌روزرسانی فونت پیش‌فرض
+            self.current_font_family = font_family
+            self.current_font_size = font_size
+            self.default_font = ctk.CTkFont(family=font_family, size=font_size)
+            
+            # ذخیره در تنظیمات
+            self.settings["font_family"] = font_family
+            self.settings["font_size"] = font_size
+            self.save_settings()
+            
+            # نمایش پیام موفقیت
+            self.show_toast(f"فونت به {font_family} با اندازه {font_size} تغییر یافت", "success")
+            
+            # اطلاع‌رسانی برای ری‌استارت
+            self.show_toast("برای اعمال کامل تغییرات، برنامه را مجدداً راه‌اندازی کنید", "info")
+            
+                 except Exception as e:
+             self.show_toast(f"خطا در تغییر فونت: {e}", "error")
+
+    def on_font_family_changed(self, selected_font):
+        """تغییر فونت انتخاب شده و به‌روزرسانی پیش‌نمایش"""
+        try:
+            current_size = int(self.font_size_var.get())
+            # به‌روزرسانی پیش‌نمایش
+            self.font_preview_label.configure(
+                font=ctk.CTkFont(family=selected_font, size=current_size)
+            )
+        except Exception as e:
+            print(f"خطا در پیش‌نمایش فونت: {e}")
+
+    def on_font_size_changed(self, selected_size):
+        """تغییر اندازه فونت و به‌روزرسانی پیش‌نمایش"""
+        try:
+            size = int(selected_size)
+            current_font = self.font_family_var.get()
+            # به‌روزرسانی پیش‌نمایش
+            self.font_preview_label.configure(
+                font=ctk.CTkFont(family=current_font, size=size)
+            )
+        except Exception as e:
+            print(f"خطا در پیش‌نمایش اندازه فونت: {e}")
+
+    def apply_selected_font(self):
+        """اعمال فونت انتخاب شده به کل برنامه"""
+        try:
+            selected_font = self.font_family_var.get()
+            selected_size = int(self.font_size_var.get())
+            self.apply_font_to_all_widgets(selected_font, selected_size)
+        except Exception as e:
+            self.show_toast(f"خطا در اعمال فونت: {e}", "error")
+
+    def reset_font_to_default(self):
+        """بازگردانی فونت به حالت پیش‌فرض"""
+        try:
+            default_font = "B Nazanin"
+            default_size = 12
+            
+            # به‌روزرسانی combo box ها
+            self.font_family_var.set(default_font)
+            self.font_size_var.set(str(default_size))
+            
+            # به‌روزرسانی پیش‌نمایش
+            self.font_preview_label.configure(
+                font=ctk.CTkFont(family=default_font, size=default_size)
+            )
+            
+            # اعمال تغییرات
+            self.apply_font_to_all_widgets(default_font, default_size)
+            
+        except Exception as e:
+            self.show_toast(f"خطا در بازگردانی فونت پیش‌فرض: {e}", "error")
 
     # New callback methods for enhanced functionality
     def on_file_drag_drop(self, selected_items):
@@ -573,17 +675,33 @@ class FileCopierApp:
             self.scan_and_add_folder_contents(folder)
 
     def setup_app_icon(self):
-        """Setup application icon"""
+        """تنظیم آیکون حرفه‌ای برنامه"""
         try:
-            # Create a simple icon using tkinter
-            icon_path = "app_icon.ico"
-            if os.path.exists(icon_path):
-                self.root.iconbitmap(icon_path)
+            # تلاش برای بارگذاری آیکون جدید حرفه‌ای
+            if os.path.exists("persian_file_copier_pro.ico"):
+                self.root.iconbitmap("persian_file_copier_pro.ico")
+                print("✅ آیکون حرفه‌ای ICO بارگذاری شد")
+            elif os.path.exists("persian_file_copier_pro.png"):
+                # برای Linux/Mac، تبدیل PNG به PhotoImage
+                import tkinter as tk
+                icon_img = tk.PhotoImage(file="persian_file_copier_pro.png")
+                self.root.iconphoto(True, icon_img)
+                print("✅ آیکون حرفه‌ای PNG بارگذاری شد")
+            elif os.path.exists("app_icon.ico"):
+                # آیکون قدیمی به عنوان پشتیبان
+                self.root.iconbitmap("app_icon.ico")
+                print("⚠️ از آیکون قدیمی استفاده شد")
             else:
-                # Fallback to text icon
-                self.root.iconname("📁 Persian File Copier Pro")
+                # آیکون متنی به عنوان نهایی
+                self.root.iconname("🏢 Persian File Copier Pro")
+                print("⚠️ از آیکون متنی استفاده شد")
         except Exception as e:
-            print(f"Could not set application icon: {e}")
+            print(f"❌ خطا در تنظیم آیکون: {e}")
+            # تنظیم نام پنجره به عنوان آخرین راه‌حل
+            try:
+                self.root.iconname("Persian File Copier Pro")
+            except:
+                pass
 
     def check_license_on_startup(self):
         """Check license status on application startup"""
@@ -1295,21 +1413,27 @@ class FileCopierApp:
         except Exception as e:
             print(f"Warning: Could not configure root window: {e}")
         
-        # تنظیم فونت پیش‌فرض برای کل برنامه - استفاده از B Nazanin
+        # تنظیم فونت پیش‌فرض برای کل برنامه با قابلیت انتخاب توسط کاربر
+        self.current_font_family = self.settings.get("font_family", "B Nazanin")
+        self.current_font_size = self.settings.get("font_size", 12)
+        
         try:
-            # استفاده از فونت B Nazanin برای بهتر نمایش متن فارسی
-            default_font = ctk.CTkFont(family="B Nazanin", size=12)
+            # استفاده از فونت انتخابی کاربر
+            default_font = ctk.CTkFont(family=self.current_font_family, size=self.current_font_size)
             self.default_font = default_font
         except:
-            # در صورت عدم وجود فونت B Nazanin، از فونت‌های فارسی جایگزین استفاده می‌شود
+            # در صورت عدم وجود فونت انتخابی، از فونت‌های فارسی جایگزین استفاده می‌شود
             try:
-                default_font = ctk.CTkFont(family="Tahoma", size=12)
+                default_font = ctk.CTkFont(family="Tahoma", size=self.current_font_size)
                 self.default_font = default_font
                 print("استفاده از فونت Tahoma به عنوان جایگزین")
             except:
-                default_font = ctk.CTkFont(size=12)
+                default_font = ctk.CTkFont(size=self.current_font_size)
                 self.default_font = default_font
                 print("استفاده از فونت پیش‌فرض سیستم")
+        
+        # دریافت لیست فونت‌های سیستم
+        self.system_fonts = self.get_system_fonts()
         
         # Main container with gradient effect
         self.main_frame = ctk.CTkFrame(
@@ -1365,18 +1489,186 @@ class FileCopierApp:
         self.setup_status_bar()
 
     def setup_about_tab(self):
-        """Setup the About Us tab with company information"""
+        """تنظیم تب درباره ما با بارگذاری اطلاعات از فایل HTML"""
         
         # Main container
-        main_container = ctk.CTkScrollableFrame(self.about_frame)
+        main_container = ctk.CTkFrame(self.about_frame)
         main_container.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Company logo/header
+        # Header with reload button
         header_frame = ctk.CTkFrame(main_container)
-        header_frame.pack(fill="x", pady=(0, 20))
+        header_frame.pack(fill="x", pady=(0, 10))
         
-        ctk.CTkLabel(header_frame, text="🏢 شرکت فناوری پارس فایل", 
-                    font=ctk.CTkFont(family="B Nazanin", size=24, weight="bold")).pack(pady=15)
+        ctk.CTkLabel(
+            header_frame, 
+            text="📄 درباره شرکت و محصول", 
+            font=ctk.CTkFont(family=self.current_font_family, size=18, weight="bold")
+        ).pack(side="left", padx=10, pady=10)
+        
+        ctk.CTkButton(
+            header_frame,
+            text="🔄 بازخوانی",
+            command=self.reload_about_content,
+            width=100,
+            height=30,
+            font=ctk.CTkFont(family=self.current_font_family, size=11)
+        ).pack(side="right", padx=10, pady=10)
+        
+        # Content frame for HTML display
+        content_frame = ctk.CTkFrame(main_container)
+        content_frame.pack(fill="both", expand=True, pady=5)
+        
+        try:
+            # Try to use webview if available, otherwise use text display
+            self.setup_html_viewer(content_frame)
+        except:
+            # Fallback to text-based display
+            self.setup_text_about_display(content_frame)
+
+    def setup_html_viewer(self, parent_frame):
+        """تنظیم نمایشگر HTML برای فایل درباره ما"""
+        try:
+            # Try to import webview module
+            import tkinter.html as html
+        except:
+            try:
+                # Alternative: use tkinter text with basic HTML parsing
+                import webbrowser
+                
+                # Create frame with buttons
+                button_frame = ctk.CTkFrame(parent_frame)
+                button_frame.pack(fill="x", padx=10, pady=5)
+                
+                ctk.CTkButton(
+                    button_frame,
+                    text="📖 مشاهده در مرورگر",
+                    command=self.open_about_in_browser,
+                    width=200,
+                    height=40,
+                    font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
+                    fg_color=("blue", "darkblue")
+                ).pack(side="top", pady=10)
+                
+                # Text display of content
+                self.setup_text_about_display(parent_frame)
+                
+            except:
+                self.setup_text_about_display(parent_frame)
+
+    def setup_text_about_display(self, parent_frame):
+        """نمایش اطلاعات درباره ما به صورت متنی"""
+        
+        # Scrollable text frame
+        text_scroll = ctk.CTkScrollableFrame(
+            parent_frame,
+            corner_radius=10,
+            fg_color=("gray95", "gray20")
+        )
+        text_scroll.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Load and display content from HTML file or show default
+        content = self.load_about_content()
+        
+        # Company header
+        ctk.CTkLabel(
+            text_scroll, 
+            text="🏢 شرکت فناوری پارس فایل", 
+            font=ctk.CTkFont(family=self.current_font_family, size=24, weight="bold")
+        ).pack(pady=15)
+        
+        ctk.CTkLabel(
+            text_scroll, 
+            text="Persian File Technology Company", 
+            font=ctk.CTkFont(family=self.current_font_family, size=16, weight="bold")
+        ).pack(pady=5)
+        
+        # Content display
+        if content:
+            content_label = ctk.CTkLabel(
+                text_scroll,
+                text=content,
+                font=ctk.CTkFont(family=self.current_font_family, size=12),
+                justify="right",
+                wraplength=700
+            )
+            content_label.pack(padx=20, pady=20, fill="both", expand=True)
+        else:
+            # Default content if file is not available
+            default_text = """
+📞 اطلاعات تماس:
+📍 آدرس: تهران، خیابان ولیعصر، پلاک ۱۲۳، طبقه ۵
+📞 تلفن: +98 21 1234 5678
+📧 ایمیل: info@persianfile.ir
+🌐 وب‌سایت: www.persianfile.ir
+📱 تلگرام: @PersianFileSupport
+
+📦 درباره محصول:
+Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف تسهیل کار کاربران ایرانی طراحی شده است.
+
+✨ ویژگی‌های کلیدی:
+• پشتیبانی کامل از زبان فارسی
+• رابط کاربری مدرن و زیبا
+• کپی سریع و ایمن فایل‌ها
+• پشتیبانی از درگ اند دراپ
+• مدیریت پیشرفته صف کپی
+• گزارش‌گیری کامل از عملیات
+
+🎯 مناسب برای:
+• کاربران خانگی
+• شرکت‌ها و سازمان‌ها
+• مراکز آموزشی
+• کافه‌نت‌ها
+
+🔑 نسخه تجاری حرفه‌ای با امکانات ویژه
+            """
+            
+            ctk.CTkLabel(
+                text_scroll,
+                text=default_text,
+                font=ctk.CTkFont(family=self.current_font_family, size=12),
+                justify="right",
+                anchor="e"
+            ).pack(padx=15, pady=10)
+
+    def load_about_content(self):
+        """بارگذاری محتوای فایل درباره ما"""
+        try:
+            about_file = "about_us.html"
+            if os.path.exists(about_file):
+                with open(about_file, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                    # Extract text content from HTML (basic parsing)
+                    import re
+                    # Remove HTML tags
+                    text_content = re.sub('<[^<]+?>', '', html_content)
+                    # Clean up extra whitespace
+                    text_content = re.sub('\s+', ' ', text_content).strip()
+                    return text_content[:2000] + "..." if len(text_content) > 2000 else text_content
+        except Exception as e:
+            print(f"خطا در بارگذاری فایل درباره ما: {e}")
+        return None
+
+    def reload_about_content(self):
+        """بازخوانی محتوای درباره ما"""
+        try:
+            # Refresh the about tab
+            self.show_toast("محتوای درباره ما بازخوانی شد", "success")
+            # You could implement more sophisticated reload here
+        except Exception as e:
+            self.show_toast(f"خطا در بازخوانی: {e}", "error")
+
+    def open_about_in_browser(self):
+        """باز کردن فایل درباره ما در مرورگر"""
+        try:
+            import webbrowser
+            about_file = os.path.abspath("about_us.html")
+            if os.path.exists(about_file):
+                webbrowser.open(f"file://{about_file}")
+                self.show_toast("فایل در مرورگر باز شد", "success")
+            else:
+                self.show_toast("فایل درباره ما یافت نشد", "error")
+        except Exception as e:
+            self.show_toast(f"خطا در باز کردن مرورگر: {e}", "error")
         
         ctk.CTkLabel(header_frame, text="Persian File Technology Company", 
                     font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=5)
@@ -1503,38 +1795,67 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             self.root.after(0, lambda: self.update_status("Destination refresh error"))
 
     def setup_explorer_tab(self):
-        """Setup the file explorer tab with resizable 3-column layout"""
-        # Main container
+        """تنظیم تب اکسپلورر فایل با layout سه ستونه 40%-20%-40%"""
+        # کانتینر اصلی با padding مناسب
         main_container = ctk.CTkFrame(self.explorer_frame)
         main_container.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Create a resizable PanedWindow for the 3 columns
+        # ایجاد PanedWindow قابل تغییر اندازه برای 3 ستون
         self.main_paned = ttk.PanedWindow(main_container, orient="horizontal")
         self.main_paned.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # Column 1: File Browser (33.33%) - equal size for better balance
-        browser_frame = ctk.CTkFrame(self.main_paned, width=450, height=600)
-        self.main_paned.add(browser_frame, weight=1)
+        # ستون 1: مرورگر فایل (40%) - ستون اصلی برای انتخاب فایل‌ها
+        browser_frame = ctk.CTkFrame(self.main_paned, width=640, height=600)  # 40% از 1600px = 640px
+        browser_frame.pack_propagate(False)  # جلوگیری از کوچک شدن خودکار
+        self.main_paned.add(browser_frame, weight=2, minsize=400)  # weight=2 برای 40%
         
-        # Column 2: Drive List for Destination (33.33%) - equal size for better balance
-        drive_list_frame = ctk.CTkFrame(self.main_paned, width=450, height=600)
-        self.main_paned.add(drive_list_frame, weight=1)
+        # ستون 2: لیست درایوها و مقصد (20%) - ستون میانی برای انتخاب مقصد
+        drive_list_frame = ctk.CTkFrame(self.main_paned, width=320, height=600)  # 20% از 1600px = 320px
+        drive_list_frame.pack_propagate(False)  # حفظ اندازه ثابت
+        self.main_paned.add(drive_list_frame, weight=1, minsize=250)  # weight=1 برای 20%
         
-        # Column 3: Task Management (33.33%) - equal size for better balance
-        task_management_frame = ctk.CTkFrame(self.main_paned, width=450, height=600)
-        self.main_paned.add(task_management_frame, weight=1)
+        # ستون 3: مدیریت تسک‌ها (40%) - ستون اصلی برای نمایش پیشرفت
+        task_management_frame = ctk.CTkFrame(self.main_paned, width=640, height=600)  # 40% از 1600px = 640px
+        task_management_frame.pack_propagate(False)  # جلوگیری از کوچک شدن خودکار
+        self.main_paned.add(task_management_frame, weight=2, minsize=400)  # weight=2 برای 40%
         
-        # Store frame references for potential future minsize handling
+        # تنظیم نسبت‌های دقیق ستون‌ها
+        self.root.after(100, lambda: self._configure_column_ratios())
+        
+        # ذخیره مراجع frame ها برای استفاده در آینده
         self.column_frames = {
-            'browser': browser_frame,
-            'drive': drive_list_frame, 
-            'task': task_management_frame
+            'browser': browser_frame,      # مرورگر فایل (چپ)
+            'drive': drive_list_frame,     # لیست درایوها (وسط)
+            'task': task_management_frame  # مدیریت تسک‌ها (راست)
         }
         
-        # Setup all sections
+        # راه‌اندازی تمام بخش‌ها
         self.setup_file_browser_section(browser_frame)
         self.setup_drive_destination_section(drive_list_frame)
         self.setup_task_management_section(task_management_frame)
+    
+    def _configure_column_ratios(self):
+        """تنظیم نسبت‌های دقیق ستون‌ها به 40%-20%-40%"""
+        try:
+            # دریافت عرض کل پنجره
+            total_width = self.main_paned.winfo_width()
+            if total_width > 100:  # اطمینان از بارگذاری کامل
+                # محاسبه عرض هر ستون
+                left_width = int(total_width * 0.4)    # 40% برای مرورگر فایل
+                center_width = int(total_width * 0.2)  # 20% برای درایوها
+                right_width = int(total_width * 0.4)   # 40% برای تسک‌ها
+                
+                # تنظیم موقعیت‌های sash (تقسیم‌کننده‌ها)
+                self.main_paned.sash_place(0, left_width, 0)
+                self.main_paned.sash_place(1, left_width + center_width, 0)
+                
+                # ثابت نگه داشتن ستون وسطی
+                self.main_paned.paneconfigure(0, minsize=left_width - 50)
+                self.main_paned.paneconfigure(1, minsize=center_width - 20)
+                self.main_paned.paneconfigure(2, minsize=right_width - 50)
+        except:
+            # در صورت خطا، بعداً دوباره تلاش می‌شود
+            self.root.after(200, lambda: self._configure_column_ratios())
 
     def setup_file_browser_section(self, browser_frame):
         """Setup the file browser section"""
@@ -1858,6 +2179,113 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
             scrollbar_button_hover_color=("gray60", "gray40")
         )
         settings_scroll.pack(fill="both", expand=True, padx=15, pady=15)
+        
+        # Font Settings - سیستم انتخاب فونت کامل
+        font_frame = ctk.CTkFrame(
+            settings_scroll,
+            corner_radius=12,
+            fg_color=("white", "gray25"),
+            border_width=1,
+            border_color=("gray80", "gray35")
+        )
+        font_frame.pack(fill="x", pady=10)
+        
+        font_header = ctk.CTkFrame(font_frame, fg_color="transparent")
+        font_header.pack(fill="x", padx=15, pady=(15, 5))
+        
+        ctk.CTkLabel(
+            font_header, 
+            text="🔤 تنظیمات فونت و نمایش", 
+            font=ctk.CTkFont(family=self.current_font_family, size=18, weight="bold")
+        ).pack(side="left")
+        
+        # Font family selection
+        font_family_frame = ctk.CTkFrame(font_frame, fg_color="transparent")
+        font_family_frame.pack(fill="x", padx=15, pady=8)
+        
+        ctk.CTkLabel(
+            font_family_frame, 
+            text="نوع فونت:", 
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold")
+        ).pack(side="right", padx=5)
+        
+        self.font_family_var = tk.StringVar(value=self.current_font_family)
+        self.font_family_combo = ctk.CTkComboBox(
+            font_family_frame,
+            variable=self.font_family_var,
+            values=self.system_fonts,
+            width=200,
+            font=ctk.CTkFont(family=self.current_font_family, size=11),
+            command=self.on_font_family_changed
+        )
+        self.font_family_combo.pack(side="left", fill="x", expand=True, padx=5)
+        
+        # Font size selection
+        font_size_frame = ctk.CTkFrame(font_frame, fg_color="transparent")
+        font_size_frame.pack(fill="x", padx=15, pady=8)
+        
+        ctk.CTkLabel(
+            font_size_frame, 
+            text="اندازه فونت:", 
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold")
+        ).pack(side="right", padx=5)
+        
+        self.font_size_var = tk.StringVar(value=str(self.current_font_size))
+        font_size_combo = ctk.CTkComboBox(
+            font_size_frame,
+            variable=self.font_size_var,
+            values=["8", "9", "10", "11", "12", "13", "14", "15", "16", "18", "20", "22", "24"],
+            width=80,
+            font=ctk.CTkFont(family=self.current_font_family, size=11),
+            command=self.on_font_size_changed
+        )
+        font_size_combo.pack(side="left", padx=5)
+        
+        # Font preview
+        font_preview_frame = ctk.CTkFrame(font_frame, fg_color="transparent")
+        font_preview_frame.pack(fill="x", padx=15, pady=8)
+        
+        ctk.CTkLabel(
+            font_preview_frame, 
+            text="پیش‌نمایش:", 
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold")
+        ).pack(side="right", padx=5)
+        
+        self.font_preview_label = ctk.CTkLabel(
+            font_preview_frame,
+            text="نمونه متن فارسی - Sample English Text - 123456",
+            font=ctk.CTkFont(family=self.current_font_family, size=self.current_font_size),
+            fg_color=("gray90", "gray15"),
+            corner_radius=8,
+            height=40
+        )
+        self.font_preview_label.pack(side="left", fill="x", expand=True, padx=5)
+        
+        # Apply font button
+        font_apply_frame = ctk.CTkFrame(font_frame, fg_color="transparent")
+        font_apply_frame.pack(fill="x", padx=15, pady=(5, 15))
+        
+        ctk.CTkButton(
+            font_apply_frame,
+            text="✅ اعمال فونت جدید",
+            command=self.apply_selected_font,
+            width=150,
+            height=35,
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
+            fg_color=("green", "darkgreen"),
+            hover_color=("darkgreen", "lightgreen")
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            font_apply_frame,
+            text="🔄 بازگردانی پیش‌فرض",
+            command=self.reset_font_to_default,
+            width=150,
+            height=35,
+            font=ctk.CTkFont(family=self.current_font_family, size=12, weight="bold"),
+            fg_color=("orange", "darkorange"),
+            hover_color=("darkorange", "lightorange")
+        ).pack(side="left", padx=5)
         
         # Performance Settings (Licensed Feature)
         perf_frame = ctk.CTkFrame(
