@@ -490,8 +490,8 @@ class FileCopierApp:
             # اطلاع‌رسانی برای ری‌استارت
             self.show_toast("برای اعمال کامل تغییرات، برنامه را مجدداً راه‌اندازی کنید", "info")
             
-                 except Exception as e:
-             self.show_toast(f"خطا در تغییر فونت: {e}", "error")
+        except Exception as e:
+            self.show_toast(f"خطا در تغییر فونت: {e}", "error")
 
     def on_font_family_changed(self, selected_font):
         """تغییر فونت انتخاب شده و به‌روزرسانی پیش‌نمایش"""
@@ -1528,8 +1528,8 @@ class FileCopierApp:
     def setup_html_viewer(self, parent_frame):
         """تنظیم نمایشگر HTML برای فایل درباره ما"""
         try:
-            # Try to import webview module
-            import tkinter.html as html
+            # Try to import webview module (this will usually fail)
+            import tkinter.html as html  # This module doesn't exist, will go to except
         except:
             try:
                 # Alternative: use tkinter text with basic HTML parsing
@@ -1642,7 +1642,7 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
                     # Remove HTML tags
                     text_content = re.sub('<[^<]+?>', '', html_content)
                     # Clean up extra whitespace
-                    text_content = re.sub('\s+', ' ', text_content).strip()
+                    text_content = re.sub(r'\s+', ' ', text_content).strip()
                     return text_content[:2000] + "..." if len(text_content) > 2000 else text_content
         except Exception as e:
             print(f"خطا در بارگذاری فایل درباره ما: {e}")
@@ -1669,110 +1669,6 @@ Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند �
                 self.show_toast("فایل درباره ما یافت نشد", "error")
         except Exception as e:
             self.show_toast(f"خطا در باز کردن مرورگر: {e}", "error")
-        
-        ctk.CTkLabel(header_frame, text="Persian File Technology Company", 
-                    font=ctk.CTkFont(family="B Nazanin", size=16, weight="bold")).pack(pady=5)
-        
-        # Company information
-        info_frame = ctk.CTkFrame(main_container)
-        info_frame.pack(fill="x", pady=(0, 20))
-        
-        company_info = [
-            ("📍 آدرس:", "تهران، خیابان ولیعصر، پلاک ۱۲۳"),
-            ("📞 تلفن:", "+98 21 1234 5678"),
-            ("📧 ایمیل:", "info@persianfile.ir"),
-            ("🌐 وب‌سایت:", "www.persianfile.ir"),
-            ("📱 تلگرام:", "@PersianFileSupport")
-        ]
-        
-        for label, value in company_info:
-            info_row = ctk.CTkFrame(info_frame)
-            info_row.pack(fill="x", padx=10, pady=5)
-            
-            ctk.CTkLabel(info_row, text=label, font=ctk.CTkFont(family="B Nazanin", weight="bold"), 
-                        anchor="e").pack(side="right", padx=10)
-            ctk.CTkLabel(info_row, text=value, font=ctk.CTkFont(family="B Nazanin"), 
-                        anchor="w").pack(side="left", padx=10)
-        
-        # Product information
-        product_frame = ctk.CTkFrame(main_container)
-        product_frame.pack(fill="x", pady=(0, 20))
-        
-        ctk.CTkLabel(product_frame, text="📦 درباره محصول", 
-                    font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")).pack(pady=10)
-        
-        product_text = """
-Persian File Copier Pro نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف تسهیل کار کاربران ایرانی طراحی شده است.
-
-✨ ویژگی‌های کلیدی:
-• پشتیبانی کامل از زبان فارسی
-• رابط کاربری مدرن و زیبا
-• کپی سریع و ایمن فایل‌ها
-• پشتیبانی از درگ اند دراپ
-• مدیریت پیشرفته صف کپی
-• گزارش‌گیری کامل از عملیات
-
-🎯 مناسب برای:
-• کاربران خانگی
-• شرکت‌ها و سازمان‌ها
-• مراکز آموزشی
-• کافه‌نت‌ها
-
-💎 نسخه حرفه‌ای با امکانات ویژه برای استفاده تجاری
-        """
-        
-        ctk.CTkLabel(product_frame, text=product_text, 
-                    font=ctk.CTkFont(family="B Nazanin", size=12),
-                    justify="right", anchor="e").pack(padx=15, pady=10)
-        
-        # License information
-        license_frame = ctk.CTkFrame(main_container)
-        license_frame.pack(fill="x", pady=(0, 20))
-        
-        ctk.CTkLabel(license_frame, text="🔑 اطلاعات لایسنس", 
-                    font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")).pack(pady=10)
-        
-        # Show current license status
-        license_data = self.license_manager.load_license()
-        if license_data:
-            if license_data.get("serial") == "TRIAL-MODE":
-                status_text = "🟡 نسخه آزمایشی (30 روزه)"
-            else:
-                status_text = f"🟢 فعال - سریال: {license_data.get('serial', 'نامشخص')}"
-        else:
-            status_text = "🔴 غیرفعال"
-        
-        ctk.CTkLabel(license_frame, text=f"وضعیت لایسنس: {status_text}", 
-                    font=ctk.CTkFont(family="B Nazanin", size=14)).pack(pady=5)
-        
-        # Support section
-        support_frame = ctk.CTkFrame(main_container)
-        support_frame.pack(fill="x", pady=(0, 20))
-        
-        ctk.CTkLabel(support_frame, text="🛠️ پشتیبانی و خدمات", 
-                    font=ctk.CTkFont(family="B Nazanin", size=18, weight="bold")).pack(pady=10)
-        
-        support_buttons = ctk.CTkFrame(support_frame)
-        support_buttons.pack(fill="x", padx=20, pady=10)
-        
-        ctk.CTkButton(support_buttons, text="📞 تماس با پشتیبانی", 
-                     font=ctk.CTkFont(family="B Nazanin"),
-                     command=self.contact_support).pack(side="right", padx=5)
-        
-        ctk.CTkButton(support_buttons, text="🔄 بروزرسانی نرم‌افزار", 
-                     font=ctk.CTkFont(family="B Nazanin"),
-                     command=self.check_updates).pack(side="right", padx=5)
-        
-        ctk.CTkButton(support_buttons, text="🔑 فعال‌سازی لایسنس", 
-                     font=ctk.CTkFont(family="B Nazanin"),
-                     command=self.show_license_dialog).pack(side="right", padx=5)
-        
-        # Copyright
-        copyright_frame = ctk.CTkFrame(main_container)
-        copyright_frame.pack(fill="x")
-        
-        ctk.CTkLabel(copyright_frame, text="© 2024 شرکت فناوری پارس فایل - تمامی حقوق محفوظ است", 
-                    font=ctk.CTkFont(family="B Nazanin", size=10)).pack(pady=10)
 
     def refresh_destinations(self):
         """Refresh and re-scan destination folders"""
