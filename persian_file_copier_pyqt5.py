@@ -640,8 +640,9 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.setup_styling()
         self.setup_connections()
         
-        # Start initial scan
+        # Start initial scan and load drives
         self.start_drive_scan()
+        self.load_drives_list()
         
     def init_ui(self):
         """راه‌اندازی رابط کاربری"""
@@ -675,11 +676,8 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabPosition(QTabWidget.North)
         
-        # File Browser Tab
+        # File Browser Tab (Main Tab)
         self.create_file_browser_tab()
-        
-        # Destinations Tab  
-        self.create_destinations_tab()
         
         # Settings Tab
         self.create_settings_tab()
@@ -690,33 +688,309 @@ class PersianFileCopierPyQt5(QMainWindow):
         parent_layout.addWidget(self.tab_widget)
     
     def create_file_browser_tab(self):
-        """تب مرورگر فایل‌ها"""
+        """تب اصلی - مرورگر فایل‌ها و کپی"""
         tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
-        
-        # Search and filter section
-        self.create_search_section(layout)
+        main_layout = QVBoxLayout(tab)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(8)
         
         # Main content area with splitter
         splitter = QSplitter(Qt.Horizontal)
         
-        # File tree (40%)
-        self.create_file_tree_section(splitter)
+        # Left section - File list (45%)
+        self.create_file_section(splitter)
         
-        # Control section (20%)
-        self.create_control_section(splitter)
+        # Center section - Drive list and copy controls (25%)
+        self.create_center_section(splitter)
         
-        # Tasks section (40%)
-        self.create_tasks_section(splitter)
+        # Right section - Destinations and tasks (30%)
+        self.create_right_section(splitter)
         
         # Set splitter proportions
-        splitter.setSizes([400, 200, 400])
-        layout.addWidget(splitter)
+        splitter.setSizes([450, 250, 300])
+        main_layout.addWidget(splitter)
         
-        self.tab_widget.addTab(tab, "📁 مرورگر فایل")
+        self.tab_widget.addTab(tab, "📁 مدیریت فایل‌ها")
     
+    def create_file_section(self, parent_splitter):
+        """بخش چپ - لیست فایل‌ها با جستجو"""
+        file_frame = QFrame()
+        file_frame.setFrameStyle(QFrame.StyledPanel)
+        file_layout = QVBoxLayout(file_frame)
+        file_layout.setContentsMargins(8, 8, 8, 8)
+        file_layout.setSpacing(6)
+        
+        # Header
+        header_label = QLabel("📁 فهرست فایل‌ها")
+        header_label.setFont(QFont("B Nazanin", 14, QFont.Bold))
+        header_label.setAlignment(Qt.AlignCenter)
+        file_layout.addWidget(header_label)
+        
+        # Compact search section
+        search_frame = QFrame()
+        search_frame.setFrameStyle(QFrame.Box)
+        search_layout = QVBoxLayout(search_frame)
+        search_layout.setContentsMargins(6, 6, 6, 6)
+        search_layout.setSpacing(4)
+        
+        # Search row
+        search_row = QHBoxLayout()
+        search_label = QLabel("🔍")
+        search_label.setFont(QFont("Arial", 12))
+        
+        self.search_entry = QLineEdit()
+        self.search_entry.setPlaceholderText("جستجو در فایل‌ها...")
+        self.search_entry.setFont(QFont("B Nazanin", 10))
+        self.search_entry.setMaximumHeight(28)
+        
+        search_row.addWidget(search_label)
+        search_row.addWidget(self.search_entry)
+        search_layout.addLayout(search_row)
+        
+        # Filter row
+        filter_row = QHBoxLayout()
+        
+        self.format_filter = QComboBox()
+        self.format_filter.setFont(QFont("B Nazanin", 9))
+        self.format_filter.setMaximumHeight(26)
+        format_options = [
+            "همه فرمت‌ها", "📷 تصاویر", "🎬 ویدیوها", "🎵 صوتی", 
+            "📄 اسناد", "📊 جداول", "📋 ارائه", "📦 آرشیو",
+            "⚙️ برنامه", "💻 کد", "🔤 فونت", "🗄️ دیتابیس"
+        ]
+        self.format_filter.addItems(format_options)
+        
+        self.size_filter = QComboBox()
+        self.size_filter.setFont(QFont("B Nazanin", 9))
+        self.size_filter.setMaximumHeight(26)
+        size_options = ["همه اندازه‌ها", "🟢 کوچک", "🟡 متوسط", "🟠 بزرگ", "🔴 خیلی بزرگ"]
+        self.size_filter.addItems(size_options)
+        
+        filter_row.addWidget(self.format_filter)
+        filter_row.addWidget(self.size_filter)
+        search_layout.addLayout(filter_row)
+        
+        file_layout.addWidget(search_frame)
+        
+        # File count label
+        self.file_count_label = QLabel("تعداد فایل‌ها: 0")
+        self.file_count_label.setFont(QFont("B Nazanin", 9))
+        self.file_count_label.setAlignment(Qt.AlignCenter)
+        file_layout.addWidget(self.file_count_label)
+        
+        # File tree
+        self.file_tree = QTreeWidget()
+        self.file_tree.setHeaderLabels(["📁 نام", "📂 مسیر", "📄 نوع", "💾 اندازه"])
+        self.file_tree.setAlternatingRowColors(True)
+        self.file_tree.setSelectionMode(QTreeWidget.ExtendedSelection)
+        self.file_tree.setFont(QFont("B Nazanin", 9))
+        
+        # Set column widths
+        self.file_tree.setColumnWidth(0, 150)  # Name
+        self.file_tree.setColumnWidth(1, 200)  # Path
+        self.file_tree.setColumnWidth(2, 70)   # Type
+        self.file_tree.setColumnWidth(3, 80)   # Size
+        
+        file_layout.addWidget(self.file_tree)
+        
+        # Action buttons under file list
+        action_frame = QFrame()
+        action_frame.setFrameStyle(QFrame.Box)
+        action_layout = QHBoxLayout(action_frame)
+        action_layout.setContentsMargins(4, 4, 4, 4)
+        
+        self.refresh_btn = QPushButton("🔄 بروزرسانی")
+        self.refresh_btn.setFont(QFont("B Nazanin", 9))
+        self.refresh_btn.setMaximumHeight(30)
+        
+        self.clear_search_btn = QPushButton("🗑️ پاک کردن")
+        self.clear_search_btn.setFont(QFont("B Nazanin", 9))
+        self.clear_search_btn.setMaximumHeight(30)
+        
+        self.select_all_btn = QPushButton("☑️ انتخاب همه")
+        self.select_all_btn.setFont(QFont("B Nazanin", 9))
+        self.select_all_btn.setMaximumHeight(30)
+        
+        action_layout.addWidget(self.refresh_btn)
+        action_layout.addWidget(self.clear_search_btn)
+        action_layout.addWidget(self.select_all_btn)
+        
+        file_layout.addWidget(action_frame)
+        parent_splitter.addWidget(file_frame)
+    
+    def create_center_section(self, parent_splitter):
+        """بخش مرکزی - لیست درایوها و کنترل‌های کپی"""
+        center_frame = QFrame()
+        center_frame.setFrameStyle(QFrame.StyledPanel)
+        center_layout = QVBoxLayout(center_frame)
+        center_layout.setContentsMargins(8, 8, 8, 8)
+        center_layout.setSpacing(8)
+        
+        # Drive list section
+        drive_group = QGroupBox("🖥️ لیست درایوها")
+        drive_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        drive_layout = QVBoxLayout(drive_group)
+        
+        self.drive_list = QTreeWidget()
+        self.drive_list.setHeaderLabels(["درایو", "فضای آزاد"])
+        self.drive_list.setFont(QFont("B Nazanin", 10))
+        self.drive_list.setMaximumHeight(150)
+        drive_layout.addWidget(self.drive_list)
+        
+        center_layout.addWidget(drive_group)
+        
+        # Copy controls
+        copy_group = QGroupBox("📋 کنترل کپی")
+        copy_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        copy_layout = QVBoxLayout(copy_group)
+        
+        self.copy_selected_btn = QPushButton("📁 کپی انتخاب شده")
+        self.copy_selected_btn.setFont(QFont("B Nazanin", 10))
+        self.copy_selected_btn.setMinimumHeight(35)
+        
+        self.copy_all_btn = QPushButton("📁 کپی همه فایل‌ها")
+        self.copy_all_btn.setFont(QFont("B Nazanin", 10))
+        self.copy_all_btn.setMinimumHeight(35)
+        
+        copy_layout.addWidget(self.copy_selected_btn)
+        copy_layout.addWidget(self.copy_all_btn)
+        center_layout.addWidget(copy_group)
+        
+        center_layout.addStretch()
+        parent_splitter.addWidget(center_frame)
+    
+    def create_right_section(self, parent_splitter):
+        """بخش راست - مقصدها و تسک‌ها"""
+        right_frame = QFrame()
+        right_frame.setFrameStyle(QFrame.StyledPanel)
+        right_layout = QVBoxLayout(right_frame)
+        right_layout.setContentsMargins(8, 8, 8, 8)
+        right_layout.setSpacing(8)
+        
+        # Destinations section
+        dest_group = QGroupBox("📂 مقصدهای کپی")
+        dest_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        dest_layout = QVBoxLayout(dest_group)
+        
+        # Current destination
+        current_layout = QHBoxLayout()
+        dest_label = QLabel("مقصد:")
+        dest_label.setFont(QFont("B Nazanin", 10))
+        
+        self.destination_entry = QLineEdit()
+        self.destination_entry.setFont(QFont("B Nazanin", 9))
+        self.destination_entry.setPlaceholderText("انتخاب مقصد...")
+        self.destination_entry.setMaximumHeight(26)
+        
+        self.browse_dest_btn = QPushButton("📁")
+        self.browse_dest_btn.setMaximumSize(30, 26)
+        
+        current_layout.addWidget(dest_label)
+        current_layout.addWidget(self.destination_entry)
+        current_layout.addWidget(self.browse_dest_btn)
+        dest_layout.addLayout(current_layout)
+        
+        # Quick destinations as clickable buttons
+        quick_frame = QFrame()
+        quick_layout = QGridLayout(quick_frame)
+        quick_layout.setSpacing(3)
+        
+        quick_destinations = [
+            ("🖥️ دسکتاپ", "~/Desktop"),
+            ("📁 مستندات", "~/Documents"),
+            ("📥 دانلودها", "~/Downloads"),
+            ("🎵 موزیک", "~/Music"),
+            ("🎬 ویدیوها", "~/Videos"),
+            ("📷 عکس‌ها", "~/Pictures")
+        ]
+        
+        row, col = 0, 0
+        for name, path in quick_destinations:
+            btn = QPushButton(name)
+            btn.setFont(QFont("B Nazanin", 8))
+            btn.setMaximumHeight(25)
+            btn.clicked.connect(lambda checked, p=path: self.set_destination_and_copy(p))
+            quick_layout.addWidget(btn, row, col)
+            
+            col += 1
+            if col > 1:
+                col = 0
+                row += 1
+        
+        dest_layout.addWidget(quick_frame)
+        right_layout.addWidget(dest_group)
+        
+        # Tasks section
+        tasks_group = QGroupBox("📊 تسک‌های کپی")
+        tasks_group.setFont(QFont("B Nazanin", 12, QFont.Bold))
+        tasks_layout = QVBoxLayout(tasks_group)
+        
+        # Task control buttons
+        task_control_frame = QFrame()
+        task_control_layout = QHBoxLayout(task_control_frame)
+        task_control_layout.setContentsMargins(2, 2, 2, 2)
+        
+        self.pause_all_btn = QPushButton("⏸️")
+        self.pause_all_btn.setMaximumSize(30, 25)
+        self.pause_all_btn.setToolTip("مکث همه")
+        
+        self.resume_all_btn = QPushButton("▶️")
+        self.resume_all_btn.setMaximumSize(30, 25)
+        self.resume_all_btn.setToolTip("ادامه همه")
+        
+        self.cancel_all_btn = QPushButton("❌")
+        self.cancel_all_btn.setMaximumSize(30, 25)
+        self.cancel_all_btn.setToolTip("لغو همه")
+        
+        self.clear_completed_btn = QPushButton("🧹")
+        self.clear_completed_btn.setMaximumSize(30, 25)
+        self.clear_completed_btn.setToolTip("پاک کردن تکمیل شده")
+        
+        task_control_layout.addWidget(self.pause_all_btn)
+        task_control_layout.addWidget(self.resume_all_btn)
+        task_control_layout.addWidget(self.cancel_all_btn)
+        task_control_layout.addWidget(self.clear_completed_btn)
+        task_control_layout.addStretch()
+        
+        tasks_layout.addWidget(task_control_frame)
+        
+        # Tasks table
+        self.tasks_table = QTableWidget()
+        self.tasks_table.setColumnCount(5)
+        self.tasks_table.setHorizontalHeaderLabels([
+            "مبدأ", "مقصد", "پیشرفت", "سرعت", "کنترل"
+        ])
+        
+        # Set column widths
+        self.tasks_table.setColumnWidth(0, 80)   # Source
+        self.tasks_table.setColumnWidth(1, 80)   # Destination  
+        self.tasks_table.setColumnWidth(2, 60)   # Progress
+        self.tasks_table.setColumnWidth(3, 50)   # Speed
+        self.tasks_table.setColumnWidth(4, 60)   # Control
+        
+        self.tasks_table.setAlternatingRowColors(True)
+        self.tasks_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tasks_table.setFont(QFont("B Nazanin", 8))
+        self.tasks_table.setMaximumHeight(200)
+        
+        tasks_layout.addWidget(self.tasks_table)
+        right_layout.addWidget(tasks_group)
+        
+        right_layout.addStretch()
+        parent_splitter.addWidget(right_frame)
+    
+    def set_destination_and_copy(self, path: str):
+        """تنظیم مقصد و شروع کپی"""
+        expanded_path = os.path.expanduser(path)
+        self.destination_entry.setText(expanded_path)
+        
+        # Start copying selected files immediately
+        selected_items = self.file_tree.selectedItems()
+        if selected_items:
+            self.copy_selected_files()
+        else:
+            self.show_toast("ابتدا فایل‌هایی را انتخاب کنید", "warning")
+
     def create_search_section(self, parent_layout):
         """بخش جستجو و فیلتر"""
         search_frame = QFrame()
@@ -1080,6 +1354,10 @@ class PersianFileCopierPyQt5(QMainWindow):
         themes = ["🌙 تیره", "☀️ روشن", "🔵 آبی", "🟢 سبز"]
         self.theme_combo.addItems(themes)
         
+        current_theme = self.config.get('ui_settings', 'theme', 'dark')
+        theme_mapping = {"dark": 0, "light": 1, "blue": 2, "green": 3}
+        self.theme_combo.setCurrentIndex(theme_mapping.get(current_theme, 0))
+        
         # Animation speed
         self.animation_speed_spin = QSpinBox()
         self.animation_speed_spin.setRange(100, 1000)
@@ -1095,6 +1373,12 @@ class PersianFileCopierPyQt5(QMainWindow):
         theme_layout.addRow("🎨 تم رنگی:", self.theme_combo)
         theme_layout.addRow("🎬 سرعت انیمیشن:", self.animation_speed_spin)
         theme_layout.addRow("⏱️ مدت نمایش Toast:", self.toast_duration_spin)
+        
+        # Apply settings button
+        self.apply_settings_btn = QPushButton("✅ اعمال تغییرات")
+        self.apply_settings_btn.setFont(QFont("B Nazanin", 11, QFont.Bold))
+        self.apply_settings_btn.setMinimumHeight(40)
+        theme_layout.addRow("", self.apply_settings_btn)
         
         parent_layout.addWidget(theme_group)
     
@@ -1161,25 +1445,39 @@ class PersianFileCopierPyQt5(QMainWindow):
         self.license_key_entry.setPlaceholderText("کلید لایسنس را وارد کنید...")
         self.license_key_entry.setText(license_info['key'])
         
-        self.paste_license_btn = QPushButton("📋 جایگذاری")
-        self.paste_license_btn.setFont(QFont("B Nazanin", 10))
+        self.paste_license_btn = QPushButton("📋")
+        self.paste_license_btn.setFont(QFont("Arial", 10))
+        self.paste_license_btn.setMaximumWidth(35)
+        self.paste_license_btn.setToolTip("جایگذاری از clipboard")
         
         key_layout.addWidget(self.license_key_entry)
         key_layout.addWidget(self.paste_license_btn)
         license_layout.addLayout(key_layout)
         
-        # Action buttons
+        # Action buttons (simplified)
         buttons_layout = QHBoxLayout()
         
-        self.activate_license_btn = QPushButton("🔓 فعال‌سازی لایسنس")
+        self.activate_license_btn = QPushButton("🔓 فعال‌سازی")
         self.activate_license_btn.setFont(QFont("B Nazanin", 10))
         
-        self.purchase_license_btn = QPushButton("🛒 خرید لایسنس")
+        self.purchase_license_btn = QPushButton("🛒 خرید نسخه کامل")
         self.purchase_license_btn.setFont(QFont("B Nazanin", 10))
         
         buttons_layout.addWidget(self.activate_license_btn)
         buttons_layout.addWidget(self.purchase_license_btn)
         license_layout.addLayout(buttons_layout)
+        
+        # License info (single type)
+        info_text = QLabel("""
+💡 نسخه کامل:
+• کپی نامحدود فایل‌ها
+• پشتیبانی کامل
+• بروزرسانی مادام‌العمر
+• قیمت: 500,000 تومان
+        """)
+        info_text.setFont(QFont("B Nazanin", 9))
+        info_text.setWordWrap(True)
+        license_layout.addWidget(info_text)
         
         parent_layout.addWidget(license_group)
     
@@ -1244,50 +1542,121 @@ class PersianFileCopierPyQt5(QMainWindow):
     def load_about_content(self, parent_layout):
         """بارگذاری محتوای درباره ما از فایل HTML"""
         try:
-            if os.path.exists("about_us.html"):
-                with open("about_us.html", 'r', encoding='utf-8') as f:
-                    html_content = f.read()
+            # Create HTML viewer
+            from PyQt5.QtWebKitWidgets import QWebView
+            try:
+                html_viewer = QWebView()
+                html_viewer.setFont(QFont("B Nazanin", 11))
                 
-                # Simple HTML to text conversion for display
-                import re
-                # Remove HTML tags but preserve structure
-                text_content = re.sub(r'<[^>]+>', '', html_content)
-                text_content = re.sub(r'\s+', ' ', text_content).strip()
+                if os.path.exists("about_us.html"):
+                    with open("about_us.html", 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                    html_viewer.setHtml(html_content)
+                else:
+                    # Default about content as HTML
+                    default_html = f"""
+                    <!DOCTYPE html>
+                    <html dir="rtl" lang="fa">
+                    <head>
+                        <meta charset="UTF-8">
+                        <style>
+                            body {{
+                                font-family: 'B Nazanin', Tahoma, Arial;
+                                font-size: 14px;
+                                line-height: 1.6;
+                                color: #333;
+                                direction: rtl;
+                                padding: 20px;
+                            }}
+                            h1 {{ color: #0078d4; text-align: center; }}
+                            h2 {{ color: #106ebe; }}
+                            .feature {{ margin: 10px 0; }}
+                            .company {{ 
+                                background: #f0f8ff; 
+                                padding: 15px; 
+                                border-radius: 8px;
+                                text-align: center;
+                                margin: 20px 0;
+                            }}
+                        </style>
+                    </head>
+                    <body>
+                        <h1>{self.config.get('app_settings', 'app_name')}</h1>
+                        
+                        <p>نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف 
+                        تسهیل کار کاربران ایرانی طراحی شده است.</p>
+                        
+                        <h2>🔧 امکانات اصلی:</h2>
+                        <div class="feature">📁 مرور و جستجوی پیشرفته فایل‌ها</div>
+                        <div class="feature">🔍 فیلتر بر اساس نوع و اندازه فایل</div>
+                        <div class="feature">⚡ کپی چندگانه با نمایش پیشرفت</div>
+                        <div class="feature">🔤 پشتیبانی از فونت‌های فارسی</div>
+                        <div class="feature">🎨 رابط کاربری زیبا و کاربردی</div>
+                        <div class="feature">📊 مدیریت تسک‌های کپی</div>
+                        <div class="feature">🚀 عملکرد بالا و بهینه</div>
+                        
+                        <h2>💼 مزایای نسخه کامل:</h2>
+                        <div class="feature">✅ کپی نامحدود فایل‌ها</div>
+                        <div class="feature">📞 پشتیبانی 24/7</div>
+                        <div class="feature">🔄 بروزرسانی رایگان مادام‌العمر</div>
+                        <div class="feature">⚙️ امکانات پیشرفته کپی</div>
+                        
+                        <div class="company">
+                            <h2>{self.config.get('app_settings', 'company')}</h2>
+                            <p>📞 پشتیبانی: {self.config.get('zarinpal', 'support_telegram')}</p>
+                            <p>🌐 درگاه پرداخت: {self.config.get('zarinpal', 'payment_url')}</p>
+                        </div>
+                    </body>
+                    </html>
+                    """
+                    html_viewer.setHtml(default_html)
                 
+                parent_layout.addWidget(html_viewer)
+                
+            except ImportError:
+                # Fallback to QTextEdit with rich text
                 about_text = QTextEdit()
                 about_text.setFont(QFont("B Nazanin", 11))
-                about_text.setPlainText(text_content)
                 about_text.setReadOnly(True)
-                about_text.setMaximumHeight(200)
+                
+                if os.path.exists("about_us.html"):
+                    with open("about_us.html", 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                    about_text.setHtml(html_content)
+                else:
+                    # Default rich text content
+                    default_content = f"""
+                    <div style="font-family: 'B Nazanin', Tahoma; font-size: 12px; direction: rtl;">
+                        <h2 style="color: #0078d4; text-align: center;">{self.config.get('app_settings', 'app_name')}</h2>
+                        
+                        <p>نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف 
+                        تسهیل کار کاربران ایرانی طراحی شده است.</p>
+                        
+                        <h3 style="color: #106ebe;">🔧 امکانات اصلی:</h3>
+                        <ul>
+                            <li>📁 مرور و جستجوی پیشرفته فایل‌ها</li>
+                            <li>🔍 فیلتر بر اساس نوع و اندازه فایل</li>
+                            <li>⚡ کپی چندگانه با نمایش پیشرفت</li>
+                            <li>🔤 پشتیبانی از فونت‌های فارسی</li>
+                            <li>🎨 رابط کاربری زیبا و کاربردی</li>
+                        </ul>
+                        
+                        <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
+                            <h3>{self.config.get('app_settings', 'company')}</h3>
+                            <p>📞 پشتیبانی: {self.config.get('zarinpal', 'support_telegram')}</p>
+                        </div>
+                    </div>
+                    """
+                    about_text.setHtml(default_content)
                 
                 parent_layout.addWidget(about_text)
-            else:
-                # Default about content
-                default_text = f"""
-                {self.config.get('app_settings', 'app_name')} 
-                
-                نرم‌افزاری پیشرفته و قدرتمند برای مدیریت و کپی فایل‌ها است که با هدف 
-                تسهیل کار کاربران ایرانی طراحی شده است.
-                
-                امکانات:
-                • مرور و جستجوی پیشرفته فایل‌ها
-                • فیلتر بر اساس نوع و اندازه فایل  
-                • کپی چندگانه با نمایش پیشرفت
-                • پشتیبانی از فونت‌های فارسی
-                • رابط کاربری زیبا و کاربردی
-                
-                {self.config.get('app_settings', 'company')}
-                """
-                
-                about_label = QLabel(default_text)
-                about_label.setFont(QFont("B Nazanin", 11))
-                about_label.setWordWrap(True)
-                about_label.setAlignment(Qt.AlignRight)
-                
-                parent_layout.addWidget(about_label)
                 
         except Exception as e:
             print(f"Error loading about content: {e}")
+            # Fallback to simple text
+            fallback_label = QLabel(f"خطا در بارگذاری محتوا: {e}")
+            fallback_label.setFont(QFont("B Nazanin", 11))
+            parent_layout.addWidget(fallback_label)
     
     def create_status_bar(self):
         """ایجاد نوار وضعیت"""
@@ -1340,21 +1709,36 @@ class PersianFileCopierPyQt5(QMainWindow):
     
     def setup_styling(self):
         """تنظیم استایل و تم برنامه"""
-        # Dark theme styling
-        self.setStyleSheet("""
+        theme = self.config.get('ui_settings', 'theme', 'dark')
+        self.apply_theme(theme)
+    
+    def apply_theme(self, theme_name):
+        """اعمال تم مشخص"""
+        if theme_name == "light":
+            self.setStyleSheet(self.get_light_theme())
+        elif theme_name == "blue":
+            self.setStyleSheet(self.get_blue_theme())
+        elif theme_name == "green":
+            self.setStyleSheet(self.get_green_theme())
+        else:  # dark
+            self.setStyleSheet(self.get_dark_theme())
+    
+    def get_dark_theme(self):
+        """تم تیره بهبود یافته"""
+        return """
             QMainWindow {
-                background-color: #2b2b2b;
+                background-color: #404040;
                 color: #ffffff;
             }
             QTabWidget::pane {
-                border: 1px solid #555555;
-                background-color: #3c3c3c;
+                border: 1px solid #666666;
+                background-color: #4a4a4a;
             }
             QTabWidget::tab-bar {
                 alignment: right;
             }
             QTabBar::tab {
-                background-color: #555555;
+                background-color: #606060;
                 color: #ffffff;
                 padding: 8px 16px;
                 margin: 2px;
@@ -1366,28 +1750,31 @@ class PersianFileCopierPyQt5(QMainWindow):
                 border-bottom: 2px solid #ffffff;
             }
             QTabBar::tab:hover {
-                background-color: #666666;
+                background-color: #707070;
             }
             QGroupBox {
                 font-weight: bold;
-                border: 2px solid #555555;
-                border-radius: 5px;
-                margin: 5px;
-                padding-top: 10px;
+                border: 2px solid #666666;
+                border-radius: 6px;
+                margin: 6px;
+                padding-top: 12px;
                 color: #ffffff;
+                background-color: #4a4a4a;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
-                padding: 0 5px 0 5px;
+                padding: 0 8px 0 8px;
+                background-color: #4a4a4a;
             }
             QPushButton {
                 background-color: #0078d4;
                 color: white;
                 border: none;
-                padding: 6px 12px;
-                border-radius: 3px;
+                padding: 8px 16px;
+                border-radius: 4px;
                 font-weight: bold;
+                min-height: 20px;
             }
             QPushButton:hover {
                 background-color: #106ebe;
@@ -1400,65 +1787,345 @@ class PersianFileCopierPyQt5(QMainWindow):
                 color: #999999;
             }
             QTreeWidget, QTableWidget {
-                border: 1px solid #555555;
-                alternate-background-color: #404040;
-                background-color: #3c3c3c;
+                border: 1px solid #666666;
+                alternate-background-color: #4f4f4f;
+                background-color: #454545;
                 color: #ffffff;
+                gridline-color: #666666;
             }
             QTreeWidget::item:selected, QTableWidget::item:selected {
                 background-color: #0078d4;
                 color: white;
             }
+            QTreeWidget::item:hover, QTableWidget::item:hover {
+                background-color: #555555;
+            }
+            QHeaderView::section {
+                background-color: #606060;
+                color: #ffffff;
+                padding: 4px;
+                border: 1px solid #666666;
+            }
             QProgressBar {
-                border: 1px solid #555555;
-                border-radius: 3px;
+                border: 1px solid #666666;
+                border-radius: 4px;
                 text-align: center;
                 color: #ffffff;
-                background-color: #404040;
+                background-color: #4a4a4a;
+                height: 18px;
             }
             QProgressBar::chunk {
                 background-color: #0078d4;
-                border-radius: 2px;
+                border-radius: 3px;
             }
             QLineEdit, QComboBox {
-                border: 1px solid #555555;
-                border-radius: 3px;
-                padding: 4px;
-                background-color: #404040;
+                border: 1px solid #666666;
+                border-radius: 4px;
+                padding: 6px;
+                background-color: #4a4a4a;
                 color: #ffffff;
+                selection-background-color: #0078d4;
             }
             QLineEdit:focus, QComboBox:focus {
                 border: 2px solid #0078d4;
             }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border: 1px solid #666666;
+                width: 8px;
+                height: 8px;
+                background-color: #ffffff;
+            }
             QFrame {
-                background-color: #3c3c3c;
-                border: 1px solid #555555;
+                background-color: #4a4a4a;
+                border: 1px solid #666666;
+                border-radius: 4px;
             }
             QLabel {
                 color: #ffffff;
             }
             QStatusBar {
-                background-color: #2b2b2b;
+                background-color: #404040;
                 color: #ffffff;
-                border-top: 1px solid #555555;
+                border-top: 1px solid #666666;
             }
             QMenuBar {
-                background-color: #2b2b2b;
+                background-color: #404040;
                 color: #ffffff;
-                border-bottom: 1px solid #555555;
+                border-bottom: 1px solid #666666;
             }
             QMenuBar::item:selected {
                 background-color: #0078d4;
             }
             QMenu {
-                background-color: #3c3c3c;
+                background-color: #4a4a4a;
                 color: #ffffff;
-                border: 1px solid #555555;
+                border: 1px solid #666666;
             }
             QMenu::item:selected {
                 background-color: #0078d4;
             }
-        """)
+            QCheckBox {
+                color: #ffffff;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                background-color: #4a4a4a;
+                border: 1px solid #666666;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #0078d4;
+            }
+            QSpinBox {
+                border: 1px solid #666666;
+                border-radius: 4px;
+                padding: 4px;
+                background-color: #4a4a4a;
+                color: #ffffff;
+            }
+        """
+    
+    def get_light_theme(self):
+        """تم روشن"""
+        return """
+            QMainWindow {
+                background-color: #f5f5f5;
+                color: #333333;
+            }
+            QTabWidget::pane {
+                border: 1px solid #cccccc;
+                background-color: #ffffff;
+            }
+            QTabBar::tab {
+                background-color: #e0e0e0;
+                color: #333333;
+                padding: 8px 16px;
+                margin: 2px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected {
+                background-color: #0078d4;
+                color: white;
+            }
+            QTabBar::tab:hover {
+                background-color: #d0d0d0;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #cccccc;
+                border-radius: 6px;
+                margin: 6px;
+                padding-top: 12px;
+                color: #333333;
+                background-color: #ffffff;
+            }
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+            QPushButton:pressed {
+                background-color: #005a9e;
+            }
+            QTreeWidget, QTableWidget {
+                border: 1px solid #cccccc;
+                alternate-background-color: #f9f9f9;
+                background-color: #ffffff;
+                color: #333333;
+            }
+            QTreeWidget::item:selected, QTableWidget::item:selected {
+                background-color: #0078d4;
+                color: white;
+            }
+            QLineEdit, QComboBox {
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+                padding: 6px;
+                background-color: #ffffff;
+                color: #333333;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border: 2px solid #0078d4;
+            }
+            QFrame {
+                background-color: #ffffff;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+            QLabel {
+                color: #333333;
+            }
+        """
+    
+    def get_blue_theme(self):
+        """تم آبی"""
+        return """
+            QMainWindow {
+                background-color: #2c3e50;
+                color: #ecf0f1;
+            }
+            QTabWidget::pane {
+                border: 1px solid #34495e;
+                background-color: #34495e;
+            }
+            QTabBar::tab {
+                background-color: #34495e;
+                color: #ecf0f1;
+                padding: 8px 16px;
+                margin: 2px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QTabBar::tab:hover {
+                background-color: #34495e;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #34495e;
+                border-radius: 6px;
+                margin: 6px;
+                padding-top: 12px;
+                color: #ecf0f1;
+                background-color: #34495e;
+            }
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #21618c;
+            }
+            QTreeWidget, QTableWidget {
+                border: 1px solid #34495e;
+                alternate-background-color: #2c3e50;
+                background-color: #34495e;
+                color: #ecf0f1;
+            }
+            QTreeWidget::item:selected, QTableWidget::item:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QLineEdit, QComboBox {
+                border: 1px solid #34495e;
+                border-radius: 4px;
+                padding: 6px;
+                background-color: #2c3e50;
+                color: #ecf0f1;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border: 2px solid #3498db;
+            }
+            QFrame {
+                background-color: #34495e;
+                border: 1px solid #2c3e50;
+                border-radius: 4px;
+            }
+            QLabel {
+                color: #ecf0f1;
+            }
+        """
+    
+    def get_green_theme(self):
+        """تم سبز"""
+        return """
+            QMainWindow {
+                background-color: #27ae60;
+                color: #ffffff;
+            }
+            QTabWidget::pane {
+                border: 1px solid #2ecc71;
+                background-color: #2ecc71;
+            }
+            QTabBar::tab {
+                background-color: #2ecc71;
+                color: #ffffff;
+                padding: 8px 16px;
+                margin: 2px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected {
+                background-color: #27ae60;
+                color: white;
+            }
+            QTabBar::tab:hover {
+                background-color: #2ecc71;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #2ecc71;
+                border-radius: 6px;
+                margin: 6px;
+                padding-top: 12px;
+                color: #ffffff;
+                background-color: #2ecc71;
+            }
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #229954;
+            }
+            QPushButton:pressed {
+                background-color: #1e8449;
+            }
+            QTreeWidget, QTableWidget {
+                border: 1px solid #2ecc71;
+                alternate-background-color: #27ae60;
+                background-color: #2ecc71;
+                color: #ffffff;
+            }
+            QTreeWidget::item:selected, QTableWidget::item:selected {
+                background-color: #27ae60;
+                color: white;
+            }
+            QLineEdit, QComboBox {
+                border: 1px solid #2ecc71;
+                border-radius: 4px;
+                padding: 6px;
+                background-color: #27ae60;
+                color: #ffffff;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border: 2px solid #229954;
+            }
+            QFrame {
+                background-color: #2ecc71;
+                border: 1px solid #27ae60;
+                border-radius: 4px;
+            }
+            QLabel {
+                color: #ffffff;
+            }
+        """
     
     def setup_connections(self):
         """اتصال سیگنال‌ها و اسلات‌ها"""
@@ -1487,6 +2154,7 @@ class PersianFileCopierPyQt5(QMainWindow):
         
         # Settings buttons
         self.apply_font_btn.clicked.connect(self.apply_font_settings)
+        self.apply_settings_btn.clicked.connect(self.apply_all_settings)
         self.paste_license_btn.clicked.connect(self.paste_license_key)
         self.activate_license_btn.clicked.connect(self.activate_license)
         self.purchase_license_btn.clicked.connect(self.purchase_license)
@@ -1770,45 +2438,73 @@ class PersianFileCopierPyQt5(QMainWindow):
             
             # Source (file count)
             source_text = f"{len(file_paths)} فایل"
-            self.tasks_table.setItem(row, 0, QTableWidgetItem(source_text))
+            source_item = QTableWidgetItem(source_text)
+            source_item.setFont(QFont("B Nazanin", 8))
+            self.tasks_table.setItem(row, 0, source_item)
             
             # Destination
             dest_text = os.path.basename(destination) or destination
-            self.tasks_table.setItem(row, 1, QTableWidgetItem(dest_text))
+            dest_item = QTableWidgetItem(dest_text)
+            dest_item.setFont(QFont("B Nazanin", 8))
+            self.tasks_table.setItem(row, 1, dest_item)
             
-            # Progress bar
+            # Progress with speed combined
+            progress_widget = QWidget()
+            progress_layout = QVBoxLayout(progress_widget)
+            progress_layout.setContentsMargins(2, 2, 2, 2)
+            progress_layout.setSpacing(1)
+            
             progress_bar = QProgressBar()
-            progress_bar.setFont(QFont("B Nazanin", 8))
-            self.tasks_table.setCellWidget(row, 2, progress_bar)
+            progress_bar.setFont(QFont("B Nazanin", 7))
+            progress_bar.setMaximumHeight(12)
+            progress_layout.addWidget(progress_bar)
             
-            # Speed
-            self.tasks_table.setItem(row, 3, QTableWidgetItem("0 MB/s"))
+            speed_label = QLabel("0 MB/s")
+            speed_label.setFont(QFont("B Nazanin", 7))
+            speed_label.setAlignment(Qt.AlignCenter)
+            progress_layout.addWidget(speed_label)
             
-            # ETA
-            self.tasks_table.setItem(row, 4, QTableWidgetItem("محاسبه..."))
+            self.tasks_table.setCellWidget(row, 2, progress_widget)
             
-            # Control buttons
+            # Status
+            status_item = QTableWidgetItem("شروع...")
+            status_item.setFont(QFont("B Nazanin", 8))
+            self.tasks_table.setItem(row, 3, status_item)
+            
+            # Individual control buttons
             control_widget = QWidget()
             control_layout = QHBoxLayout(control_widget)
-            control_layout.setContentsMargins(2, 2, 2, 2)
+            control_layout.setContentsMargins(1, 1, 1, 1)
+            control_layout.setSpacing(1)
             
             pause_btn = QPushButton("⏸️")
-            pause_btn.setMaximumSize(30, 25)
-            pause_btn.setFont(QFont("Arial", 8))
+            pause_btn.setMaximumSize(20, 20)
+            pause_btn.setFont(QFont("Arial", 7))
+            pause_btn.setToolTip("مکث")
             pause_btn.clicked.connect(lambda: self.pause_task(task_id))
             
+            resume_btn = QPushButton("▶️")
+            resume_btn.setMaximumSize(20, 20)
+            resume_btn.setFont(QFont("Arial", 7))
+            resume_btn.setToolTip("ادامه")
+            resume_btn.clicked.connect(lambda: self.resume_task(task_id))
+            
             cancel_btn = QPushButton("❌")
-            cancel_btn.setMaximumSize(30, 25)
-            cancel_btn.setFont(QFont("Arial", 8))
+            cancel_btn.setMaximumSize(20, 20)
+            cancel_btn.setFont(QFont("Arial", 7))
+            cancel_btn.setToolTip("لغو")
             cancel_btn.clicked.connect(lambda: self.cancel_task(task_id))
             
             control_layout.addWidget(pause_btn)
+            control_layout.addWidget(resume_btn)
             control_layout.addWidget(cancel_btn)
             
-            self.tasks_table.setCellWidget(row, 5, control_widget)
+            self.tasks_table.setCellWidget(row, 4, control_widget)
             
-            # Store row index for updates
+            # Store row index and widgets for updates
             self.active_tasks[task_id]['row'] = row
+            self.active_tasks[task_id]['progress_bar'] = progress_bar
+            self.active_tasks[task_id]['speed_label'] = speed_label
             
         except Exception as e:
             print(f"Error adding task to table: {e}")
@@ -1819,26 +2515,27 @@ class PersianFileCopierPyQt5(QMainWindow):
             if task_id in self.active_tasks:
                 task = self.active_tasks[task_id]
                 task['progress'] = progress
+                
+                # Update progress bar and speed in the combined widget
+                progress_bar = task.get('progress_bar')
+                speed_label = task.get('speed_label')
+                
+                if progress_bar:
+                    progress_bar.setValue(progress)
+                    progress_bar.setFormat(f"{progress}%")
+                
+                if speed_label:
+                    speed_label.setText(speed)
+                
+                # Update status
                 row = task.get('row', -1)
-                
                 if row >= 0:
-                    # Update progress bar
-                    progress_bar = self.tasks_table.cellWidget(row, 2)
-                    if progress_bar:
-                        progress_bar.setValue(progress)
-                    
-                    # Update speed
-                    speed_item = self.tasks_table.item(row, 3)
-                    if speed_item:
-                        speed_item.setText(speed)
-                    
-                    # Update ETA
-                    eta_item = self.tasks_table.item(row, 4)
-                    if eta_item:
-                        eta_item.setText(eta)
-                
-                # Update overall progress
-                self.update_overall_progress()
+                    status_item = self.tasks_table.item(row, 3)
+                    if status_item:
+                        if progress < 100:
+                            status_item.setText(f"در حال کپی... {eta}")
+                        else:
+                            status_item.setText("تکمیل شد")
                 
         except Exception as e:
             print(f"Error updating task progress: {e}")
@@ -1850,25 +2547,22 @@ class PersianFileCopierPyQt5(QMainWindow):
                 task = self.active_tasks[task_id]
                 task['status'] = 'completed' if success else 'failed'
                 
+                # Update progress bar and status
+                progress_bar = task.get('progress_bar')
+                if progress_bar and success:
+                    progress_bar.setValue(100)
+                    progress_bar.setFormat("100%")
+                
+                # Update status in table
                 row = task.get('row', -1)
                 if row >= 0:
-                    # Update progress to 100% if successful
-                    if success:
-                        progress_bar = self.tasks_table.cellWidget(row, 2)
-                        if progress_bar:
-                            progress_bar.setValue(100)
-                    
-                    # Update ETA to show completion
-                    eta_item = self.tasks_table.item(row, 4)
-                    if eta_item:
-                        eta_item.setText("تکمیل شد" if success else "خطا")
+                    status_item = self.tasks_table.item(row, 3)
+                    if status_item:
+                        status_item.setText("✅ تکمیل شد" if success else "❌ خطا")
                 
                 # Show notification
                 toast_type = "success" if success else "error"
                 self.show_toast(message, toast_type)
-                
-                # Update overall progress
-                self.update_overall_progress()
                 
                 # Auto-remove completed tasks after delay
                 QTimer.singleShot(30000, lambda: self.remove_completed_task(task_id))
@@ -1880,40 +2574,7 @@ class PersianFileCopierPyQt5(QMainWindow):
         """خطا در تسک"""
         self.show_toast(f"خطا در تسک {task_id}: {error_message}", "error")
     
-    def update_overall_progress(self):
-        """بروزرسانی پیشرفت کلی"""
-        try:
-            if not self.active_tasks:
-                self.overall_progress.setValue(0)
-                self.overall_status_label.setText("آماده")
-                return
-            
-            total_progress = 0
-            active_count = 0
-            completed_count = 0
-            
-            for task in self.active_tasks.values():
-                if task['status'] == 'running':
-                    total_progress += task['progress']
-                    active_count += 1
-                elif task['status'] in ['completed', 'failed']:
-                    total_progress += 100
-                    completed_count += 1
-            
-            total_tasks = len(self.active_tasks)
-            if total_tasks > 0:
-                overall = int(total_progress / total_tasks)
-                self.overall_progress.setValue(overall)
-                
-                if active_count > 0:
-                    self.overall_status_label.setText(f"در حال کپی - {active_count} تسک فعال")
-                elif completed_count == total_tasks:
-                    self.overall_status_label.setText("همه تسک‌ها تکمیل شدند")
-                else:
-                    self.overall_status_label.setText("آماده")
-            
-        except Exception as e:
-            print(f"Error updating overall progress: {e}")
+
     
     def pause_task(self, task_id: str):
         """مکث تسک"""
@@ -1999,7 +2660,6 @@ class PersianFileCopierPyQt5(QMainWindow):
                             other_task['row'] -= 1
                 
                 del self.active_tasks[task_id]
-                self.update_overall_progress()
                 
         except Exception as e:
             print(f"Error removing completed task: {e}")
@@ -2224,6 +2884,79 @@ class PersianFileCopierPyQt5(QMainWindow):
     def update_status(self, message: str):
         """بروزرسانی نوار وضعیت"""
         self.status_label.setText(message)
+    
+    def load_drives_list(self):
+        """بارگذاری لیست درایوها"""
+        try:
+            self.drive_list.clear()
+            
+            # Get all available drives
+            drives = []
+            for partition in psutil.disk_partitions():
+                if partition.mountpoint:
+                    try:
+                        usage = psutil.disk_usage(partition.mountpoint)
+                        free_space = self.format_size(usage.free)
+                        
+                        item = QTreeWidgetItem([
+                            partition.mountpoint,
+                            free_space
+                        ])
+                        self.drive_list.addTopLevelItem(item)
+                        
+                    except (PermissionError, OSError):
+                        continue
+            
+            # Auto resize columns
+            self.drive_list.resizeColumnToContents(0)
+            self.drive_list.resizeColumnToContents(1)
+            
+        except Exception as e:
+            print(f"Error loading drives: {e}")
+    
+    def format_size(self, size: int) -> str:
+        """فرمت اندازه فایل"""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size < 1024.0:
+                return f"{size:.1f} {unit}"
+            size /= 1024.0
+        return f"{size:.1f} PB"
+    
+    def apply_all_settings(self):
+        """اعمال همه تنظیمات"""
+        try:
+            # Apply font settings
+            font_family = self.font_family_combo.currentText()
+            font_size = self.font_size_spin.value()
+            
+            self.config.set('font_settings', 'primary_font', font_family)
+            self.config.set('font_settings', 'font_size', font_size)
+            
+            # Apply theme
+            theme_index = self.theme_combo.currentIndex()
+            theme_mapping = {0: "dark", 1: "light", 2: "blue", 3: "green"}
+            theme = theme_mapping.get(theme_index, "dark")
+            
+            self.config.set('ui_settings', 'theme', theme)
+            self.apply_theme(theme)
+            
+            # Apply other settings
+            self.config.set('ui_settings', 'animation_speed', self.animation_speed_spin.value())
+            self.config.set('ui_settings', 'toast_duration', self.toast_duration_spin.value())
+            self.config.set('file_operations', 'max_concurrent_tasks', self.max_tasks_spin.value())
+            self.config.set('file_operations', 'chunk_size', self.chunk_size_spin.value())
+            self.config.set('file_operations', 'verify_copy', self.verify_copy_check.isChecked())
+            self.config.set('file_operations', 'auto_retry', self.auto_retry_check.isChecked())
+            
+            # Apply font to application
+            font = QFont(font_family, font_size)
+            QApplication.instance().setFont(font)
+            
+            self.show_toast("همه تنظیمات با موفقیت اعمال شد", "success")
+            
+        except Exception as e:
+            print(f"Error applying settings: {e}")
+            self.show_toast(f"خطا در اعمال تنظیمات: {e}", "error")
     
     def closeEvent(self, event):
         """رویداد بستن برنامه"""
