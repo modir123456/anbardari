@@ -31,6 +31,7 @@ try:
     import win32file
     import win32api
     import win32con
+    import wmi
     WINDOWS_AVAILABLE = True
 except ImportError:
     WINDOWS_AVAILABLE = False
