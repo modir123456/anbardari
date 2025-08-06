@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Persian File Copier Pro - Simple Launcher
+Persian File Copier Pro - Modern Launcher
 🚀 FastAPI backend with modern HTML interface
+شرکت فناوری نوآوران مثبت سبز
 """
 
 import subprocess
@@ -29,7 +30,7 @@ def install_dependencies():
         for package in packages:
             print(f"   Installing {package}...")
             subprocess.run([
-                sys.executable, "-m", "pip", "install", package
+                sys.executable, "-m", "pip", "install", package, "--break-system-packages"
             ], capture_output=True, check=True)
         
         print("✅ All dependencies installed successfully")
@@ -81,34 +82,25 @@ def open_interface():
     
     # Try different interface options
     interfaces = [
-        ("Modern Test UI", "test_modern_ui.html"),
+        ("Modern UI", "http://localhost:8000"),
         ("API Documentation", "http://localhost:8000/docs"),
-        ("API Root", "http://localhost:8000")
     ]
     
     print("\n🌐 Available interfaces:")
-    for i, (name, path) in enumerate(interfaces, 1):
-        print(f"   {i}. {name}")
+    for i, (name, url) in enumerate(interfaces, 1):
+        print(f"   {i}. {name} - {url}")
     
-    # Auto-open the best available option
-    test_ui = Path("test_modern_ui.html")
-    if test_ui.exists():
-        file_url = f"file://{test_ui.absolute()}"
-        print(f"\n🚀 Opening: {file_url}")
-        try:
-            webbrowser.open(file_url)
-        except:
-            print(f"📋 Please manually open: {file_url}")
-    else:
-        print("\n🚀 Opening API documentation...")
-        try:
-            webbrowser.open("http://localhost:8000/docs")
-        except:
-            print("📋 Please manually open: http://localhost:8000/docs")
+    # Auto-open the main interface
+    main_url = "http://localhost:8000"
+    print(f"\n🚀 Opening: {main_url}")
+    try:
+        webbrowser.open(main_url)
+    except:
+        print(f"📋 Please manually open: {main_url}")
 
 def main():
     """Main function"""
-    print("🚀 Persian File Copier Pro - Simple Launcher")
+    print("🚀 Persian File Copier Pro - Modern Launcher")
     print("=" * 50)
     
     # Install dependencies
@@ -126,9 +118,8 @@ def main():
     
     print("\n" + "=" * 50)
     print("✅ Persian File Copier Pro is running!")
-    print("🌐 Backend API: http://localhost:8000")
+    print("🌐 Main Interface: http://localhost:8000")
     print("📖 API Documentation: http://localhost:8000/docs")
-    print("🎨 Test Interface: test_modern_ui.html")
     print("⏹️  Press Ctrl+C to stop")
     print("=" * 50)
     
