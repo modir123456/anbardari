@@ -165,7 +165,11 @@ class DeviceDetector:
                 if disk.MediaType and 'SSD' in disk.MediaType:
                     return True
             return False
-        except:
+        except ImportError:
+            logger.warning("WMI module not available for SSD detection")
+            return False
+        except Exception as e:
+            logger.error(f"Error detecting SSD: {e}")
             return False
     
     def scan_mtp_devices(self) -> List[Dict]:
@@ -195,8 +199,11 @@ class DeviceDetector:
                         'type': 'MTP',
                         'status': device.Status or 'Unknown'
                     })
+        except ImportError:
+            logger.warning("WMI module not available for MTP detection")
+            return []
         except Exception as e:
-            logger.error(f"Error scanning Windows MTP: {e}")
+            logger.debug(f"MTP scan failed (normal if no MTP devices): {e}")
         
         return devices
 
