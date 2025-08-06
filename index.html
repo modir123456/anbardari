@@ -767,6 +767,49 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
         }
+
+        /* License Status Styles */
+        .license-status {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .license-status.pro {
+            border-color: rgba(76, 175, 80, 0.5);
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(67, 160, 71, 0.1));
+        }
+
+        .license-status.trial {
+            border-color: rgba(255, 152, 0, 0.5);
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(245, 124, 0, 0.1));
+        }
+
+        .license-status.expired {
+            border-color: rgba(244, 67, 54, 0.5);
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(211, 47, 47, 0.1));
+        }
+
+        .license-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .license-info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .license-key-display {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body class="theme-light">
@@ -994,6 +1037,39 @@
                     <div class="setting-item">
                         <div>تشخیص خودکار دستگاه</div>
                         <div class="toggle-switch active" onclick="toggleSetting(this, 'auto_device_detect')"></div>
+                    </div>
+                </div>
+
+                <!-- License Settings -->
+                <div class="settings-group">
+                    <h4>🔐 مدیریت لایسنس</h4>
+                    
+                    <div id="license-status" class="license-status">
+                        <!-- License info will be loaded here -->
+                    </div>
+                    
+                    <div class="setting-item" style="flex-direction: column; align-items: stretch;">
+                        <label style="margin-bottom: 0.5rem; font-weight: 600;">کلید لایسنس:</label>
+                        <input type="text" id="license-key-input" placeholder="PFC-PRO-2024-XXXXXXXX-XXXX" 
+                               style="padding: 0.8rem; border: 2px solid var(--border-color); border-radius: 8px; font-family: 'Courier New', monospace; margin-bottom: 1rem;">
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn btn-primary" onclick="activateLicense()" style="flex: 1;">
+                                🔑 فعال‌سازی لایسنس
+                            </button>
+                            <button class="btn btn-secondary" onclick="showLicenseGenerator()" style="flex: 1;">
+                                ⚙️ تولید لایسنس
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <div>Machine ID</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); font-family: monospace;" id="machine-id">
+                                در حال بارگیری...
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="copyMachineId()" style="padding: 0.5rem;">📋</button>
                     </div>
                 </div>
             </div>
@@ -1621,25 +1697,135 @@
             loadTasks();
         }
 
-        // Additional Functions (Stubs for context menu)
-        function copyToDestination() {
-            console.log('Copy to destination');
+        // Context Menu Functions
+        async function copyToDestination() {
+            const filesToCopy = window.contextIsSelected ? selectedFiles : [window.contextFilePath];
+            
+            if (filesToCopy.length === 0) {
+                showNotification('هیچ فایلی انتخاب نشده', 'warning');
+                return;
+            }
+            
+            const result = await Swal.fire({
+                title: 'انتخاب مقصد',
+                html: '<div id="destination-drives"></div>',
+                showCancelButton: true,
+                confirmButtonText: 'کپی',
+                cancelButtonText: 'انصراف',
+                didOpen: async () => {
+                    // Load drives for selection
+                    try {
+                        const response = await fetch('/api/drives');
+                        const data = await response.json();
+                        
+                        let drivesHtml = '';
+                        data.drives.forEach(drive => {
+                            drivesHtml += `
+                                <div class="drive-option" data-path="${drive.path}" style="padding: 1rem; margin: 0.5rem 0; border: 2px solid #ddd; border-radius: 8px; cursor: pointer;">
+                                    <strong>${drive.label || drive.name}</strong> (${drive.path})
+                                    <br><small>${formatFileSize(drive.free_space)} آزاد</small>
+                                </div>
+                            `;
+                        });
+                        
+                        $('#destination-drives').html(drivesHtml);
+                        
+                        $('.drive-option').click(function() {
+                            $('.drive-option').removeClass('selected').css('border-color', '#ddd');
+                            $(this).addClass('selected').css('border-color', '#667eea');
+                            window.selectedDestination = $(this).data('path');
+                        });
+                        
+                    } catch (error) {
+                        $('#destination-drives').html('<p style="color: red;">خطا در بارگیری درایوها</p>');
+                    }
+                },
+                preConfirm: () => {
+                    if (!window.selectedDestination) {
+                        Swal.showValidationMessage('لطفاً درایو مقصد را انتخاب کنید');
+                        return false;
+                    }
+                    return window.selectedDestination;
+                }
+            });
+            
+            if (result.isConfirmed) {
+                startCopyOperation(filesToCopy, result.value);
+            }
+            
+            $('#context-menu').hide();
         }
 
         function moveToDestination() {
-            console.log('Move to destination');
+            showNotification('قابلیت انتقال در نسخه بعدی اضافه می‌شود', 'info');
+            $('#context-menu').hide();
         }
 
         function openFile() {
-            console.log('Open file');
+            const filePath = window.contextFilePath;
+            if (filePath) {
+                // Try to open file with system default application
+                showNotification('باز کردن فایل با برنامه پیش‌فرض...', 'info');
+                
+                // This would need to be implemented on the backend
+                fetch('/api/open-file', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({file_path: filePath})
+                }).catch(error => {
+                    console.log('Open file not implemented on backend');
+                });
+            }
+            $('#context-menu').hide();
         }
 
         function copyFilePath() {
-            console.log('Copy file path');
+            const filePath = window.contextFilePath;
+            if (filePath) {
+                navigator.clipboard.writeText(filePath).then(() => {
+                    showNotification('مسیر فایل کپی شد', 'success');
+                }).catch(() => {
+                    showNotification('خطا در کپی کردن مسیر', 'error');
+                });
+            }
+            $('#context-menu').hide();
         }
 
-        function showFileProperties() {
-            console.log('Show file properties');
+        async function showFileProperties() {
+            const filePath = window.contextFilePath;
+            if (!filePath) return;
+            
+            // Find file info from current file list
+            const fileItems = $('.file-item');
+            let fileInfo = null;
+            
+            fileItems.each(function() {
+                if ($(this).data('path') === filePath) {
+                    fileInfo = {
+                        path: filePath,
+                        name: $(this).find('.file-name').text(),
+                        size: $(this).data('size'),
+                        type: $(this).data('type')
+                    };
+                }
+            });
+            
+            if (fileInfo) {
+                Swal.fire({
+                    title: '🔍 ویژگی‌های فایل',
+                    html: `
+                        <div style="text-align: right; line-height: 2;">
+                            <p><strong>📄 نام فایل:</strong> ${fileInfo.name}</p>
+                            <p><strong>📂 مسیر:</strong> ${fileInfo.path}</p>
+                            <p><strong>📏 اندازه:</strong> ${formatFileSize(fileInfo.size)}</p>
+                            <p><strong>📋 نوع:</strong> ${fileInfo.type || 'فایل'}</p>
+                        </div>
+                    `,
+                    confirmButtonText: 'بستن'
+                });
+            }
+            
+            $('#context-menu').hide();
         }
 
         function selectDrive() {
@@ -1706,6 +1892,226 @@
             const savedTheme = localStorage.getItem('theme') || 'light';
             $('body').removeClass().addClass(`theme-${savedTheme}`);
             $(`.theme-option[data-theme="${savedTheme}"]`).addClass('active').siblings().removeClass('active');
+            
+            // Load license information
+            loadLicenseInfo();
+        }
+
+        // License Management Functions
+        async function loadLicenseInfo() {
+            try {
+                const response = await fetch('/api/license');
+                const licenseInfo = await response.json();
+                
+                displayLicenseStatus(licenseInfo);
+                $('#machine-id').text(licenseInfo.machine_id || 'نامشخص');
+                
+            } catch (error) {
+                console.error('Error loading license info:', error);
+                $('#license-status').html(`
+                    <div style="text-align: center; color: #f44336;">
+                        خطا در بارگیری اطلاعات لایسنس
+                    </div>
+                `);
+            }
+        }
+
+        function displayLicenseStatus(licenseInfo) {
+            const statusDiv = $('#license-status');
+            let statusClass = licenseInfo.status;
+            let statusText = '';
+            let statusIcon = '';
+            
+            switch (licenseInfo.status) {
+                case 'pro':
+                    statusIcon = '✅';
+                    statusText = 'نسخه حرفه‌ای فعال';
+                    break;
+                case 'trial':
+                    statusIcon = '⏳';
+                    statusText = `دوره آزمایشی (${licenseInfo.trial_days_left} روز باقیمانده)`;
+                    break;
+                case 'expired':
+                    statusIcon = '❌';
+                    statusText = 'لایسنس منقضی شده';
+                    break;
+                default:
+                    statusIcon = '⚠️';
+                    statusText = 'وضعیت نامشخص';
+            }
+            
+            let html = `
+                <div class="license-info-item">
+                    <span><strong>${statusIcon} وضعیت:</strong></span>
+                    <span>${statusText}</span>
+                </div>
+            `;
+            
+            if (licenseInfo.license_key && licenseInfo.license_key !== 'TRIAL') {
+                html += `
+                    <div class="license-info-item">
+                        <span><strong>🔑 کلید لایسنس:</strong></span>
+                        <span class="license-key-display">${licenseInfo.license_key}</span>
+                    </div>
+                `;
+            }
+            
+            if (licenseInfo.activation_date) {
+                const activationDate = new Date(licenseInfo.activation_date * 1000).toLocaleDateString('fa-IR');
+                html += `
+                    <div class="license-info-item">
+                        <span><strong>📅 تاریخ فعال‌سازی:</strong></span>
+                        <span>${activationDate}</span>
+                    </div>
+                `;
+            }
+            
+            if (licenseInfo.expiry_date) {
+                const expiryDate = new Date(licenseInfo.expiry_date * 1000).toLocaleDateString('fa-IR');
+                html += `
+                    <div class="license-info-item">
+                        <span><strong>⏰ تاریخ انقضا:</strong></span>
+                        <span>${expiryDate}</span>
+                    </div>
+                `;
+            }
+            
+            statusDiv.removeClass('pro trial expired').addClass(statusClass).html(html);
+        }
+
+        async function activateLicense() {
+            const licenseKey = $('#license-key-input').val().trim();
+            
+            if (!licenseKey) {
+                showNotification('لطفاً کلید لایسنس را وارد کنید', 'warning');
+                return;
+            }
+            
+            try {
+                showNotification('در حال فعال‌سازی لایسنس...', 'info');
+                
+                const response = await fetch('/api/license/activate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({license_key: licenseKey})
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(result.message, 'success');
+                    $('#license-key-input').val('');
+                    loadLicenseInfo();
+                    
+                    // Reload config to update features
+                    const configResponse = await fetch('/api/config');
+                    CONFIG = await configResponse.json();
+                    
+                } else {
+                    showNotification(result.detail || 'خطا در فعال‌سازی لایسنس', 'error');
+                }
+                
+            } catch (error) {
+                console.error('License activation error:', error);
+                showNotification('خطا در ارتباط با سرور', 'error');
+            }
+        }
+
+        async function showLicenseGenerator() {
+            const result = await Swal.fire({
+                title: '🔧 تولید لایسنس جدید',
+                html: `
+                    <div style="text-align: right;">
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">کلید مدیر:</label>
+                            <input type="password" id="admin-key" class="swal2-input" placeholder="کلید مدیریت را وارد کنید">
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">نوع لایسنس:</label>
+                            <select id="license-type" class="swal2-input">
+                                <option value="pro">نسخه حرفه‌ای (Pro)</option>
+                                <option value="standard">نسخه استاندارد</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '🔑 تولید لایسنس',
+                cancelButtonText: 'انصراف',
+                preConfirm: async () => {
+                    const adminKey = document.getElementById('admin-key').value;
+                    const licenseType = document.getElementById('license-type').value;
+                    
+                    if (!adminKey) {
+                        Swal.showValidationMessage('کلید مدیر ضروری است');
+                        return false;
+                    }
+                    
+                    try {
+                        const response = await fetch('/api/license/generate', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                admin_key: adminKey,
+                                type: licenseType
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (response.ok) {
+                            return result;
+                        } else {
+                            throw new Error(result.detail || 'خطا در تولید لایسنس');
+                        }
+                        
+                    } catch (error) {
+                        Swal.showValidationMessage(error.message);
+                        return false;
+                    }
+                }
+            });
+            
+            if (result.isConfirmed && result.value) {
+                const licenseData = result.value;
+                
+                Swal.fire({
+                    title: '✅ لایسنس تولید شد',
+                    html: `
+                        <div style="text-align: center;">
+                            <div style="background: #f0f0f0; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 1.1rem; font-weight: bold; word-break: break-all;">
+                                ${licenseData.license_key}
+                            </div>
+                            <p style="margin-top: 1rem; color: #666;">
+                                نوع: ${licenseData.type}<br>
+                                تاریخ تولید: ${new Date(licenseData.generated_at).toLocaleDateString('fa-IR')}
+                            </p>
+                        </div>
+                    `,
+                    confirmButtonText: '📋 کپی لایسنس',
+                    showCancelButton: true,
+                    cancelButtonText: 'بستن'
+                }).then((copyResult) => {
+                    if (copyResult.isConfirmed) {
+                        navigator.clipboard.writeText(licenseData.license_key).then(() => {
+                            showNotification('لایسنس کپی شد', 'success');
+                        }).catch(() => {
+                            showNotification('خطا در کپی کردن', 'error');
+                        });
+                    }
+                });
+            }
+        }
+
+        function copyMachineId() {
+            const machineId = $('#machine-id').text();
+            if (machineId && machineId !== 'در حال بارگیری...') {
+                navigator.clipboard.writeText(machineId).then(() => {
+                    showNotification('Machine ID کپی شد', 'success');
+                }).catch(() => {
+                    showNotification('خطا در کپی کردن', 'error');
+                });
+            }
         }
 
         function handleFileClick() {

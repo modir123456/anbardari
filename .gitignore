@@ -89,6 +89,10 @@ downloads/
 .env.test.local
 .env.production.local
 
+# License files
+generated_licenses.json
+license_*.json
+
 # Build artifacts
 installer/
 portable/

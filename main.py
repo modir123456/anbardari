@@ -627,12 +627,255 @@ file_ops = FileOperationsManager()
 class LicenseManager:
     def __init__(self):
         self.is_pro = False
+        self.license_key = None
+        self.activation_date = None
+        self.expiry_date = None
+        self.machine_id = self._get_machine_id()
+        self.trial_days_left = 30
         self.check_license()
     
+    def _get_machine_id(self) -> str:
+        """Generate unique machine ID"""
+        import uuid, platform
+        try:
+            # Use MAC address and hostname for unique ID
+            mac = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) 
+                           for elements in range(0,2*6,2)][::-1])
+            hostname = platform.node()
+            return hashlib.md5(f"{mac}-{hostname}".encode()).hexdigest()[:16]
+        except:
+            return hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:16]
+    
+    def _load_license_from_db(self):
+        """Load license from database"""
+        try:
+            conn = sqlite3.connect(db_manager.db_file)
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM license ORDER BY id DESC LIMIT 1')
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                return {
+                    'license_key': result[1],
+                    'status': result[2],
+                    'activated_at': result[3],
+                    'expires_at': result[4],
+                    'machine_id': result[5],
+                    'features': result[6]
+                }
+        except Exception as e:
+            logger.error(f"Error loading license: {e}")
+        return None
+    
+    def _save_license_to_db(self, license_data):
+        """Save license to database"""
+        try:
+            conn = sqlite3.connect(db_manager.db_file)
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO license 
+                (license_key, status, activated_at, expires_at, machine_id, features)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                license_data['license_key'],
+                license_data['status'],
+                license_data.get('activated_at'),
+                license_data.get('expires_at'),
+                license_data.get('machine_id'),
+                license_data.get('features', 'pro')
+            ))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logger.error(f"Error saving license: {e}")
+            return False
+    
+    def generate_license_key(self, license_type='pro', days=365) -> str:
+        """Generate a new license key"""
+        import secrets, base64
+        
+        # Generate random key components
+        prefix = "PFC-PRO" if license_type == 'pro' else "PFC-STD"
+        random_part = secrets.token_hex(8).upper()
+        year = str(datetime.now().year)
+        
+        # Create license string
+        license_data = f"{prefix}-{year}-{random_part}"
+        
+        # Add checksum
+        checksum = hashlib.md5(license_data.encode()).hexdigest()[:4].upper()
+        final_key = f"{license_data}-{checksum}"
+        
+        return final_key
+    
+    def validate_license_key(self, license_key: str) -> bool:
+        """Validate license key format and checksum"""
+        try:
+            if not license_key or len(license_key) < 20:
+                return False
+            
+            # Split key parts
+            parts = license_key.split('-')
+            if len(parts) < 4:
+                return False
+            
+            # Check prefix
+            if parts[0] not in ['PFC', 'PERSIAN', 'FILECOPIER']:
+                return False
+            
+            # Verify checksum
+            license_part = '-'.join(parts[:-1])
+            expected_checksum = hashlib.md5(license_part.encode()).hexdigest()[:4].upper()
+            
+            return parts[-1].upper() == expected_checksum
+            
+        except Exception as e:
+            logger.error(f"License validation error: {e}")
+            return False
+    
+    def activate_license(self, license_key: str) -> dict:
+        """Activate a license key"""
+        try:
+            # Validate format first
+            if not self.validate_license_key(license_key):
+                return {
+                    'success': False,
+                    'message': 'فرمت کلید لایسنس نامعتبر است'
+                }
+            
+            # Check if already activated on this machine
+            existing = self._load_license_from_db()
+            if existing and existing['license_key'] == license_key:
+                if existing['machine_id'] == self.machine_id:
+                    return {
+                        'success': True,
+                        'message': 'لایسنس قبلاً فعال شده است'
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'message': 'این لایسنس روی دستگاه دیگری فعال شده است'
+                    }
+            
+            # Activate new license
+            activation_time = int(time.time())
+            expiry_time = activation_time + (365 * 24 * 60 * 60)  # 1 year
+            
+            license_data = {
+                'license_key': license_key,
+                'status': 'active',
+                'activated_at': activation_time,
+                'expires_at': expiry_time,
+                'machine_id': self.machine_id,
+                'features': 'pro'
+            }
+            
+            if self._save_license_to_db(license_data):
+                self.license_key = license_key
+                self.is_pro = True
+                self.activation_date = activation_time
+                self.expiry_date = expiry_time
+                
+                return {
+                    'success': True,
+                    'message': 'لایسنس با موفقیت فعال شد'
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': 'خطا در ذخیره لایسنس'
+                }
+                
+        except Exception as e:
+            logger.error(f"License activation error: {e}")
+            return {
+                'success': False,
+                'message': f'خطا در فعال‌سازی: {str(e)}'
+            }
+    
     def check_license(self):
-        """Check license status"""
-        # For now, assume pro version
-        self.is_pro = True
+        """Check current license status"""
+        try:
+            license_data = self._load_license_from_db()
+            
+            if not license_data:
+                # No license, start trial
+                self.is_pro = False
+                self._start_trial()
+                return
+            
+            # Check if license is valid
+            current_time = int(time.time())
+            
+            if license_data['status'] == 'active':
+                if license_data['expires_at'] and current_time > license_data['expires_at']:
+                    # License expired
+                    self.is_pro = False
+                    self._mark_license_expired()
+                elif license_data['machine_id'] != self.machine_id:
+                    # Wrong machine
+                    self.is_pro = False
+                else:
+                    # Valid license
+                    self.is_pro = True
+                    self.license_key = license_data['license_key']
+                    self.activation_date = license_data['activated_at']
+                    self.expiry_date = license_data['expires_at']
+            else:
+                # Invalid status
+                self.is_pro = False
+                
+        except Exception as e:
+            logger.error(f"License check error: {e}")
+            self.is_pro = False
+    
+    def _start_trial(self):
+        """Start trial period"""
+        try:
+            # Check if trial was already started
+            conn = sqlite3.connect(db_manager.db_file)
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR IGNORE INTO license (license_key, status, activated_at, machine_id)
+                VALUES (?, ?, ?, ?)
+            ''', ('TRIAL', 'trial', int(time.time()), self.machine_id))
+            conn.commit()
+            conn.close()
+            
+            # Calculate remaining trial days
+            license_data = self._load_license_from_db()
+            if license_data and license_data['activated_at']:
+                days_passed = (int(time.time()) - license_data['activated_at']) // (24 * 60 * 60)
+                self.trial_days_left = max(0, 30 - days_passed)
+            
+        except Exception as e:
+            logger.error(f"Trial start error: {e}")
+    
+    def _mark_license_expired(self):
+        """Mark license as expired"""
+        try:
+            conn = sqlite3.connect(db_manager.db_file)
+            cursor = conn.cursor()
+            cursor.execute('UPDATE license SET status = ? WHERE machine_id = ?', 
+                         ('expired', self.machine_id))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.error(f"License expiry marking error: {e}")
+    
+    def get_license_info(self) -> dict:
+        """Get current license information"""
+        return {
+            'is_pro': self.is_pro,
+            'license_key': self.license_key,
+            'machine_id': self.machine_id,
+            'trial_days_left': self.trial_days_left,
+            'activation_date': self.activation_date,
+            'expiry_date': self.expiry_date,
+            'status': 'pro' if self.is_pro else ('trial' if self.trial_days_left > 0 else 'expired')
+        }
     
     def get_features(self):
         """Get available features based on license"""
@@ -897,8 +1140,65 @@ async def get_config():
         "company": COMPANY_NAME,
         "themes": THEMES,
         "features": license_manager.get_features(),
-        "is_pro": license_manager.is_pro
+        "is_pro": license_manager.is_pro,
+        "license_info": license_manager.get_license_info()
     }
+
+@app.get("/api/license")
+async def get_license_info():
+    """Get license information"""
+    return license_manager.get_license_info()
+
+@app.post("/api/license/activate")
+async def activate_license(request: dict):
+    """Activate a license key"""
+    try:
+        license_key = request.get("license_key", "").strip()
+        if not license_key:
+            raise HTTPException(status_code=400, detail="کلید لایسنس ارسال نشده")
+        
+        result = license_manager.activate_license(license_key)
+        
+        if result['success']:
+            return {
+                "success": True,
+                "message": result['message'],
+                "license_info": license_manager.get_license_info()
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result['message'])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"License activation error: {e}")
+        raise HTTPException(status_code=500, detail="خطا در فعال‌سازی لایسنس")
+
+@app.post("/api/license/generate")
+async def generate_license(request: dict):
+    """Generate a new license key (admin only)"""
+    try:
+        admin_key = request.get("admin_key", "")
+        license_type = request.get("type", "pro")
+        
+        # Simple admin verification
+        if admin_key != "ADMIN-2024-PERSIAN-FILE":
+            raise HTTPException(status_code=403, detail="دسترسی غیرمجاز")
+        
+        new_key = license_manager.generate_license_key(license_type)
+        
+        return {
+            "success": True,
+            "license_key": new_key,
+            "type": license_type,
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"License generation error: {e}")
+        raise HTTPException(status_code=500, detail="خطا در تولید لایسنس")
 
 # WebSocket endpoint
 @app.websocket("/ws")
