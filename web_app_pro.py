@@ -1633,6 +1633,70 @@ def clear_drive_cache(drive_path):
     finally:
         conn.close()
 
+@eel.expose
+def save_setting(key, value):
+    """ذخیره تنظیمات"""
+    try:
+        config_manager.set_by_key(key, value)
+        config_manager.save()
+        return {'success': True}
+    except Exception as e:
+        logger.error(f"Error saving setting {key}: {e}")
+        return {'success': False, 'error': str(e)}
+
+@eel.expose
+def load_setting(key, default_value=None):
+    """بارگیری تنظیمات"""
+    try:
+        return config_manager.get_by_key(key, default_value)
+    except Exception as e:
+        logger.error(f"Error loading setting {key}: {e}")
+        return default_value
+
+@eel.expose
+def save_all_settings(settings_data):
+    """ذخیره همه تنظیمات"""
+    try:
+        for key, value in settings_data.items():
+            config_manager.set_by_key(key, value)
+        config_manager.save()
+        return {'success': True}
+    except Exception as e:
+        logger.error(f"Error saving all settings: {e}")
+        return {'success': False, 'error': str(e)}
+
+@eel.expose
+def load_all_settings():
+    """بارگیری همه تنظیمات"""
+    try:
+        return {
+            'ui_settings': {
+                'theme': config_manager.get('ui', 'theme', 'dark'),
+                'language': config_manager.get('ui', 'language', 'fa'),
+                'notifications': config_manager.get('ui', 'notifications', True),
+                'show_hidden_files': config_manager.get('ui', 'show_hidden_files', False),
+                'compact_view': config_manager.get('ui', 'compact_view', False)
+            },
+            'file_operation_settings': {
+                'auto_resume': config_manager.get('file_operations', 'auto_resume', True),
+                'verify_copy': config_manager.get('file_operations', 'verify_copy', True),
+                'preserve_timestamps': config_manager.get('file_operations', 'preserve_timestamps', True),
+                'skip_existing': config_manager.get('file_operations', 'skip_existing', False),
+                'create_log': config_manager.get('file_operations', 'create_log', True)
+            },
+            'advanced_settings': {
+                'max_parallel_copies': config_manager.get('advanced', 'max_parallel_copies', 3),
+                'buffer_size': config_manager.get('advanced', 'buffer_size', 1048576),
+                'auto_index': config_manager.get('advanced', 'auto_index', True),
+                'cache_enabled': config_manager.get('advanced', 'cache_enabled', True),
+                'auto_save_settings': config_manager.get('advanced', 'auto_save_settings', True)
+            },
+            'license_info': license_manager.get_license_info()
+        }
+    except Exception as e:
+        logger.error(f"Error loading all settings: {e}")
+        return {}
+
 # JavaScript callback functions (called from Python)
 def on_drive_connected(drive_path):
     """Callback for new drive connection"""

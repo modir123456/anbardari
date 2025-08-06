@@ -1525,23 +1525,19 @@ function initializeAdvancedSettingsAutoSave() {
 async function saveFileOperationSettings() {
     try {
         const settings = {
-            max_concurrent_tasks: parseInt(document.getElementById('max-tasks')?.value) || 5,
-            chunk_size: parseInt(document.getElementById('chunk-size')?.value) * 1024 || 65536, // Convert KB to bytes
-            verify_copy: document.getElementById('verify-copy')?.checked || false,
-            auto_retry: document.getElementById('auto-retry')?.checked || false,
-            retry_attempts: parseInt(document.getElementById('max-retry')?.value) || 3,
-            skip_existing: document.getElementById('skip-existing')?.checked || false,
-            preserve_permissions: document.getElementById('preserve-timestamps')?.checked || false,
-            show_hidden_files: document.getElementById('show-hidden')?.checked || false,
-            follow_symlinks: document.getElementById('follow-symlinks')?.checked || false
+            'file_operations.auto_resume': document.getElementById('auto-resume')?.checked || true,
+            'file_operations.verify_copy': document.getElementById('verify-copy')?.checked || true,
+            'file_operations.preserve_timestamps': document.getElementById('preserve-timestamps')?.checked || true,
+            'file_operations.skip_existing': document.getElementById('skip-existing')?.checked || false,
+            'file_operations.create_log': document.getElementById('create-log')?.checked || true
         };
         
-        const result = await eel.save_file_operation_settings(settings)();
+        const result = await eel.save_all_settings(settings)();
         
         if (result.success) {
             showToast('✅ تنظیمات عملیات فایل ذخیره شد', 'success');
         } else {
-            showToast(`❌ خطا در ذخیره: ${result.message}`, 'error');
+            showToast(`❌ خطا در ذخیره: ${result.error}`, 'error');
         }
     } catch (error) {
         console.error('Error saving file operation settings:', error);
@@ -1553,33 +1549,24 @@ async function saveFileOperationSettings() {
 async function saveUISettings() {
     try {
         const settings = {
-            font_family: document.getElementById('font-family-select')?.value || 'Vazirmatn',
-            font_size: parseInt(document.getElementById('font-size-slider')?.value) || 14,
-            font_weight: document.getElementById('font-weight-select')?.value || 'normal',
-            theme: document.getElementById('theme-select')?.value || 'dark',
-            direction: document.getElementById('direction-select')?.value || 'rtl',
-            compact_mode: document.getElementById('compact-mode')?.checked || false,
-            startup_maximized: document.getElementById('startup-maximized')?.checked || true,
-            show_tooltips: document.getElementById('show-tooltips')?.checked || true,
-            animation_speed: document.getElementById('animation-speed')?.value || 'normal'
+            'ui.theme': document.getElementById('theme-select')?.value || 'dark',
+            'ui.language': document.getElementById('language-select')?.value || 'fa',
+            'ui.notifications': document.getElementById('notifications-toggle')?.checked !== false,
+            'ui.show_hidden_files': document.getElementById('show-hidden')?.checked || false,
+            'ui.compact_view': document.getElementById('compact-mode')?.checked || false
         };
         
-        const result = await eel.save_ui_settings(settings)();
+        const result = await eel.save_all_settings(settings)();
         
         if (result.success) {
             showToast('✅ تنظیمات رابط کاربری ذخیره شد', 'success');
             
-            // Apply changes immediately
-            applyFont(settings.font_family);
-            applyTheme(settings.theme);
-            
-            // Update font size display
-            const fontSizeValue = document.getElementById('font-size-value');
-            if (fontSizeValue) {
-                fontSizeValue.textContent = settings.font_size + 'px';
+            // Apply theme change immediately
+            if (settings['ui.theme']) {
+                applyTheme(settings['ui.theme']);
             }
         } else {
-            showToast(`❌ خطا در ذخیره: ${result.message}`, 'error');
+            showToast(`❌ خطا در ذخیره: ${result.error}`, 'error');
         }
     } catch (error) {
         console.error('Error saving UI settings:', error);
@@ -1623,48 +1610,37 @@ async function loadSettingsData() {
     try {
         console.log('📋 Loading settings data...');
         
-        // Load UI settings
+        // Load all settings using the new function
         try {
-            const uiSettings = await eel.get_config('ui_settings')();
-            if (uiSettings && Object.keys(uiSettings).length > 0) {
-                updateUISettingsForm(uiSettings);
-                console.log('✅ UI settings loaded');
+            const allSettings = await eel.load_all_settings()();
+            if (allSettings && Object.keys(allSettings).length > 0) {
+                
+                // Update UI settings
+                if (allSettings.ui_settings) {
+                    updateUISettingsForm(allSettings.ui_settings);
+                    console.log('✅ UI settings loaded');
+                }
+                
+                // Update file operation settings
+                if (allSettings.file_operation_settings) {
+                    updateFileOperationSettingsForm(allSettings.file_operation_settings);
+                    console.log('✅ File operation settings loaded');
+                }
+                
+                // Update advanced settings
+                if (allSettings.advanced_settings) {
+                    updateAdvancedSettingsForm(allSettings.advanced_settings);
+                    console.log('✅ Advanced settings loaded');
+                }
+                
+                // Update license info
+                if (allSettings.license_info) {
+                    updateLicenseInfo(allSettings.license_info);
+                    console.log('✅ License info loaded');
+                }
             }
         } catch (error) {
-            console.warn('⚠️ Could not load UI settings:', error);
-        }
-        
-        // Load file operation settings
-        try {
-            const fileOpSettings = await eel.get_config('file_operations')();
-            if (fileOpSettings && Object.keys(fileOpSettings).length > 0) {
-                updateFileOperationSettingsForm(fileOpSettings);
-                console.log('✅ File operation settings loaded');
-            }
-        } catch (error) {
-            console.warn('⚠️ Could not load file operation settings:', error);
-        }
-        
-        // Load advanced settings
-        try {
-            const advancedSettings = await eel.get_config('advanced')();
-            if (advancedSettings && Object.keys(advancedSettings).length > 0) {
-                updateAdvancedSettingsForm(advancedSettings);
-                console.log('✅ Advanced settings loaded');
-            }
-        } catch (error) {
-            console.warn('⚠️ Could not load advanced settings:', error);
-        }
-        
-        // Load license info
-        try {
-            const licenseInfo = await eel.get_license_info()();
-            if (licenseInfo) {
-                updateLicenseInfo(licenseInfo);
-                console.log('✅ License info loaded');
-            }
-        } catch (error) {
-            console.warn('⚠️ Could not load license info:', error);
+            console.warn('⚠️ Could not load settings:', error);
         }
         
         console.log('⚙️ Settings data loading completed');
