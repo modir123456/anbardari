@@ -1290,9 +1290,15 @@
             // Make file items draggable
             $(document).on('dragstart', '.file-item', function(e) {
                 const filePath = $(this).data('path');
-                draggedFiles = [filePath];
-                $(this).addClass('dragging');
+                const isSelected = $(this).find('.file-checkbox').is(':checked');
                 
+                if (isSelected && selectedFiles.length > 0) {
+                    draggedFiles = [...selectedFiles];
+                } else {
+                    draggedFiles = [filePath];
+                }
+                
+                $(this).addClass('dragging');
                 e.originalEvent.dataTransfer.setData('text/plain', filePath);
                 e.originalEvent.dataTransfer.effectAllowed = 'copy';
             });
@@ -1301,24 +1307,34 @@
                 $(this).removeClass('dragging');
             });
 
-            // Drop zones
-            $('.drive-item, .drop-zone').on('dragover', function(e) {
+            // Drop zones - use event delegation properly
+            $(document).on('dragover', '.drive-item, .drop-zone', function(e) {
                 e.preventDefault();
-                e.originalEvent.dataTransfer.dropEffect = 'copy';
+                e.stopPropagation();
+                if (e.originalEvent.dataTransfer) {
+                    e.originalEvent.dataTransfer.dropEffect = 'copy';
+                }
                 $(this).addClass('dragover');
             });
 
-            $('.drive-item, .drop-zone').on('dragleave', function() {
-                $(this).removeClass('dragover');
+            $(document).on('dragleave', '.drive-item, .drop-zone', function(e) {
+                // Only remove dragover if actually leaving the element
+                if (!$(this).is(e.relatedTarget) && !$(this).has(e.relatedTarget).length) {
+                    $(this).removeClass('dragover');
+                }
             });
 
-            $('.drive-item').on('drop', function(e) {
+            $(document).on('drop', '.drive-item', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 $(this).removeClass('dragover');
                 
                 const destinationPath = $(this).data('path');
                 if (draggedFiles.length > 0) {
+                    console.log('Starting copy operation:', draggedFiles, 'to', destinationPath);
                     startCopyOperation(draggedFiles, destinationPath);
+                } else {
+                    showNotification('هیچ فایلی برای کپی انتخاب نشده', 'warning');
                 }
             });
         }
@@ -1405,12 +1421,23 @@
         // Context Menu
         function showContextMenu(e) {
             e.preventDefault();
+            e.stopPropagation();
+            
+            const filePath = $(e.currentTarget).data('path');
+            const isSelected = $(e.currentTarget).find('.file-checkbox').is(':checked');
+            
+            // Store current context for menu actions
+            window.contextFilePath = filePath;
+            window.contextIsSelected = isSelected;
+            
             const contextMenu = $('#context-menu');
             contextMenu.css({
-                top: e.pageY,
-                left: e.pageX,
+                top: e.pageY + 'px',
+                left: e.pageX + 'px',
                 display: 'block'
             });
+            
+            return false;
         }
 
         // Load Tasks

@@ -22,9 +22,21 @@ import hashlib
 import re
 import platform
 import subprocess
-import win32file
-import win32api
-import win32con
+
+# Windows specific imports - handle gracefully on other platforms
+try:
+    import win32file
+    import win32api
+    import win32con
+    WINDOWS_AVAILABLE = True
+except ImportError:
+    WINDOWS_AVAILABLE = False
+    # Create dummy constants for non-Windows systems
+    class DummyWin32:
+        DRIVE_REMOVABLE = 2
+        DRIVE_FIXED = 3
+        DRIVE_REMOTE = 4
+    win32con = DummyWin32()
 from pathlib import Path
 from datetime import datetime
 import logging
@@ -126,7 +138,7 @@ class DeviceDetector:
     def detect_device_type(self, drive_path: str) -> str:
         """Detect device type for speed optimization"""
         try:
-            if platform.system() == "Windows":
+            if platform.system() == "Windows" and WINDOWS_AVAILABLE:
                 drive_type = win32file.GetDriveType(drive_path)
                 
                 if drive_type == win32con.DRIVE_REMOVABLE:
@@ -143,7 +155,8 @@ class DeviceDetector:
                     return DEVICE_TYPES['NETWORK']
                     
             return DEVICE_TYPES['HDD']  # Default
-        except:
+        except Exception as e:
+            logger.debug(f"Device type detection failed: {e}")
             return DEVICE_TYPES['HDD']
     
     def _is_usb3(self, drive_path: str) -> bool:
@@ -176,11 +189,11 @@ class DeviceDetector:
         """Scan for MTP devices"""
         devices = []
         try:
-            if platform.system() == "Windows":
+            if platform.system() == "Windows" and WINDOWS_AVAILABLE:
                 # Use Windows API to detect MTP devices
                 devices = self._scan_windows_mtp()
         except Exception as e:
-            logger.error(f"Error scanning MTP devices: {e}")
+            logger.debug(f"MTP scanning not available: {e}")
         
         return devices
     
@@ -647,10 +660,10 @@ class DriveScanner:
                     
                     # Get drive label on Windows
                     label = None
-                    if platform.system() == "Windows":
+                    if platform.system() == "Windows" and WINDOWS_AVAILABLE:
                         try:
                             label = win32api.GetVolumeInformation(partition.mountpoint)[0]
-                        except:
+                        except Exception:
                             pass
                     
                     drive_info = DriveInfo(
