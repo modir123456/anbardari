@@ -133,6 +133,18 @@
             to { transform: rotate(360deg); }
         }
 
+        @keyframes bounce {
+            0%, 20%, 60%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-20px);
+            }
+            80% {
+                transform: translateY(-10px);
+            }
+        }
+
         .app-title h1 {
             font-size: 1.8rem;
             font-weight: 700;
@@ -828,10 +840,12 @@
     <header class="app-header">
         <div class="header-content">
             <div class="logo-section">
-                <div class="app-icon">🌟</div>
+                <div class="app-icon">
+                    <span style="background: linear-gradient(45deg, #667eea, #764ba2); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem;">⚡</span>
+                </div>
                 <div class="app-title">
-                    <h1 id="app-name">Persian File Copier Pro</h1>
-                    <p id="company-name">شرکت فناوری نوآوران مثبت سبز</p>
+                    <h1 id="app-name">Persian File Copier Pro 3.5.0</h1>
+                    <p id="company-name">🚀 کپی فایل حرفه‌ای با سرعت فوق‌العاده</p>
                 </div>
             </div>
             
@@ -905,9 +919,17 @@
             <!-- File List -->
             <div class="file-list" id="file-list">
                 <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">📁</div>
-                    <p>در حال بارگیری فایل‌ها...</p>
-                    <div class="loading" style="margin: 1rem auto;"></div>
+                    <div style="font-size: 4rem; margin-bottom: 1.5rem; animation: bounce 2s infinite;">⚡</div>
+                    <h3 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--primary-color);">Persian File Copier Pro آماده است!</h3>
+                    <p style="font-size: 1.1rem; line-height: 1.6;">
+                        🔹 درایو مورد نظر را از فهرست انتخاب کنید<br>
+                        🔹 فایل‌هایتان را انتخاب کنید<br>
+                        🔹 روی درایو مقصد کلیک کنید و کپی کردن را آغاز کنید
+                    </p>
+                    <div style="margin-top: 2rem; padding: 1rem; background: rgba(102, 126, 234, 0.1); border-radius: 12px; border: 2px dashed var(--primary-color);">
+                        <div style="font-size: 1rem; font-weight: 600; color: var(--primary-color);">💡 نکته:</div>
+                        <div style="font-size: 0.9rem; margin-top: 0.5rem;">برای شروع سریع، فایل‌ها را مستقیماً به اینجا بکشید!</div>
+                    </div>
                 </div>
             </div>
         </div>

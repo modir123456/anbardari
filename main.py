@@ -170,19 +170,38 @@ class DeviceDetector:
     
     def _is_ssd(self, drive_path: str) -> bool:
         """Check if drive is SSD"""
+        # Skip WMI check if not on Windows or if WMI not available
+        if platform.system() != "Windows":
+            return False
+            
+        # Cache WMI availability to avoid repeated warnings
+        if not hasattr(self, '_wmi_available'):
+            try:
+                import wmi
+                c = wmi.WMI()
+                self._wmi_available = True
+                logger.info("WMI module available for device detection")
+            except ImportError:
+                self._wmi_available = False
+                logger.warning("WMI module not available for SSD detection")
+                return False
+            except Exception as e:
+                self._wmi_available = False
+                logger.error(f"WMI initialization failed: {e}")
+                return False
+        
+        if not self._wmi_available:
+            return False
+            
         try:
-            # Windows WMI query for drive type
             import wmi
             c = wmi.WMI()
             for disk in c.Win32_DiskDrive():
                 if disk.MediaType and 'SSD' in disk.MediaType:
                     return True
             return False
-        except ImportError:
-            logger.warning("WMI module not available for SSD detection")
-            return False
         except Exception as e:
-            logger.error(f"Error detecting SSD: {e}")
+            logger.debug(f"Error detecting SSD: {e}")
             return False
     
     def scan_mtp_devices(self) -> List[Dict]:
@@ -200,8 +219,30 @@ class DeviceDetector:
     def _scan_windows_mtp(self) -> List[Dict]:
         """Scan MTP devices on Windows"""
         devices = []
+        
+        # Skip if not Windows or WMI not available
+        if platform.system() != "Windows":
+            return devices
+            
+        # Use cached WMI availability
+        if not hasattr(self, '_wmi_available'):
+            try:
+                import wmi
+                c = wmi.WMI()
+                self._wmi_available = True
+            except ImportError:
+                self._wmi_available = False
+                logger.warning("WMI module not available for MTP detection")
+                return devices
+            except Exception as e:
+                self._wmi_available = False
+                logger.error(f"WMI initialization failed for MTP: {e}")
+                return devices
+        
+        if not self._wmi_available:
+            return devices
+            
         try:
-            # Use WMI to detect portable devices
             import wmi
             c = wmi.WMI()
             for device in c.Win32_PnPEntity():
@@ -212,9 +253,6 @@ class DeviceDetector:
                         'type': 'MTP',
                         'status': device.Status or 'Unknown'
                     })
-        except ImportError:
-            logger.warning("WMI module not available for MTP detection")
-            return []
         except Exception as e:
             logger.debug(f"MTP scan failed (normal if no MTP devices): {e}")
         
@@ -480,6 +518,7 @@ class FileOperationsManager:
     def __init__(self):
         self.executor = ThreadPoolExecutor(max_workers=10)
         self.active_tasks: Dict[str, Dict] = {}
+        self.event_loop = None
         
     def get_optimal_buffer_size(self, source_device: str, dest_device: str) -> int:
         """Get optimal buffer size based on device types"""
@@ -541,10 +580,15 @@ class FileOperationsManager:
         """Optimized copy with device-specific settings and pause/cancel support"""
         task = self.active_tasks.get(task_id)
         if not task:
+            logger.error(f"Task {task_id} not found in active tasks")
             return
 
+        logger.info(f"Starting copy task {task_id} with {len(task['source_files'])} files to {task['destination']}")
+        
         try:
+            # Create destination directory if it doesn't exist
             os.makedirs(task["destination"], exist_ok=True)
+            logger.info(f"Destination directory created/verified: {task['destination']}")
             start_time = time.time()
             
             for i, source_file in enumerate(task["source_files"]):
@@ -561,7 +605,24 @@ class FileOperationsManager:
                     break
                 
                 if not os.path.exists(source_file):
-                    task["errors"].append(f"File not found: {source_file}")
+                    error_msg = f"File not found: {source_file}"
+                    task["errors"].append(error_msg)
+                    logger.warning(error_msg)
+                    continue
+                
+                # Check if source file is accessible
+                try:
+                    with open(source_file, 'rb') as test_file:
+                        test_file.read(1)
+                except PermissionError:
+                    error_msg = f"Permission denied accessing: {source_file}"
+                    task["errors"].append(error_msg)
+                    logger.warning(error_msg)
+                    continue
+                except Exception as e:
+                    error_msg = f"Cannot access file {source_file}: {e}"
+                    task["errors"].append(error_msg)
+                    logger.warning(error_msg)
                     continue
                 
                 filename = os.path.basename(source_file)
@@ -588,16 +649,25 @@ class FileOperationsManager:
                         task["eta"] = int(remaining_size / speed)
                 
                 # Broadcast progress
-                asyncio.create_task(self._broadcast_task_update(task_id))
+                self._schedule_broadcast(task_id)
                 
                 # Optimized copy
                 try:
                     if os.path.isdir(source_file):
+                        logger.info(f"Copying directory: {source_file} -> {dest_path}")
                         shutil.copytree(source_file, dest_path, dirs_exist_ok=True)
+                        # Calculate directory size
+                        dir_size = sum(os.path.getsize(os.path.join(dirpath, filename))
+                                     for dirpath, dirnames, filenames in os.walk(source_file)
+                                     for filename in filenames)
+                        task["copied_size"] += dir_size
                     else:
+                        logger.info(f"Copying file: {source_file} -> {dest_path}")
+                        file_size = os.path.getsize(source_file)
                         self._optimized_file_copy(source_file, dest_path, task["buffer_size"])
-                        if os.path.exists(source_file):
-                            task["copied_size"] += os.path.getsize(source_file)
+                        task["copied_size"] += file_size
+                        
+                    logger.info(f"Successfully copied: {filename}")
                         
                 except Exception as e:
                     error_msg = f"Error copying {filename}: {str(e)}"
@@ -622,7 +692,7 @@ class FileOperationsManager:
             task["errors"].append(str(e))
         
         # Final broadcast
-        asyncio.create_task(self._broadcast_task_update(task_id))
+        self._schedule_broadcast(task_id)
     
     def _optimized_file_copy(self, source: str, destination: str, buffer_size: int):
         """Optimized file copy with custom buffer size"""
@@ -636,6 +706,18 @@ class FileOperationsManager:
         # Preserve timestamps
         stat_info = os.stat(source)
         os.utime(destination, (stat_info.st_atime, stat_info.st_mtime))
+    
+    def _schedule_broadcast(self, task_id: str):
+        """Thread-safe broadcast scheduling"""
+        try:
+            if self.event_loop and not self.event_loop.is_closed():
+                # Schedule the coroutine in the main event loop
+                asyncio.run_coroutine_threadsafe(
+                    self._broadcast_task_update(task_id), 
+                    self.event_loop
+                )
+        except Exception as e:
+            logger.debug(f"Broadcast scheduling failed: {e}")
     
     async def _broadcast_task_update(self, task_id: str):
         """Broadcast task update to all connected clients"""
@@ -1394,6 +1476,9 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.on_event("startup")
 async def startup_event():
     """Initialize background tasks"""
+    # Set event loop for file operations manager
+    file_ops.event_loop = asyncio.get_running_loop()
+    
     # Start drive monitoring
     asyncio.create_task(monitor_drives())
     logger.info(f"{APP_NAME} {APP_VERSION} started successfully")
