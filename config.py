@@ -18,8 +18,8 @@ SUPPORT_EMAIL = "support@persianfile.ir"
 WEBSITE = "www.persianfile.ir"
 
 # Technical Configuration
-DEFAULT_PORT = 8547  # Non-reserved port
-WEBSOCKET_PORT = 8548
+DEFAULT_PORT = 8548  # Changed from 8547 to avoid conflicts
+WEBSOCKET_PORT = 8549
 MAX_FILE_SIZE_FREE = 100 * 1024 * 1024  # 100MB for free version
 MAX_CONCURRENT_TASKS_FREE = 2
 MAX_FILES_PER_TASK_FREE = 50
