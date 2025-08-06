@@ -768,6 +768,17 @@
             50% { opacity: 0.7; }
         }
 
+        @keyframes fadeInScale {
+            0% { 
+                opacity: 0; 
+                transform: translate(-50%, -50%) scale(0.8); 
+            }
+            100% { 
+                opacity: 1; 
+                transform: translate(-50%, -50%) scale(1); 
+            }
+        }
+
         /* License Status Styles */
         .license-status {
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
@@ -1135,16 +1146,31 @@
 
         // Setup Event Listeners
         function setupEventListeners() {
-            // Search with debounce
+            // Search with improved debounce
             let searchTimeout;
             $('#search-input').on('input', function() {
                 clearTimeout(searchTimeout);
-                const query = $(this).val();
-                searchTimeout = setTimeout(() => searchFiles(query), 300);
+                const query = $(this).val().trim();
+                
+                searchTimeout = setTimeout(() => {
+                    console.log('🔍 Search triggered:', query);
+                    loadFiles(); // Use loadFiles instead of searchFiles
+                }, 250);
             });
 
-            // Filter changes
-            $('#drive-filter, #type-filter').change(loadFiles);
+            // Filter changes with immediate response
+            $('#drive-filter, #type-filter').on('change', function() {
+                const filterId = $(this).attr('id');
+                const filterValue = $(this).val();
+                console.log('📋 Filter changed:', filterId, filterValue);
+                
+                // Clear search when changing filters for better UX
+                if (filterId === 'drive-filter' && filterValue) {
+                    $('#search-input').val('');
+                }
+                
+                loadFiles();
+            });
 
             // File selection
             $(document).on('change', '.file-checkbox', handleFileSelection);
@@ -1155,8 +1181,18 @@
             // Right click context menu
             $(document).on('contextmenu', '.file-item', showContextMenu);
             
-            // Drive selection
-            $(document).on('click', '.drive-item', selectDrive);
+            // Drive selection with copy support
+            $(document).on('click', '.drive-item', function() {
+                const drivePath = $(this).data('path');
+                
+                // If files are selected, ask for copy confirmation
+                if (selectedFiles.length > 0) {
+                    $('.copy-hint').remove(); // Remove any existing hints
+                    startCopyOperation(selectedFiles, drivePath);
+                } else {
+                    selectDrive.call(this);
+                }
+            });
             
             // Theme selection
             $(document).on('click', '.theme-option', changeTheme);
@@ -1170,7 +1206,11 @@
             });
         }
 
-        // WebSocket Connection
+        // WebSocket Connection with improved stability
+        let wsReconnectAttempts = 0;
+        let wsMaxAttempts = 10;
+        let wsPingInterval;
+        
         function connectWebSocket() {
             try {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1180,33 +1220,59 @@
                 
                 wsConnection.onopen = function() {
                     console.log('🔗 WebSocket connected');
-                    $('#connection-status').show().text('🟢 متصل به سرور');
+                    $('#connection-status').show().text('🟢 متصل به سرور').css('background', 'rgba(76, 175, 80, 0.9)');
+                    wsReconnectAttempts = 0;
                     
-                    // Send ping every 30 seconds
-                    setInterval(() => {
-                        if (wsConnection.readyState === WebSocket.OPEN) {
+                    // Clear existing ping interval
+                    if (wsPingInterval) clearInterval(wsPingInterval);
+                    
+                    // Send ping every 25 seconds to keep connection alive
+                    wsPingInterval = setInterval(() => {
+                        if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
                             wsConnection.send(JSON.stringify({type: 'ping'}));
                         }
-                    }, 30000);
+                    }, 25000);
                 };
                 
                 wsConnection.onmessage = function(event) {
                     try {
                         const data = JSON.parse(event.data);
-                        handleWebSocketMessage(data);
+                        if (data.type !== 'pong') { // Don't log pong responses
+                            handleWebSocketMessage(data);
+                        }
                     } catch (e) {
-                        console.error('WebSocket message parse error:', e);
+                        console.error('WebSocket message parse error:', e, event.data);
                     }
                 };
                 
-                wsConnection.onclose = function() {
-                    console.log('❌ WebSocket disconnected');
+                wsConnection.onclose = function(event) {
+                    console.log('❌ WebSocket disconnected:', event.code, event.reason);
                     $('#connection-status').text('🔴 قطع اتصال').css('background', 'rgba(244, 67, 54, 0.9)');
-                    setTimeout(connectWebSocket, 5000);
+                    
+                    // Clear ping interval
+                    if (wsPingInterval) clearInterval(wsPingInterval);
+                    
+                    // Reconnect with exponential backoff
+                    if (wsReconnectAttempts < wsMaxAttempts) {
+                        const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), 30000);
+                        wsReconnectAttempts++;
+                        
+                        console.log(`🔄 Reconnecting in ${delay}ms (attempt ${wsReconnectAttempts})`);
+                        $('#connection-status').text(`🔄 اتصال مجدد... (${wsReconnectAttempts})`);
+                        
+                        setTimeout(connectWebSocket, delay);
+                    } else {
+                        $('#connection-status').text('❌ خطا در اتصال - دوباره بارگیری کنید');
+                    }
+                };
+                
+                wsConnection.onerror = function(error) {
+                    console.error('WebSocket error:', error);
                 };
                 
             } catch (error) {
                 console.error('WebSocket connection failed:', error);
+                $('#connection-status').text('❌ خطا در اتصال').css('background', 'rgba(244, 67, 54, 0.9)');
             }
         }
 
@@ -1295,37 +1361,75 @@
             $('#drive-filter').val(currentValue);
         }
 
-        // Load Files
+        // Load Files with performance optimization
+        let isLoadingFiles = false;
+        let loadFilesAbortController = null;
+        
         async function loadFiles() {
+            // Cancel previous request if still loading
+            if (loadFilesAbortController) {
+                loadFilesAbortController.abort();
+            }
+            
+            if (isLoadingFiles) return;
+            
             try {
+                isLoadingFiles = true;
+                loadFilesAbortController = new AbortController();
+                
                 $('#file-list').html(`
-                    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                         <div class="loading"></div>
-                        <p style="margin-top: 1rem;">در حال بارگیری فایل‌ها...</p>
+                        <p style="margin-top: 1rem;">🔍 در حال جستجو...</p>
                     </div>
                 `);
 
-                const searchQuery = $('#search-input').val();
+                const searchQuery = $('#search-input').val().trim();
                 const driveFilter = $('#drive-filter').val();
                 const typeFilter = $('#type-filter').val();
+
+                // Debounced search - only search if query is meaningful
+                if (searchQuery && searchQuery.length < 2) {
+                    $('#file-list').html(`
+                        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            <p>حداقل 2 کاراکتر برای جستجو وارد کنید</p>
+                        </div>
+                    `);
+                    return;
+                }
+
+                const requestBody = {
+                    search: searchQuery,
+                    drive: driveFilter,
+                    type: typeFilter,
+                    limit: 1000, // Increased limit
+                    fast_mode: true // Add fast mode flag
+                };
 
                 const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        search: searchQuery,
-                        drive: driveFilter,
-                        type: typeFilter,
-                        limit: 500
-                    })
+                    body: JSON.stringify(requestBody),
+                    signal: loadFilesAbortController.signal
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
 
                 const data = await response.json();
                 displayFiles(data.files);
                 
             } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('Search request was cancelled');
+                    return;
+                }
                 console.error('Error loading files:', error);
                 showErrorInFileList();
+            } finally {
+                isLoadingFiles = false;
+                loadFilesAbortController = null;
             }
         }
 
@@ -1446,25 +1550,55 @@
             updateSelectedCount();
         }
 
-        // Start Copy Operation
+        // Start Copy Operation with improved UX
         async function startCopyOperation(sourceFiles, destination) {
+            console.log('🚀 startCopyOperation called:', {sourceFiles, destination});
+            
             if (!sourceFiles || sourceFiles.length === 0) {
                 showNotification('هیچ فایلی انتخاب نشده است', 'warning');
                 return;
             }
 
+            if (!destination) {
+                showNotification('مقصد انتخاب نشده است', 'warning');
+                return;
+            }
+
             try {
+                // Calculate total size for display
+                let totalSize = 0;
+                const fileItems = $('.file-item');
+                sourceFiles.forEach(filePath => {
+                    fileItems.each(function() {
+                        if ($(this).data('path') === filePath) {
+                            totalSize += parseInt($(this).data('size')) || 0;
+                        }
+                    });
+                });
+
                 const result = await Swal.fire({
-                    title: 'شروع کپی',
-                    text: `آیا می‌خواهید ${sourceFiles.length} فایل را کپی کنید؟`,
+                    title: '📋 تأیید کپی',
+                    html: `
+                        <div style="text-align: right; line-height: 1.8;">
+                            <p><strong>📁 تعداد فایل‌ها:</strong> ${sourceFiles.length.toLocaleString('fa-IR')} فایل</p>
+                            <p><strong>📏 حجم کل:</strong> ${formatFileSize(totalSize)}</p>
+                            <p><strong>📂 مقصد:</strong> ${destination}</p>
+                            <hr style="margin: 1rem 0;">
+                            <p style="color: #666;">آیا می‌خواهید عملیات کپی را شروع کنید؟</p>
+                        </div>
+                    `,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: '✅ شروع کپی',
                     cancelButtonText: '❌ انصراف',
-                    confirmButtonColor: 'var(--primary-color)'
+                    confirmButtonColor: '#667eea',
+                    cancelButtonColor: '#f56565'
                 });
 
                 if (!result.isConfirmed) return;
+
+                // Show progress immediately
+                showNotification('در حال شروع کپی...', 'info');
 
                 const response = await fetch('/api/copy', {
                     method: 'POST',
@@ -1474,23 +1608,37 @@
                         destination: destination,
                         options: {
                             verify_copy: true,
-                            preserve_timestamps: true
+                            preserve_timestamps: true,
+                            create_destination: true
                         }
                     })
                 });
 
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const data = await response.json();
 
                 if (data.success) {
-                    showNotification(`تسک کپی شروع شد - ${data.task_id.substring(0, 8)}`, 'success');
-                    refreshTasks();
+                    const taskId = data.task_id.substring(0, 8);
+                    showNotification(`✅ تسک کپی شروع شد - ID: ${taskId}`, 'success');
+                    
+                    // Clear selection after successful start
+                    selectedFiles = [];
+                    $('.file-checkbox').prop('checked', false);
+                    $('.file-item').removeClass('selected');
+                    
+                    // Refresh tasks immediately
+                    setTimeout(refreshTasks, 500);
                 } else {
                     throw new Error(data.detail || 'خطا در شروع کپی');
                 }
 
             } catch (error) {
-                console.error('Copy error:', error);
-                showNotification('خطا در شروع کپی: ' + error.message, 'error');
+                console.error('❌ Copy error:', error);
+                showNotification(`خطا در شروع کپی: ${error.message}`, 'error');
             }
         }
 
@@ -1695,6 +1843,82 @@
 
         function refreshTasks() {
             loadTasks();
+        }
+
+        // Task Control Functions
+        async function cancelTask(taskId) {
+            try {
+                const result = await Swal.fire({
+                    title: '⚠️ لغو تسک',
+                    text: 'آیا از لغو این تسک اطمینان دارید؟',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: '✅ بله، لغو کن',
+                    cancelButtonText: '❌ خیر',
+                    confirmButtonColor: '#f56565'
+                });
+                
+                if (!result.isConfirmed) return;
+                
+                const response = await fetch(`/api/tasks/${taskId}/cancel`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                    refreshTasks();
+                } else {
+                    showNotification(data.detail || 'خطا در لغو تسک', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Cancel task error:', error);
+                showNotification('خطا در لغو تسک', 'error');
+            }
+        }
+
+        async function pauseTask(taskId) {
+            try {
+                const response = await fetch(`/api/tasks/${taskId}/pause`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                    refreshTasks();
+                } else {
+                    showNotification(data.detail || 'خطا در توقف تسک', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Pause task error:', error);
+                showNotification('خطا در توقف تسک', 'error');
+            }
+        }
+
+        async function resumeTask(taskId) {
+            try {
+                const response = await fetch(`/api/tasks/${taskId}/resume`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                    refreshTasks();
+                } else {
+                    showNotification(data.detail || 'خطا در ادامه تسک', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Resume task error:', error);
+                showNotification('خطا در ادامه تسک', 'error');
+            }
         }
 
         // Context Menu Functions
@@ -2118,6 +2342,53 @@
             // Handle file item click
             const checkbox = $(this).find('.file-checkbox');
             checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
+            
+            // Show copy destination hint if files are selected
+            setTimeout(() => {
+                updateSelectedFiles();
+                if (selectedFiles.length > 0) {
+                    showCopyHint();
+                }
+            }, 100);
+        }
+        
+        function showCopyHint() {
+            if ($('.copy-hint').length > 0) return; // Don't show multiple hints
+            
+            const hint = $(`
+                <div class="copy-hint" style="
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(102, 126, 234, 0.95);
+                    color: white;
+                    padding: 1rem 2rem;
+                    border-radius: 12px;
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    z-index: 10000;
+                    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+                    animation: fadeInScale 0.3s ease-out;
+                ">
+                    📁 ${selectedFiles.length} فایل انتخاب شد<br>
+                    <small style="font-weight: 400; opacity: 0.9;">
+                        🖱️ روی درایو مقصد کلیک کنید یا Drag & Drop کنید
+                    </small>
+                </div>
+            `);
+            
+            $('body').append(hint);
+            
+            // Auto hide after 3 seconds
+            setTimeout(() => {
+                hint.fadeOut(300, () => hint.remove());
+            }, 3000);
+            
+            // Hide on click
+            hint.click(() => {
+                hint.fadeOut(200, () => hint.remove());
+            });
         }
 
         function updateSelectedFiles() {

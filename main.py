@@ -538,7 +538,7 @@ class FileOperationsManager:
         return task_id
     
     def _copy_files_optimized(self, task_id: str):
-        """Optimized copy with device-specific settings"""
+        """Optimized copy with device-specific settings and pause/cancel support"""
         task = self.active_tasks.get(task_id)
         if not task:
             return
@@ -548,12 +548,30 @@ class FileOperationsManager:
             start_time = time.time()
             
             for i, source_file in enumerate(task["source_files"]):
+                # Check for pause/cancel requests
+                while task.get("paused", False):
+                    time.sleep(0.5)  # Wait while paused
+                    if task.get("cancelled", False):
+                        break
+                
+                # Check if task was cancelled
+                if task.get("cancelled", False):
+                    task["status"] = "cancelled"
+                    logger.info(f"Task {task_id} was cancelled by user")
+                    break
+                
                 if not os.path.exists(source_file):
                     task["errors"].append(f"File not found: {source_file}")
                     continue
                 
                 filename = os.path.basename(source_file)
                 dest_path = os.path.join(task["destination"], filename)
+                
+                # Skip if destination exists
+                if os.path.exists(dest_path):
+                    logger.info(f"File already exists, skipping: {dest_path}")
+                    task["copied_files"] = i + 1
+                    continue
                 
                 task["current_file"] = filename
                 task["copied_files"] = i
@@ -578,7 +596,8 @@ class FileOperationsManager:
                         shutil.copytree(source_file, dest_path, dirs_exist_ok=True)
                     else:
                         self._optimized_file_copy(source_file, dest_path, task["buffer_size"])
-                        task["copied_size"] += os.path.getsize(source_file)
+                        if os.path.exists(source_file):
+                            task["copied_size"] += os.path.getsize(source_file)
                         
                 except Exception as e:
                     error_msg = f"Error copying {filename}: {str(e)}"
@@ -586,7 +605,14 @@ class FileOperationsManager:
                     logger.error(error_msg)
                     continue
             
-            task["status"] = "completed" if not task["errors"] else "completed_with_errors"
+            # Set final status
+            if task.get("cancelled", False):
+                task["status"] = "cancelled"
+            elif task["errors"]:
+                task["status"] = "completed_with_errors"
+            else:
+                task["status"] = "completed"
+                
             task["progress"] = 100
             task["end_time"] = time.time()
             
@@ -1023,11 +1049,22 @@ async def get_drives():
 
 @app.post("/api/search")
 async def search_files(request: dict):
-    """Ultra-fast file search"""
+    """Ultra-fast file search with improved filtering"""
     try:
-        search_term = request.get("search", "")
+        search_term = request.get("search", "").strip()
         drive_filter = request.get("drive", "all")
+        type_filter = request.get("type", "all")
+        fast_mode = request.get("fast_mode", False)
         limit = min(request.get("limit", 500), 1000)  # Cap at 1000
+        
+        # Fast mode optimization
+        if fast_mode and search_term and len(search_term) < 2:
+            return {
+                "files": [],
+                "total": 0,
+                "message": "حداقل 2 کاراکتر برای جستجو لازم است",
+                "fast_mode": True
+            }
         
         conn = sqlite3.connect(db_manager.db_file)
         cursor = conn.cursor()
@@ -1040,30 +1077,59 @@ async def search_files(request: dict):
         params = []
         
         if search_term:
-            query += " AND name LIKE ?"
-            params.append(f"%{search_term}%")
+            if fast_mode:
+                # Faster search - name only
+                query += " AND name LIKE ?"
+                params.append(f"%{search_term}%")
+            else:
+                # Full search - name and path
+                query += " AND (name LIKE ? OR path LIKE ?)"
+                params.extend([f"%{search_term}%", f"%{search_term}%"])
         
-        if drive_filter != "all":
+        if drive_filter and drive_filter != "all":
             query += " AND drive = ?"
             params.append(drive_filter)
+            
+        # Type filtering
+        if type_filter and type_filter != "all":
+            if type_filter == "image":
+                query += " AND extension IN ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg')"
+            elif type_filter == "video":
+                query += " AND extension IN ('.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm')"
+            elif type_filter == "audio":
+                query += " AND extension IN ('.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a')"
+            elif type_filter == "document":
+                query += " AND extension IN ('.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.xls', '.xlsx')"
+            elif type_filter == "archive":
+                query += " AND extension IN ('.zip', '.rar', '.7z', '.tar', '.gz', '.bz2')"
+            elif type_filter == "folder":
+                query += " AND is_directory = 1"
         
-        query += " ORDER BY name LIMIT ?"
+        # Optimize sorting for fast mode
+        if fast_mode:
+            query += " ORDER BY name"
+        else:
+            query += " ORDER BY is_directory DESC, name"
+            
+        query += " LIMIT ?"
         params.append(limit)
         
+        start_time = time.time()
         cursor.execute(query, params)
         results = cursor.fetchall()
+        search_time = time.time() - start_time
         
         files = []
         for row in results:
             files.append({
                 "path": row[0],
                 "name": row[1],
-                "size": row[2],
+                "size": row[2] or 0,
                 "modified": row[3],
                 "is_directory": bool(row[4]),
                 "extension": row[5] or "",
-                "type": row[6] or "",
-                "icon": row[7] or "📄",
+                "type": row[6] or ("folder" if bool(row[4]) else "file"),
+                "icon": row[7] or ("📁" if bool(row[4]) else "📄"),
                 "permissions": row[8] or "",
                 "drive_type": row[9] or ""
             })
@@ -1073,8 +1139,14 @@ async def search_files(request: dict):
         return {
             "files": files,
             "total": len(files),
-            "search_time": time.time(),
-            "cached": True
+            "search_time": round(search_time * 1000, 2),  # ms
+            "cached": True,
+            "fast_mode": fast_mode,
+            "filters": {
+                "search": search_term,
+                "drive": drive_filter,
+                "type": type_filter
+            }
         }
         
     except Exception as e:
@@ -1124,12 +1196,108 @@ async def get_tasks():
     """Get all active tasks"""
     serializable_tasks = {}
     for task_id, task in file_ops.active_tasks.items():
-        serializable_tasks[task_id] = {k: v for k, v in task.items() if k != "future"}
+        task_data = {k: v for k, v in task.items() if k != "future"}
+        # Add control flags
+        task_data["can_cancel"] = task.get("status") in ["running", "preparing", "paused"]
+        task_data["can_pause"] = task.get("status") == "running"
+        task_data["can_resume"] = task.get("status") == "paused"
+        serializable_tasks[task_id] = task_data
     
     return {
         "tasks": serializable_tasks,
         "total": len(serializable_tasks)
     }
+
+@app.post("/api/tasks/{task_id}/cancel")
+async def cancel_task(task_id: str):
+    """Cancel a running task"""
+    try:
+        if task_id in file_ops.active_tasks:
+            task = file_ops.active_tasks[task_id]
+            task["status"] = "cancelled"
+            task["cancelled"] = True
+            
+            # Try to cancel the future if it exists
+            if "future" in task and not task["future"].done():
+                task["future"].cancel()
+            
+            # Broadcast update
+            await manager.broadcast({
+                "type": "task_update",
+                "data": {
+                    "task_id": task_id,
+                    "status": "cancelled",
+                    "message": "تسک لغو شد"
+                }
+            })
+            
+            return {"success": True, "message": "تسک لغو شد"}
+        else:
+            raise HTTPException(status_code=404, detail="تسک یافت نشد")
+            
+    except Exception as e:
+        logger.error(f"Error cancelling task {task_id}: {e}")
+        raise HTTPException(status_code=500, detail="خطا در لغو تسک")
+
+@app.post("/api/tasks/{task_id}/pause")
+async def pause_task(task_id: str):
+    """Pause a running task"""
+    try:
+        if task_id in file_ops.active_tasks:
+            task = file_ops.active_tasks[task_id]
+            if task.get("status") == "running":
+                task["status"] = "paused"
+                task["paused"] = True
+                
+                # Broadcast update
+                await manager.broadcast({
+                    "type": "task_update", 
+                    "data": {
+                        "task_id": task_id,
+                        "status": "paused",
+                        "message": "تسک متوقف شد"
+                    }
+                })
+                
+                return {"success": True, "message": "تسک متوقف شد"}
+            else:
+                raise HTTPException(status_code=400, detail="تسک قابل توقف نیست")
+        else:
+            raise HTTPException(status_code=404, detail="تسک یافت نشد")
+            
+    except Exception as e:
+        logger.error(f"Error pausing task {task_id}: {e}")
+        raise HTTPException(status_code=500, detail="خطا در توقف تسک")
+
+@app.post("/api/tasks/{task_id}/resume")
+async def resume_task(task_id: str):
+    """Resume a paused task"""
+    try:
+        if task_id in file_ops.active_tasks:
+            task = file_ops.active_tasks[task_id]
+            if task.get("status") == "paused":
+                task["status"] = "running"
+                task["paused"] = False
+                
+                # Broadcast update
+                await manager.broadcast({
+                    "type": "task_update",
+                    "data": {
+                        "task_id": task_id,
+                        "status": "running", 
+                        "message": "تسک ادامه یافت"
+                    }
+                })
+                
+                return {"success": True, "message": "تسک ادامه یافت"}
+            else:
+                raise HTTPException(status_code=400, detail="تسک قابل ادامه نیست")
+        else:
+            raise HTTPException(status_code=404, detail="تسک یافت نشد")
+            
+    except Exception as e:
+        logger.error(f"Error resuming task {task_id}: {e}")
+        raise HTTPException(status_code=500, detail="خطا در ادامه تسک")
 
 @app.get("/api/config")
 async def get_config():
