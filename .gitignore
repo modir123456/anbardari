@@ -1,3 +1,5 @@
+# Persian File Copier Pro - GitIgnore
+
 # Python
 __pycache__/
 *.py[cod]
@@ -16,24 +18,47 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
 # Virtual environments
-venv/
+.env
+.venv
 env/
+venv/
 ENV/
 env.bak/
 venv.bak/
 
-# Application specific
-settings.json
-file_cache.json
-copy_log.txt
+# Jupyter Notebook
+.ipynb_checkpoints
 
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
@@ -48,3 +73,33 @@ copy_log.txt
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Application specific
+*.db
+*.sqlite
+*.log
+*.pid
+temp/
+tmp/
+cache/
+uploads/
+downloads/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build artifacts
+installer/
+portable/
+release/
+
+# Old files
+backend/
+frontend/
+web/
+test_modern_ui.html
+README_MODERN.md
+run_modern.py
+start_simple.py
+web_app_pro.py

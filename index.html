@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="app-title">Persian File Copier Pro</title>
+    
+    <!-- Modern CDN Resources -->
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    
+    <style>
+        /* Enhanced Persian File Copier Pro CSS */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --background: #ffffff;
+            --surface: #f8f9fa;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --border-color: rgba(0, 0, 0, 0.1);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --animation-speed: 0.3s;
+        }
+
+        /* Theme Classes */
+        .theme-light {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --background: #ffffff;
+            --surface: #f8f9fa;
+            --text-primary: #333;
+            --text-secondary: #666;
+        }
+
+        .theme-dark {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --background: #1a1a2e;
+            --surface: #16213e;
+            --text-primary: #eee;
+            --text-secondary: #bbb;
+        }
+
+        .theme-alborz {
+            --primary-color: #2d7d32;
+            --secondary-color: #388e3c;
+            --background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+            --surface: #f1f8e9;
+            --text-primary: #1b5e20;
+            --text-secondary: #2e7d32;
+        }
+
+        .theme-caspian {
+            --primary-color: #0277bd;
+            --secondary-color: #0288d1;
+            --background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            --surface: #e1f5fe;
+            --text-primary: #01579b;
+            --text-secondary: #0277bd;
+        }
+
+        .theme-desert {
+            --primary-color: #f57c00;
+            --secondary-color: #ff9800;
+            --background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+            --surface: #fffde7;
+            --text-primary: #e65100;
+            --text-secondary: #f57c00;
+        }
+
+        .theme-persian-gulf {
+            --primary-color: #00acc1;
+            --secondary-color: #00bcd4;
+            --background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+            --surface: #e0f7fa;
+            --text-primary: #006064;
+            --text-secondary: #00838f;
+        }
+
+        body {
+            font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            direction: rtl;
+            min-height: 100vh;
+            transition: all var(--animation-speed) ease;
+        }
+
+        /* Header */
+        .app-header {
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .app-icon {
+            font-size: 2.5rem;
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .app-title h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.2rem;
+        }
+
+        .app-title p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--animation-speed) ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+        }
+
+        /* Main Layout */
+        .main-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            gap: 2rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        /* Drives Panel */
+        .drives-panel {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            height: fit-content;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .panel-header h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .drive-item {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            margin-bottom: 0.8rem;
+            cursor: pointer;
+            transition: all var(--animation-speed) ease;
+            border: 2px solid transparent;
+        }
+
+        .drive-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(-3px);
+        }
+
+        .drive-item.active {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.15);
+        }
+
+        .drive-name {
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .drive-info {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.3rem;
+        }
+
+        .drive-space {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .drive-space-used {
+            height: 100%;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border-radius: 4px;
+            transition: width var(--animation-speed) ease;
+        }
+
+        /* Files Panel */
+        .files-panel {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 1rem 3rem 1rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all var(--animation-speed) ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+
+        .filters-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-select {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-family: inherit;
+            background: white;
+        }
+
+        /* File List */
+        .file-list {
+            flex: 1;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.5);
+            overflow-y: auto;
+            max-height: 500px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: all var(--animation-speed) ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .file-item:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-item.selected {
+            background: rgba(102, 126, 234, 0.1);
+            border-right: 4px solid var(--primary-color);
+        }
+
+        .file-item.dragging {
+            opacity: 0.5;
+            transform: rotate(2deg);
+        }
+
+        .file-checkbox {
+            margin-left: 1rem;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color);
+        }
+
+        .file-icon {
+            font-size: 1.8rem;
+            margin-left: 1rem;
+            min-width: 35px;
+        }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-details {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 1rem;
+        }
+
+        /* Tasks Panel */
+        .tasks-panel {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all var(--animation-speed) ease;
+        }
+
+        .task-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .task-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .task-status {
+            padding: 0.2rem 0.6rem;
+            border-radius: 15px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .task-status.running { background: rgba(33, 150, 243, 0.1); color: #2196F3; }
+        .task-status.completed { background: rgba(76, 175, 80, 0.1); color: #4CAF50; }
+        .task-status.error { background: rgba(244, 67, 54, 0.1); color: #f44336; }
+
+        .progress-container {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            height: 8px;
+            margin: 0.5rem 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border-radius: 8px;
+            transition: width var(--animation-speed) ease;
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .task-details {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .task-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .task-controls .btn {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.7rem;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed var(--primary-color);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            background: rgba(102, 126, 234, 0.05);
+            margin: 1rem 0;
+            transition: all var(--animation-speed) ease;
+        }
+
+        .drop-zone.dragover {
+            background: rgba(102, 126, 234, 0.15);
+            border-color: var(--secondary-color);
+            transform: scale(1.02);
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+            padding: 0.5rem 0;
+            z-index: 10000;
+            display: none;
+            min-width: 200px;
+        }
+
+        .context-item {
+            padding: 0.8rem 1rem;
+            cursor: pointer;
+            transition: background var(--animation-speed) ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .context-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        /* Settings Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn var(--animation-speed) ease;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all var(--animation-speed) ease;
+            padding: 0.5rem;
+            border-radius: 50%;
+        }
+
+        .modal-close:hover {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+        }
+
+        /* Settings Styles */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .settings-group {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .settings-group h4 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all var(--animation-speed) ease;
+        }
+
+        .toggle-switch.active {
+            background: var(--primary-color);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            right: 2px;
+            transition: all var(--animation-speed) ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch.active::after {
+            right: 28px;
+        }
+
+        /* Theme Selector */
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .theme-option {
+            padding: 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all var(--animation-speed) ease;
+            border: 2px solid transparent;
+        }
+
+        .theme-option.active {
+            border-color: var(--primary-color);
+        }
+
+        .theme-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 250px 1fr 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Beautiful Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 4px;
+            transition: all var(--animation-speed) ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.5);
+        }
+
+        /* Connection Indicator */
+        .connection-status {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            animation: pulse 2s infinite;
+            z-index: 1000;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body class="theme-light">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="app-icon">🌟</div>
+                <div class="app-title">
+                    <h1 id="app-name">Persian File Copier Pro</h1>
+                    <p id="company-name">شرکت فناوری نوآوران مثبت سبز</p>
+                </div>
+            </div>
+            
+            <div class="header-controls">
+                <button class="btn btn-secondary" onclick="showSettings()">
+                    ⚙️ تنظیمات
+                </button>
+                <button class="btn btn-primary" onclick="showAbout()">
+                    ℹ️ درباره
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Drives Panel -->
+        <div class="drives-panel">
+            <div class="panel-header">
+                <h3>💾 درایوها</h3>
+                <button class="btn btn-secondary" onclick="refreshDrives()" style="padding: 0.5rem;">🔄</button>
+            </div>
+            <div id="drives-list">
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <div class="loading"></div>
+                    <p style="margin-top: 1rem;">در حال اسکن درایوها...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Files Panel -->
+        <div class="files-panel">
+            <div class="panel-header">
+                <h3>📁 فایل‌ها</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary" onclick="refreshFiles()" style="padding: 0.5rem;">🔄</button>
+                    <button class="btn btn-secondary" onclick="selectAllFiles()" style="padding: 0.5rem;">☑️</button>
+                </div>
+            </div>
+
+            <!-- Search Section -->
+            <div class="search-section">
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="جستجوی سریع در فایل‌ها..." />
+                    <span class="search-icon">🔍</span>
+                </div>
+                
+                <div class="filters-row">
+                    <select id="drive-filter" class="filter-select">
+                        <option value="all">همه درایوها</option>
+                    </select>
+                    <select id="type-filter" class="filter-select">
+                        <option value="">همه انواع</option>
+                        <option value="image">🖼️ تصاویر</option>
+                        <option value="video">🎬 ویدیوها</option>
+                        <option value="audio">🎵 صوتی</option>
+                        <option value="document">📄 اسناد</option>
+                        <option value="archive">🗂️ آرشیو</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Drop Zone -->
+            <div class="drop-zone" id="drop-zone">
+                <div>📁 فایل‌ها را اینجا بکشید یا کلیک کنید</div>
+                <div style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">
+                    انتخاب شده: <span id="selected-count">0</span> فایل
+                </div>
+            </div>
+
+            <!-- File List -->
+            <div class="file-list" id="file-list">
+                <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📁</div>
+                    <p>در حال بارگیری فایل‌ها...</p>
+                    <div class="loading" style="margin: 1rem auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tasks Panel -->
+        <div class="tasks-panel">
+            <div class="panel-header">
+                <h3>🚀 تسک‌ها</h3>
+                <button class="btn btn-secondary" onclick="clearCompletedTasks()" style="padding: 0.5rem;">🧹</button>
+            </div>
+            <div id="tasks-list">
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">📋</div>
+                    <p>هیچ تسکی در حال اجرا نیست</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="context-menu">
+        <div class="context-item" onclick="copyToDestination()">📋 کپی به مقصد</div>
+        <div class="context-item" onclick="moveToDestination()">✂️ انتقال به مقصد</div>
+        <div class="context-item" onclick="openFile()">📂 باز کردن</div>
+        <div class="context-item" onclick="copyFilePath()">📎 کپی مسیر</div>
+        <div class="context-item" onclick="showFileProperties()">🔍 ویژگی‌ها</div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeSettings()">&times;</button>
+            <h2 style="margin-bottom: 2rem;">⚙️ تنظیمات</h2>
+            
+            <div class="settings-grid">
+                <!-- UI Settings -->
+                <div class="settings-group">
+                    <h4>🎨 رابط کاربری</h4>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <div>انتخاب تم</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">تم‌های الهام گرفته از طبیعت ایران</div>
+                        </div>
+                    </div>
+                    
+                    <div class="theme-selector">
+                        <div class="theme-option active" data-theme="light" style="background: linear-gradient(135deg, #ffffff, #f8f9fa);">
+                            ☀️ روشن
+                        </div>
+                        <div class="theme-option" data-theme="dark" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: white;">
+                            🌙 تاریک
+                        </div>
+                        <div class="theme-option" data-theme="alborz" style="background: linear-gradient(135deg, #e8f5e8, #c8e6c9);">
+                            🏔️ کوه البرز
+                        </div>
+                        <div class="theme-option" data-theme="caspian" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb);">
+                            🌊 دریای خزر
+                        </div>
+                        <div class="theme-option" data-theme="desert" style="background: linear-gradient(135deg, #fff8e1, #ffecb3);">
+                            🏜️ کویر ایران
+                        </div>
+                        <div class="theme-option" data-theme="persian-gulf" style="background: linear-gradient(135deg, #e0f2f1, #b2dfdb);">
+                            🏖️ خلیج فارس
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>انیمیشن‌ها</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'animations')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>نمایش فایل‌های مخفی</div>
+                        <div class="toggle-switch" onclick="toggleSetting(this, 'show_hidden')"></div>
+                    </div>
+                </div>
+
+                <!-- Copy Settings -->
+                <div class="settings-group">
+                    <h4>📁 تنظیمات کپی</h4>
+                    
+                    <div class="setting-item">
+                        <div>بهینه‌سازی سرعت</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'speed_optimization')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>تأیید کپی</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'verify_copy')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>حفظ تاریخ فایل‌ها</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'preserve_timestamps')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>رد شدن از فایل‌های موجود</div>
+                        <div class="toggle-switch" onclick="toggleSetting(this, 'skip_existing')"></div>
+                    </div>
+                </div>
+
+                <!-- Notification Settings -->
+                <div class="settings-group">
+                    <h4>🔔 اعلان‌ها</h4>
+                    
+                    <div class="setting-item">
+                        <div>فعال‌سازی اعلان‌ها</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'notifications')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>صدای اعلان</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'notification_sound')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>اعلان اتمام تسک</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'task_completion')"></div>
+                    </div>
+                </div>
+
+                <!-- Advanced Settings -->
+                <div class="settings-group">
+                    <h4>🔧 پیشرفته</h4>
+                    
+                    <div class="setting-item">
+                        <div>ایندکس خودکار</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'auto_index')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>کش فایل‌ها</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'cache_enabled')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>تشخیص خودکار دستگاه</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'auto_device_detect')"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="btn btn-primary" onclick="saveSettings()">💾 ذخیره تنظیمات</button>
+                <button class="btn btn-secondary" onclick="resetSettings()" style="margin-right: 1rem;">🔄 بازگردانی</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="connection-status" id="connection-status" style="display: none;">
+        🟢 متصل به سرور
+    </div>
+
+    <!-- Enhanced JavaScript -->
+    <script>
+        // Global Configuration
+        let CONFIG = {};
+        let wsConnection = null;
+        let selectedFiles = [];
+        let currentDrive = 'all';
+        let draggedFiles = [];
+
+        // Initialize Application
+        $(document).ready(function() {
+            initializeApp();
+            setupEventListeners();
+            connectWebSocket();
+            loadConfiguration();
+            loadDrives();
+            loadFiles();
+            loadTasks();
+            
+            // Auto-refresh
+            setInterval(() => {
+                refreshDrives();
+                refreshTasks();
+            }, 5000);
+        });
+
+        // Initialize App
+        async function initializeApp() {
+            try {
+                // Load configuration
+                const response = await fetch('/api/config');
+                CONFIG = await response.json();
+                
+                // Update UI with config
+                $('#app-title').text(CONFIG.app_name);
+                $('#app-name').text(CONFIG.app_name);
+                $('#company-name').text(CONFIG.company);
+                
+                console.log('🚀 App initialized successfully');
+                showNotification('خوش آمدید! برنامه آماده استفاده است.', 'success');
+                
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                showNotification('خطا در راه‌اندازی برنامه', 'error');
+            }
+        }
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Search with debounce
+            let searchTimeout;
+            $('#search-input').on('input', function() {
+                clearTimeout(searchTimeout);
+                const query = $(this).val();
+                searchTimeout = setTimeout(() => searchFiles(query), 300);
+            });
+
+            // Filter changes
+            $('#drive-filter, #type-filter').change(loadFiles);
+
+            // File selection
+            $(document).on('change', '.file-checkbox', handleFileSelection);
+            
+            // File item clicks
+            $(document).on('click', '.file-item', handleFileClick);
+            
+            // Right click context menu
+            $(document).on('contextmenu', '.file-item', showContextMenu);
+            
+            // Drive selection
+            $(document).on('click', '.drive-item', selectDrive);
+            
+            // Theme selection
+            $(document).on('click', '.theme-option', changeTheme);
+            
+            // Drag and drop
+            setupDragAndDrop();
+            
+            // Close context menu on click outside
+            $(document).click(function() {
+                $('#context-menu').hide();
+            });
+        }
+
+        // WebSocket Connection
+        function connectWebSocket() {
+            try {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                
+                wsConnection = new WebSocket(wsUrl);
+                
+                wsConnection.onopen = function() {
+                    console.log('🔗 WebSocket connected');
+                    $('#connection-status').show().text('🟢 متصل به سرور');
+                    
+                    // Send ping every 30 seconds
+                    setInterval(() => {
+                        if (wsConnection.readyState === WebSocket.OPEN) {
+                            wsConnection.send(JSON.stringify({type: 'ping'}));
+                        }
+                    }, 30000);
+                };
+                
+                wsConnection.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleWebSocketMessage(data);
+                    } catch (e) {
+                        console.error('WebSocket message parse error:', e);
+                    }
+                };
+                
+                wsConnection.onclose = function() {
+                    console.log('❌ WebSocket disconnected');
+                    $('#connection-status').text('🔴 قطع اتصال').css('background', 'rgba(244, 67, 54, 0.9)');
+                    setTimeout(connectWebSocket, 5000);
+                };
+                
+            } catch (error) {
+                console.error('WebSocket connection failed:', error);
+            }
+        }
+
+        // Handle WebSocket Messages
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'task_update':
+                    updateTaskUI(data.data);
+                    break;
+                case 'new_drives_detected':
+                    showNotification('دستگاه جدید تشخیص داده شد', 'info');
+                    refreshDrives();
+                    break;
+                case 'drive_indexed':
+                    showNotification(`${data.data.count} فایل ایندکس شد`, 'success');
+                    refreshFiles();
+                    break;
+            }
+        }
+
+        // Load Drives
+        async function loadDrives() {
+            try {
+                const response = await fetch('/api/drives');
+                const data = await response.json();
+                displayDrives(data.drives);
+                updateDriveFilter(data.drives);
+            } catch (error) {
+                console.error('Error loading drives:', error);
+            }
+        }
+
+        // Display Drives
+        function displayDrives(drives) {
+            if (!drives || drives.length === 0) {
+                $('#drives-list').html(`
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">💾</div>
+                        <p>هیچ درایوی یافت نشد</p>
+                    </div>
+                `);
+                return;
+            }
+
+            const drivesHtml = drives.map(drive => {
+                const usedPercent = drive.total_space > 0 ? 
+                    ((drive.total_space - drive.free_space) / drive.total_space * 100).toFixed(1) : 0;
+                
+                let driveIcon = '💾';
+                if (drive.drive_type === 'mtp') driveIcon = '📱';
+                else if (drive.device_type === 'usb_3') driveIcon = '🔌';
+                else if (drive.device_type === 'ssd') driveIcon = '⚡';
+                
+                return `
+                    <div class="drive-item" data-path="${drive.path}" data-type="${drive.device_type}">
+                        <div class="drive-name">
+                            ${driveIcon} ${drive.label || drive.name}
+                            ${!drive.is_ready ? '<span style="color: orange;">⚠️</span>' : ''}
+                        </div>
+                        <div class="drive-info">
+                            ${formatFileSize(drive.free_space)} آزاد از ${formatFileSize(drive.total_space)}
+                        </div>
+                        <div class="drive-info" style="font-size: 0.7rem;">
+                            ${drive.filesystem} • ${drive.device_type}
+                        </div>
+                        <div class="drive-space">
+                            <div class="drive-space-used" style="width: ${usedPercent}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            $('#drives-list').html(drivesHtml);
+        }
+
+        // Update Drive Filter
+        function updateDriveFilter(drives) {
+            const currentValue = $('#drive-filter').val();
+            const options = ['<option value="all">همه درایوها</option>'];
+            
+            drives.forEach(drive => {
+                options.push(`<option value="${drive.path}">${drive.label || drive.name}</option>`);
+            });
+            
+            $('#drive-filter').html(options.join(''));
+            $('#drive-filter').val(currentValue);
+        }
+
+        // Load Files
+        async function loadFiles() {
+            try {
+                $('#file-list').html(`
+                    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <div class="loading"></div>
+                        <p style="margin-top: 1rem;">در حال بارگیری فایل‌ها...</p>
+                    </div>
+                `);
+
+                const searchQuery = $('#search-input').val();
+                const driveFilter = $('#drive-filter').val();
+                const typeFilter = $('#type-filter').val();
+
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        search: searchQuery,
+                        drive: driveFilter,
+                        type: typeFilter,
+                        limit: 500
+                    })
+                });
+
+                const data = await response.json();
+                displayFiles(data.files);
+                
+            } catch (error) {
+                console.error('Error loading files:', error);
+                showErrorInFileList();
+            }
+        }
+
+        // Display Files
+        function displayFiles(files) {
+            if (!files || files.length === 0) {
+                $('#file-list').html(`
+                    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                        <p>هیچ فایلی یافت نشد</p>
+                    </div>
+                `);
+                return;
+            }
+
+            const fileListHtml = files.map(file => `
+                <div class="file-item" data-path="${file.path}" data-size="${file.size}" data-type="${file.type || 'file'}"
+                     draggable="true">
+                    <input type="checkbox" class="file-checkbox" data-path="${file.path}">
+                    <div class="file-icon">${file.icon || getFileIcon(file.extension, file.is_directory)}</div>
+                    <div class="file-info">
+                        <div class="file-name" title="${file.path}">${file.name}</div>
+                        <div class="file-details">
+                            <span>${formatFileSize(file.size)}</span>
+                            <span>${formatDate(file.modified)}</span>
+                            ${file.drive_type ? `<span>${file.drive_type}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            $('#file-list').html(fileListHtml);
+            updateSelectedFiles();
+        }
+
+        // Drag and Drop Setup
+        function setupDragAndDrop() {
+            // Make file items draggable
+            $(document).on('dragstart', '.file-item', function(e) {
+                const filePath = $(this).data('path');
+                draggedFiles = [filePath];
+                $(this).addClass('dragging');
+                
+                e.originalEvent.dataTransfer.setData('text/plain', filePath);
+                e.originalEvent.dataTransfer.effectAllowed = 'copy';
+            });
+
+            $(document).on('dragend', '.file-item', function() {
+                $(this).removeClass('dragging');
+            });
+
+            // Drop zones
+            $('.drive-item, .drop-zone').on('dragover', function(e) {
+                e.preventDefault();
+                e.originalEvent.dataTransfer.dropEffect = 'copy';
+                $(this).addClass('dragover');
+            });
+
+            $('.drive-item, .drop-zone').on('dragleave', function() {
+                $(this).removeClass('dragover');
+            });
+
+            $('.drive-item').on('drop', function(e) {
+                e.preventDefault();
+                $(this).removeClass('dragover');
+                
+                const destinationPath = $(this).data('path');
+                if (draggedFiles.length > 0) {
+                    startCopyOperation(draggedFiles, destinationPath);
+                }
+            });
+        }
+
+        // File Operations
+        function handleFileSelection() {
+            const filePath = $(this).data('path');
+            const isChecked = $(this).is(':checked');
+            
+            if (isChecked) {
+                if (!selectedFiles.includes(filePath)) {
+                    selectedFiles.push(filePath);
+                }
+                $(this).closest('.file-item').addClass('selected');
+            } else {
+                selectedFiles = selectedFiles.filter(f => f !== filePath);
+                $(this).closest('.file-item').removeClass('selected');
+            }
+            
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            $('#selected-count').text(selectedFiles.length);
+        }
+
+        function selectAllFiles() {
+            $('.file-checkbox:visible').prop('checked', true);
+            selectedFiles = $('.file-checkbox:visible').map(function() {
+                return $(this).data('path');
+            }).get();
+            $('.file-item').addClass('selected');
+            updateSelectedCount();
+        }
+
+        // Start Copy Operation
+        async function startCopyOperation(sourceFiles, destination) {
+            if (!sourceFiles || sourceFiles.length === 0) {
+                showNotification('هیچ فایلی انتخاب نشده است', 'warning');
+                return;
+            }
+
+            try {
+                const result = await Swal.fire({
+                    title: 'شروع کپی',
+                    text: `آیا می‌خواهید ${sourceFiles.length} فایل را کپی کنید؟`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: '✅ شروع کپی',
+                    cancelButtonText: '❌ انصراف',
+                    confirmButtonColor: 'var(--primary-color)'
+                });
+
+                if (!result.isConfirmed) return;
+
+                const response = await fetch('/api/copy', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        source_files: sourceFiles,
+                        destination: destination,
+                        options: {
+                            verify_copy: true,
+                            preserve_timestamps: true
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showNotification(`تسک کپی شروع شد - ${data.task_id.substring(0, 8)}`, 'success');
+                    refreshTasks();
+                } else {
+                    throw new Error(data.detail || 'خطا در شروع کپی');
+                }
+
+            } catch (error) {
+                console.error('Copy error:', error);
+                showNotification('خطا در شروع کپی: ' + error.message, 'error');
+            }
+        }
+
+        // Context Menu
+        function showContextMenu(e) {
+            e.preventDefault();
+            const contextMenu = $('#context-menu');
+            contextMenu.css({
+                top: e.pageY,
+                left: e.pageX,
+                display: 'block'
+            });
+        }
+
+        // Load Tasks
+        async function loadTasks() {
+            try {
+                const response = await fetch('/api/tasks');
+                const data = await response.json();
+                displayTasks(data.tasks || {});
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+            }
+        }
+
+        // Display Tasks
+        function displayTasks(tasks) {
+            const taskEntries = Object.entries(tasks);
+            
+            if (taskEntries.length === 0) {
+                $('#tasks-list').html(`
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">📋</div>
+                        <p>هیچ تسکی در حال اجرا نیست</p>
+                    </div>
+                `);
+                return;
+            }
+
+            const tasksHtml = taskEntries.map(([taskId, task]) => `
+                <div class="task-item" data-task-id="${taskId}">
+                    <div class="task-header">
+                        <div class="task-title">📋 ${taskId.substring(0, 8)}...</div>
+                        <div class="task-status ${task.status}">${getStatusText(task.status)}</div>
+                    </div>
+                    
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: ${task.progress}%"></div>
+                    </div>
+                    
+                    <div class="task-details">
+                        <div>📊 ${task.progress}% (${task.copied_files}/${task.total_files})</div>
+                        ${task.current_file ? `<div>📄 ${task.current_file}</div>` : ''}
+                        ${task.speed ? `<div>⚡ ${formatFileSize(task.speed)}/s</div>` : ''}
+                        ${task.eta ? `<div>⏱️ ${formatTime(task.eta)}</div>` : ''}
+                    </div>
+                    
+                    <div class="task-controls">
+                        ${task.status === 'running' ? `
+                            <button class="btn btn-secondary" onclick="pauseTask('${taskId}')">⏸️</button>
+                        ` : ''}
+                        ${task.status === 'paused' ? `
+                            <button class="btn btn-primary" onclick="resumeTask('${taskId}')">▶️</button>
+                        ` : ''}
+                        ${task.status !== 'completed' ? `
+                            <button class="btn btn-secondary" onclick="cancelTask('${taskId}')">❌</button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            $('#tasks-list').html(tasksHtml);
+        }
+
+        // Update Task UI in real-time
+        function updateTaskUI(task) {
+            const taskElement = $(`.task-item[data-task-id="${task.id}"]`);
+            if (taskElement.length > 0) {
+                taskElement.find('.progress-bar').css('width', task.progress + '%');
+                taskElement.find('.task-status').removeClass().addClass(`task-status ${task.status}`).text(getStatusText(task.status));
+                
+                // Update details
+                const details = [
+                    `📊 ${task.progress}% (${task.copied_files}/${task.total_files})`
+                ];
+                if (task.current_file) details.push(`📄 ${task.current_file}`);
+                if (task.speed) details.push(`⚡ ${formatFileSize(task.speed)}/s`);
+                if (task.eta) details.push(`⏱️ ${formatTime(task.eta)}`);
+                
+                taskElement.find('.task-details').html(details.map(d => `<div>${d}</div>`).join(''));
+                
+                // Show completion notification
+                if (task.status === 'completed') {
+                    showNotification(`تسک ${task.id.substring(0, 8)} تکمیل شد`, 'success');
+                }
+            }
+        }
+
+        // Settings Functions
+        function showSettings() {
+            $('#settings-modal').addClass('active');
+        }
+
+        function closeSettings() {
+            $('#settings-modal').removeClass('active');
+        }
+
+        function changeTheme(e) {
+            const theme = $(e.target).data('theme');
+            $('.theme-option').removeClass('active');
+            $(e.target).addClass('active');
+            
+            // Remove all theme classes
+            $('body').removeClass('theme-light theme-dark theme-alborz theme-caspian theme-desert theme-persian-gulf');
+            $('body').addClass(`theme-${theme}`);
+            
+            showNotification('تم تغییر کرد', 'success');
+        }
+
+        function toggleSetting(element, settingKey) {
+            $(element).toggleClass('active');
+            const isActive = $(element).hasClass('active');
+            
+            console.log(`Setting ${settingKey} changed to ${isActive}`);
+            showNotification(`تنظیم ${settingKey} تغییر کرد`, 'info');
+        }
+
+        // Utility Functions
+        function showNotification(message, type = 'info') {
+            Swal.fire({
+                text: message,
+                icon: type,
+                toast: true,
+                position: 'top-start',
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleDateString('fa-IR');
+        }
+
+        function formatTime(seconds) {
+            if (seconds < 60) return `${seconds} ثانیه`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)} دقیقه`;
+            return `${Math.floor(seconds / 3600)} ساعت`;
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'running': 'در حال اجرا',
+                'completed': 'تکمیل شده',
+                'error': 'خطا',
+                'paused': 'متوقف'
+            };
+            return statusMap[status] || status;
+        }
+
+        function getFileIcon(extension, isDirectory) {
+            if (isDirectory) return '📁';
+            
+            const iconMap = {
+                '.jpg': '🖼️', '.jpeg': '🖼️', '.png': '🖼️', '.gif': '🖼️',
+                '.mp4': '🎬', '.avi': '🎬', '.mkv': '🎬',
+                '.mp3': '🎵', '.wav': '🎵', '.flac': '🎵',
+                '.pdf': '📄', '.doc': '📄', '.docx': '📄', '.txt': '📄',
+                '.zip': '🗂️', '.rar': '🗂️', '.7z': '🗂️'
+            };
+            
+            return iconMap[extension] || '📄';
+        }
+
+        // Refresh Functions
+        function refreshDrives() {
+            loadDrives();
+        }
+
+        function refreshFiles() {
+            loadFiles();
+        }
+
+        function refreshTasks() {
+            loadTasks();
+        }
+
+        // Additional Functions (Stubs for context menu)
+        function copyToDestination() {
+            console.log('Copy to destination');
+        }
+
+        function moveToDestination() {
+            console.log('Move to destination');
+        }
+
+        function openFile() {
+            console.log('Open file');
+        }
+
+        function copyFilePath() {
+            console.log('Copy file path');
+        }
+
+        function showFileProperties() {
+            console.log('Show file properties');
+        }
+
+        function selectDrive() {
+            console.log('Select drive');
+        }
+
+        function searchFiles(query) {
+            loadFiles();
+        }
+
+        function showErrorInFileList() {
+            $('#file-list').html(`
+                <div style="text-align: center; padding: 3rem; color: #f44336;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                    <p>خطا در بارگیری فایل‌ها</p>
+                </div>
+            `);
+        }
+
+        function showAbout() {
+            Swal.fire({
+                title: '🌟 Persian File Copier Pro',
+                html: `
+                    <div style="text-align: right; line-height: 2;">
+                        <p><strong>نسخه:</strong> ${CONFIG.version || '3.5.0'}</p>
+                        <p><strong>شرکت:</strong> ${CONFIG.company || 'شرکت فناوری نوآوران مثبت سبز'}</p>
+                        <p><strong>تلگرام:</strong> Scrubby3137</p>
+                        <hr style="margin: 1rem 0;">
+                        <p>نرم‌افزار پیشرفته مدیریت و کپی فایل با قابلیت‌های منحصر به فرد</p>
+                    </div>
+                `,
+                confirmButtonText: 'متوجه شدم',
+                width: '500px'
+            });
+        }
+
+        function clearCompletedTasks() {
+            console.log('Clear completed tasks');
+        }
+
+        function pauseTask(taskId) {
+            console.log('Pause task:', taskId);
+        }
+
+        function resumeTask(taskId) {
+            console.log('Resume task:', taskId);
+        }
+
+        function cancelTask(taskId) {
+            console.log('Cancel task:', taskId);
+        }
+
+        function saveSettings() {
+            showNotification('تنظیمات ذخیره شد', 'success');
+            closeSettings();
+        }
+
+        function resetSettings() {
+            showNotification('تنظیمات بازگردانی شد', 'info');
+        }
+
+        function loadConfiguration() {
+            // Load configuration from localStorage
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            $('body').removeClass().addClass(`theme-${savedTheme}`);
+            $(`.theme-option[data-theme="${savedTheme}"]`).addClass('active').siblings().removeClass('active');
+        }
+
+        function handleFileClick() {
+            // Handle file item click
+            const checkbox = $(this).find('.file-checkbox');
+            checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
+        }
+
+        function updateSelectedFiles() {
+            // Update selected files based on checkboxes
+            selectedFiles.forEach(filePath => {
+                $(`.file-checkbox[data-path="${filePath}"]`).prop('checked', true).closest('.file-item').addClass('selected');
+            });
+        }
+
+        console.log('🎉 Persian File Copier Pro 3.5.0 - Ready!');
+    </script>
+</body>
+</html>
