@@ -4,7 +4,7 @@ using PersianFileCopierPro.Services;
 namespace PersianFileCopierPro.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/drives")]
     public class DriveController : ControllerBase
     {
         private readonly IDriveService _driveService;

@@ -5,7 +5,7 @@ using PersianFileCopierPro.Services;
 namespace PersianFileCopierPro.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/tasks")]
     public class TaskController : ControllerBase
     {
         private readonly ITaskManagerService _taskManager;

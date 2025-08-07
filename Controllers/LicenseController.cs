@@ -5,57 +5,19 @@ using PersianFileCopierPro.Services;
 namespace PersianFileCopierPro.Controllers
 {
     [ApiController]
-    [Route("api/config")]
-    public class ConfigController : ControllerBase
+    [Route("api/license")]
+    public class LicenseController : ControllerBase
     {
-        private readonly IConfigurationService _configService;
         private readonly ILicenseService _licenseService;
-        private readonly ILogger<ConfigController> _logger;
+        private readonly ILogger<LicenseController> _logger;
 
-        public ConfigController(
-            IConfigurationService configService,
-            ILicenseService licenseService,
-            ILogger<ConfigController> logger)
+        public LicenseController(ILicenseService licenseService, ILogger<LicenseController> logger)
         {
-            _configService = configService;
             _licenseService = licenseService;
             _logger = logger;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetConfiguration()
-        {
-            try
-            {
-                var config = await _configService.GetConfigurationAsync();
-                return Ok(config);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"❌ Error getting configuration: {ex.Message}");
-                return StatusCode(500, new { error = "Internal server error" });
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> UpdateConfiguration([FromBody] ConfigurationModel configuration)
-        {
-            try
-            {
-                var success = await _configService.UpdateConfigurationAsync(configuration);
-                if (!success)
-                    return StatusCode(500, new { error = "Failed to update configuration" });
-
-                return Ok(new { message = "Configuration updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"❌ Error updating configuration: {ex.Message}");
-                return StatusCode(500, new { error = "Internal server error" });
-            }
-        }
-
-        [HttpGet("license")]
         public async Task<IActionResult> GetLicense()
         {
             try
@@ -70,7 +32,7 @@ namespace PersianFileCopierPro.Controllers
             }
         }
 
-        [HttpPost("license/activate")]
+        [HttpPost("activate")]
         public async Task<IActionResult> ActivateLicense([FromBody] ActivateLicenseRequest request)
         {
             try
@@ -89,7 +51,7 @@ namespace PersianFileCopierPro.Controllers
             }
         }
 
-        [HttpGet("license/machine-id")]
+        [HttpGet("machine-id")]
         public async Task<IActionResult> GetMachineId()
         {
             try
@@ -104,7 +66,7 @@ namespace PersianFileCopierPro.Controllers
             }
         }
 
-        [HttpPost("license/generate")]
+        [HttpPost("generate")]
         public async Task<IActionResult> GenerateLicense([FromBody] GenerateLicenseRequest request)
         {
             try
@@ -122,7 +84,7 @@ namespace PersianFileCopierPro.Controllers
             }
         }
 
-        [HttpGet("license/validate")]
+        [HttpGet("validate")]
         public async Task<IActionResult> ValidateLicense()
         {
             try
@@ -133,30 +95,6 @@ namespace PersianFileCopierPro.Controllers
             catch (Exception ex)
             {
                 _logger.LogError($"❌ Error validating license: {ex.Message}");
-                return StatusCode(500, new { error = "Internal server error" });
-            }
-        }
-
-        [HttpGet("version")]
-        public IActionResult GetVersion()
-        {
-            try
-            {
-                var version = new
-                {
-                    app_name = "Persian File Copier Pro",
-                    version = "3.5.0",
-                    company = "Persian File Copier Team",
-                    build_date = DateTime.Now.ToString("yyyy-MM-dd"),
-                    platform = Environment.OSVersion.Platform.ToString(),
-                    runtime = Environment.Version.ToString()
-                };
-
-                return Ok(version);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"❌ Error getting version: {ex.Message}");
                 return StatusCode(500, new { error = "Internal server error" });
             }
         }

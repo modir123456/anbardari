@@ -4,7 +4,7 @@ using PersianFileCopierPro.Services;
 namespace PersianFileCopierPro.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/files")]
     public class FileController : ControllerBase
     {
         private readonly IFileOperationService _fileService;

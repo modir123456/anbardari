@@ -35,7 +35,7 @@ namespace PersianFileCopierPro.Services
                 Destination = request.Destination,
                 SourceDevice = request.SourceDevice,
                 DestDevice = request.DestDevice,
-                Status = TaskStatus.Preparing
+                Status = Models.TaskStatus.Preparing
             };
 
             _tasks[task.Id] = task;
@@ -67,10 +67,10 @@ namespace PersianFileCopierPro.Services
 
         public async Task<bool> PauseTaskAsync(string taskId)
         {
-            if (_tasks.TryGetValue(taskId, out var task) && task.Status == TaskStatus.Running)
+            if (_tasks.TryGetValue(taskId, out var task) && task.Status == Models.TaskStatus.Running)
             {
                 task.IsPaused = true;
-                task.Status = TaskStatus.Paused;
+                task.Status = Models.TaskStatus.Paused;
                 await NotifyTaskStatusChanged(taskId, task);
                 _logger.LogInformation($"⏸️ Paused task {taskId}");
                 return true;
@@ -80,10 +80,10 @@ namespace PersianFileCopierPro.Services
 
         public async Task<bool> ResumeTaskAsync(string taskId)
         {
-            if (_tasks.TryGetValue(taskId, out var task) && task.Status == TaskStatus.Paused)
+            if (_tasks.TryGetValue(taskId, out var task) && task.Status == Models.TaskStatus.Paused)
             {
                 task.IsPaused = false;
-                task.Status = TaskStatus.Running;
+                task.Status = Models.TaskStatus.Running;
                 await NotifyTaskStatusChanged(taskId, task);
                 _logger.LogInformation($"▶️ Resumed task {taskId}");
                 return true;
@@ -96,7 +96,7 @@ namespace PersianFileCopierPro.Services
             if (_tasks.TryGetValue(taskId, out var task))
             {
                 task.CancellationTokenSource.Cancel();
-                task.Status = TaskStatus.Cancelled;
+                task.Status = Models.TaskStatus.Cancelled;
                 task.EndTime = DateTime.Now;
                 await NotifyTaskStatusChanged(taskId, task);
                 _logger.LogInformation($"⏹️ Cancelled task {taskId}");
@@ -109,7 +109,7 @@ namespace PersianFileCopierPro.Services
         {
             if (_tasks.TryRemove(taskId, out var task))
             {
-                if (task.Status == TaskStatus.Running)
+                if (task.Status == Models.TaskStatus.Running)
                 {
                     task.CancellationTokenSource.Cancel();
                 }
@@ -121,7 +121,7 @@ namespace PersianFileCopierPro.Services
 
         public async Task<bool> PauseAllTasksAsync()
         {
-            var runningTasks = _tasks.Values.Where(t => t.Status == TaskStatus.Running).ToList();
+            var runningTasks = _tasks.Values.Where(t => t.Status == Models.TaskStatus.Running).ToList();
             foreach (var task in runningTasks)
             {
                 await PauseTaskAsync(task.Id);
@@ -131,7 +131,7 @@ namespace PersianFileCopierPro.Services
 
         public async Task<bool> ResumeAllTasksAsync()
         {
-            var pausedTasks = _tasks.Values.Where(t => t.Status == TaskStatus.Paused).ToList();
+            var pausedTasks = _tasks.Values.Where(t => t.Status == Models.TaskStatus.Paused).ToList();
             foreach (var task in pausedTasks)
             {
                 await ResumeTaskAsync(task.Id);
@@ -142,9 +142,9 @@ namespace PersianFileCopierPro.Services
         public async Task<bool> CancelAllTasksAsync()
         {
             var activeTasks = _tasks.Values.Where(t => 
-                t.Status == TaskStatus.Running || 
-                t.Status == TaskStatus.Paused || 
-                t.Status == TaskStatus.Preparing).ToList();
+                t.Status == Models.TaskStatus.Running || 
+                t.Status == Models.TaskStatus.Paused || 
+                t.Status == Models.TaskStatus.Preparing).ToList();
             
             foreach (var task in activeTasks)
             {
@@ -156,9 +156,9 @@ namespace PersianFileCopierPro.Services
         public async Task ClearCompletedTasksAsync()
         {
             var completedTasks = _tasks.Where(kvp => 
-                kvp.Value.Status == TaskStatus.Completed || 
-                kvp.Value.Status == TaskStatus.Failed || 
-                kvp.Value.Status == TaskStatus.Cancelled).ToList();
+                kvp.Value.Status == Models.TaskStatus.Completed || 
+                kvp.Value.Status == Models.TaskStatus.Failed || 
+                kvp.Value.Status == Models.TaskStatus.Cancelled).ToList();
 
             foreach (var (taskId, _) in completedTasks)
             {
@@ -231,7 +231,7 @@ namespace PersianFileCopierPro.Services
         {
             try
             {
-                task.Status = TaskStatus.Running;
+                task.Status = Models.TaskStatus.Running;
                 await NotifyTaskStatusChanged(task.Id, task);
 
                 var stopwatch = Stopwatch.StartNew();
@@ -241,7 +241,7 @@ namespace PersianFileCopierPro.Services
                 {
                     if (task.CancellationTokenSource.Token.IsCancellationRequested)
                     {
-                        task.Status = TaskStatus.Cancelled;
+                        task.Status = Models.TaskStatus.Cancelled;
                         break;
                     }
 
@@ -261,7 +261,7 @@ namespace PersianFileCopierPro.Services
 
                 if (!task.CancellationTokenSource.Token.IsCancellationRequested)
                 {
-                    task.Status = TaskStatus.Completed;
+                    task.Status = Models.TaskStatus.Completed;
                     task.Progress = 100;
                     task.EndTime = DateTime.Now;
                     
@@ -271,7 +271,7 @@ namespace PersianFileCopierPro.Services
             }
             catch (Exception ex)
             {
-                task.Status = TaskStatus.Failed;
+                task.Status = Models.TaskStatus.Failed;
                 task.Error = ex.Message;
                 task.EndTime = DateTime.Now;
                 _logger.LogError($"❌ Task {task.Id} failed: {ex.Message}");
