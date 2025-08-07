@@ -667,6 +667,10 @@ class ConnectionManager:
         
         for client_id in disconnected:
             self.disconnect(client_id)
+    
+    async def broadcast_json(self, message: dict):
+        """Alias for broadcast method for compatibility"""
+        await self.broadcast(message)
 
 manager = ConnectionManager()
 
@@ -2143,6 +2147,10 @@ async def startup_event():
     
     # Start drive monitoring
     asyncio.create_task(monitor_drives())
+    
+    # Start task progress monitoring
+    asyncio.create_task(monitor_task_progress())
+    
     logger.info(f"{APP_NAME} {APP_VERSION} started successfully")
 
 async def monitor_drives():
@@ -2154,6 +2162,46 @@ async def monitor_drives():
         except Exception as e:
             logger.error(f"Error in drive monitoring: {e}")
             await asyncio.sleep(5)
+
+async def monitor_task_progress():
+    """Monitor and broadcast task progress updates"""
+    while True:
+        try:
+            # Get all active tasks
+            active_tasks = {}
+            for task_id, task in file_ops.tasks.items():
+                if task.status in ['running', 'preparing', 'paused']:
+                    # Get detailed progress info
+                    progress_data = {
+                        'task_id': task_id,
+                        'status': task.status,
+                        'progress': getattr(task, 'progress', 0),
+                        'speed': getattr(task, 'current_speed', 0),
+                        'eta': getattr(task, 'eta', 0),
+                        'copied_files': getattr(task, 'copied_files', 0),
+                        'total_files': getattr(task, 'total_files', 0),
+                        'current_file': getattr(task, 'current_file', ''),
+                        'source_files': task.source_files,
+                        'destination': task.destination
+                    }
+                    active_tasks[task_id] = progress_data
+                    
+                    # Broadcast individual progress update
+                    await manager.broadcast_json({
+                        'type': 'task_progress',
+                        'task_id': task_id,
+                        'progress_data': progress_data
+                    })
+            
+            # If no active tasks, wait longer
+            if not active_tasks:
+                await asyncio.sleep(5)
+            else:
+                await asyncio.sleep(1)  # Update every second when tasks are active
+                
+        except Exception as e:
+            logger.error(f"Error in task progress monitoring: {e}")
+            await asyncio.sleep(2)
 
 if __name__ == "__main__":
     import uvicorn
