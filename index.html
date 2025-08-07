@@ -245,17 +245,7 @@
             border-radius: 20px;
             padding: 1.5rem;
             box-shadow: var(--shadow);
-            height: 700px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #drives-list {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-            padding-right: 8px;
+            height: fit-content;
         }
 
         .panel-header {
@@ -420,18 +410,6 @@
             background: white;
         }
 
-        /* Files Panel */
-        .files-panel {
-            background: var(--surface);
-            border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
-            height: 700px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
         /* File List */
         .file-list {
             flex: 1;
@@ -439,7 +417,7 @@
             border-radius: 12px;
             background: rgba(255, 255, 255, 0.5);
             overflow-y: auto;
-            min-height: 0;
+            max-height: 500px;
         }
 
         .file-item {
@@ -588,12 +566,15 @@
         }
 
         .task-item {
-            background: white;
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transition: all var(--animation-speed) ease;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.9));
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 1px solid rgba(255,255,255,0.4);
+            backdrop-filter: blur(10px);
+            min-height: 180px;
         }
 
         .task-item:hover {
