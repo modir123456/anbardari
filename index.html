@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="app-title">Persian File Copier Pro</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png">
+    
     <!-- PWA Configuration -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#667eea">
@@ -223,13 +229,14 @@
 
         /* Main Layout */
         .main-container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 2rem;
+            max-width: 1600px;
+            margin: 1rem auto;
+            padding: 0 1rem;
             display: grid;
-            grid-template-columns: 300px 1fr 350px;
-            gap: 2rem;
-            min-height: calc(100vh - 200px);
+            grid-template-columns: 320px 1fr 400px;
+            gap: 1.5rem;
+            min-height: calc(100vh - 140px);
+            align-items: start;
         }
 
         /* Drives Panel */
@@ -238,7 +245,17 @@
             border-radius: 20px;
             padding: 1.5rem;
             box-shadow: var(--shadow);
-            height: fit-content;
+            height: 700px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #drives-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            padding-right: 8px;
         }
 
         .panel-header {
@@ -403,6 +420,18 @@
             background: white;
         }
 
+        /* Files Panel */
+        .files-panel {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            height: 700px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
         /* File List */
         .file-list {
             flex: 1;
@@ -410,7 +439,7 @@
             border-radius: 12px;
             background: rgba(255, 255, 255, 0.5);
             overflow-y: auto;
-            max-height: 500px;
+            min-height: 0;
         }
 
         .file-item {
@@ -1242,21 +1271,63 @@
         }
 
         /* Responsive Design */
+        @media (max-width: 1400px) {
+            .main-container {
+                max-width: 1200px;
+                grid-template-columns: 280px 1fr 360px;
+            }
+        }
+
         @media (max-width: 1200px) {
             .main-container {
                 grid-template-columns: 250px 1fr 300px;
+                gap: 1rem;
+                margin: 0.5rem auto;
+            }
+            
+            .drives-panel, .files-panel, .tasks-panel {
+                height: 600px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 0 0.5rem;
+            }
+            
+            .drives-panel, .files-panel, .tasks-panel {
+                height: auto;
+                max-height: 500px;
+            }
+            
+            .task-stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .task-actions {
+                justify-content: center;
             }
         }
 
         @media (max-width: 768px) {
-            .main-container {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-            
             .header-content {
                 flex-direction: column;
                 gap: 1rem;
+            }
+            
+            .task-controls {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .control-group {
+                justify-content: center;
+            }
+            
+            .task-stats-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1598,13 +1669,14 @@
             width: 56px;
             height: 56px;
             border-radius: 50%;
-            background: conic-gradient(#10b981 calc(var(--progress) * 3.6deg), #e5e7eb 0deg);
+            background: conic-gradient(var(--progress-color, #10b981) calc(var(--progress) * 3.6deg), rgba(0,0,0,0.1) 0deg);
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
             flex-shrink: 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 2px solid rgba(255,255,255,0.8);
         }
 
         .task-progress-circle::before {
@@ -1630,20 +1702,22 @@
 
         .task-progress-bar {
             width: 100%;
-            height: 10px;
-            background: #e5e7eb;
-            border-radius: 6px;
+            height: 14px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 8px;
             overflow: hidden;
             margin-bottom: 8px;
             position: relative;
+            border: 1px solid rgba(0,0,0,0.05);
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #10b981, #059669);
-            border-radius: 6px;
+            background: linear-gradient(90deg, var(--progress-color, #10b981), rgba(16, 185, 129, 0.8));
+            border-radius: 8px;
             transition: width 0.5s ease;
             position: relative;
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
         }
         
         .progress-fill::after {
@@ -1689,6 +1763,13 @@
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 1px solid rgba(0,0,0,0.08);
+            flex-wrap: wrap;
+        }
+
+        .task-actions .task-action-btn {
+            min-width: 40px;
+            height: 40px;
+            font-size: 16px;
         }
 
         .task-stats-grid .task-actions {
@@ -4591,26 +4672,34 @@
 
         function displayLicenseStatus(licenseInfo) {
             const statusDiv = $('#license-status');
-            let statusClass = licenseInfo.status;
+            let statusClass = licenseInfo.licenseType || licenseInfo.LicenseType || 'Free';
             let statusText = '';
             let statusIcon = '';
             
-            switch (licenseInfo.status) {
-                case 'pro':
-                    statusIcon = '✅';
-                    statusText = 'نسخه حرفه‌ای فعال';
-                    break;
-                case 'trial':
-                    statusIcon = '⏳';
-                    statusText = `دوره آزمایشی (${licenseInfo.trial_days_left} روز باقیمانده)`;
-                    break;
-                case 'expired':
+            // Check if trial period or activated
+            const isExpired = licenseInfo.expiryDate && new Date(licenseInfo.expiryDate) < new Date();
+            const daysRemaining = licenseInfo.daysRemaining || 0;
+            
+            if (licenseInfo.isActivated || licenseInfo.IsActivated) {
+                if (isExpired) {
                     statusIcon = '❌';
                     statusText = 'لایسنس منقضی شده';
-                    break;
-                default:
-                    statusIcon = '⚠️';
-                    statusText = 'وضعیت نامشخص';
+                    statusClass = 'expired';
+                } else if (statusClass.toLowerCase() === 'pro') {
+                    statusIcon = '✅';
+                    statusText = 'نسخه حرفه‌ای فعال';
+                } else {
+                    statusIcon = '✅';
+                    statusText = 'فعال';
+                }
+            } else if (licenseInfo.isTrial || licenseInfo.IsTrial) {
+                statusIcon = '⏳';
+                statusText = `دوره آزمایشی (${daysRemaining} روز باقیمانده)`;
+                statusClass = 'trial';
+            } else {
+                statusIcon = '🆓';
+                statusText = 'نسخه رایگان';
+                statusClass = 'free';
             }
             
             let html = `

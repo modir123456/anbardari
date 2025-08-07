@@ -224,13 +224,14 @@
 
         /* Main Layout */
         .main-container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 2rem;
+            max-width: 1600px;
+            margin: 1rem auto;
+            padding: 0 1rem;
             display: grid;
-            grid-template-columns: 300px 1fr 350px;
-            gap: 2rem;
-            min-height: calc(100vh - 200px);
+            grid-template-columns: 320px 1fr 400px;
+            gap: 1.5rem;
+            min-height: calc(100vh - 140px);
+            align-items: start;
         }
 
         /* Drives Panel */
@@ -4533,26 +4534,34 @@
 
         function displayLicenseStatus(licenseInfo) {
             const statusDiv = $('#license-status');
-            let statusClass = licenseInfo.status;
+            let statusClass = licenseInfo.licenseType || licenseInfo.LicenseType || 'Free';
             let statusText = '';
             let statusIcon = '';
             
-            switch (licenseInfo.status) {
-                case 'pro':
-                    statusIcon = '✅';
-                    statusText = 'نسخه حرفه‌ای فعال';
-                    break;
-                case 'trial':
-                    statusIcon = '⏳';
-                    statusText = `دوره آزمایشی (${licenseInfo.trial_days_left} روز باقیمانده)`;
-                    break;
-                case 'expired':
+            // Check if trial period or activated
+            const isExpired = licenseInfo.expiryDate && new Date(licenseInfo.expiryDate) < new Date();
+            const daysRemaining = licenseInfo.daysRemaining || 0;
+            
+            if (licenseInfo.isActivated || licenseInfo.IsActivated) {
+                if (isExpired) {
                     statusIcon = '❌';
                     statusText = 'لایسنس منقضی شده';
-                    break;
-                default:
-                    statusIcon = '⚠️';
-                    statusText = 'وضعیت نامشخص';
+                    statusClass = 'expired';
+                } else if (statusClass.toLowerCase() === 'pro') {
+                    statusIcon = '✅';
+                    statusText = 'نسخه حرفه‌ای فعال';
+                } else {
+                    statusIcon = '✅';
+                    statusText = 'فعال';
+                }
+            } else if (licenseInfo.isTrial || licenseInfo.IsTrial) {
+                statusIcon = '⏳';
+                statusText = `دوره آزمایشی (${daysRemaining} روز باقیمانده)`;
+                statusClass = 'trial';
+            } else {
+                statusIcon = '🆓';
+                statusText = 'نسخه رایگان';
+                statusClass = 'free';
             }
             
             let html = `
