@@ -2075,10 +2075,14 @@
                 else if (drive.device_type === 'usb_3') driveIcon = '🔌';
                 else if (drive.device_type === 'ssd') driveIcon = '⚡';
                 
+                // Extract drive letter from path (e.g., "C:\" -> "C:")
+                const driveLetter = drive.path.replace(/[\\\/]+$/, '');
+                const displayName = drive.label ? `${driveLetter} (${drive.label})` : driveLetter;
+                
                 return `
                     <div class="drive-item" data-path="${drive.path}" data-type="${drive.device_type}">
                         <div class="drive-name">
-                            ${driveIcon} ${drive.label || drive.name}
+                            ${driveIcon} ${displayName}
                             ${!drive.is_ready ? '<span style="color: orange;">⚠️</span>' : ''}
                         </div>
                         <div class="drive-info">
@@ -2103,7 +2107,9 @@
             const options = ['<option value="all">همه درایوها</option>'];
             
             drives.forEach(drive => {
-                options.push(`<option value="${drive.path}">${drive.label || drive.name}</option>`);
+                const driveLetter = drive.path.replace(/[\\\/]+$/, '');
+                const displayName = drive.label ? `${driveLetter} (${drive.label})` : driveLetter;
+                options.push(`<option value="${drive.path}">${displayName}</option>`);
             });
             
             $('#drive-filter').html(options.join(''));
@@ -2820,9 +2826,11 @@
                         
                         let drivesHtml = '';
                         data.drives.forEach(drive => {
+                            const driveLetter = drive.path.replace(/[\\\/]+$/, '');
+                            const displayName = drive.label ? `${driveLetter} (${drive.label})` : driveLetter;
                             drivesHtml += `
                                 <div class="drive-option" data-path="${drive.path}" style="padding: 1rem; margin: 0.5rem 0; border: 2px solid #ddd; border-radius: 8px; cursor: pointer;">
-                                    <strong>${drive.label || drive.name}</strong> (${drive.path})
+                                    <strong>${displayName}</strong>
                                     <br><small>${formatFileSize(drive.free_space)} آزاد</small>
                                 </div>
                             `;
