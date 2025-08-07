@@ -1243,21 +1243,27 @@
         .task-list {
             max-height: 600px;
             overflow-y: auto;
+            overflow-x: hidden; /* Prevent horizontal overflow */
         }
         
         .task-item {
             background: var(--surface);
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 20px;
             margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
             border-left: 4px solid var(--primary);
             transition: all 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent content overflow */
         }
         
         .task-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            border-left-width: 6px;
         }
         
         .task-running {
@@ -4616,22 +4622,25 @@
         function getTaskActionButtons(taskId, status) {
             let buttons = '';
             
-            if (status === 'running') {
+            // Convert numeric status to string if needed
+            const statusString = typeof status === 'number' ? getTaskStatusString(status) : status;
+            
+            if (statusString === 'running') {
                 buttons += `<button class="task-action-btn pause-btn" onclick="pauseTask('${taskId}')" title="توقف">⏸️</button>`;
                 buttons += `<button class="task-action-btn cancel-btn" onclick="cancelTask('${taskId}')" title="لغو">⏹️</button>`;
                 buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
-            } else if (status === 'paused') {
+            } else if (statusString === 'paused') {
                 buttons += `<button class="task-action-btn resume-btn" onclick="resumeTask('${taskId}')" title="ادامه">▶️</button>`;
                 buttons += `<button class="task-action-btn cancel-btn" onclick="cancelTask('${taskId}')" title="لغو">⏹️</button>`;
                 buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
-            } else if (status === 'preparing') {
+            } else if (statusString === 'preparing') {
                 buttons += `<button class="task-action-btn cancel-btn" onclick="cancelTask('${taskId}')" title="لغو">⏹️</button>`;
                 buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
-            } else if (status === 'completed') {
+            } else if (statusString === 'completed') {
                 buttons += `<button class="task-action-btn retry-btn" onclick="retryTask('${taskId}')" title="تکرار">🔄</button>`;
                 buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
                 buttons += `<button class="task-action-btn remove-btn" onclick="removeTask('${taskId}')" title="حذف">🗑️</button>`;
-            } else if (status === 'failed') {
+            } else if (statusString === 'failed') {
                 buttons += `<button class="task-action-btn retry-btn" onclick="retryTask('${taskId}')" title="تلاش مجدد">🔄</button>`;
                 buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات خطا">ℹ️</button>`;
                 buttons += `<button class="task-action-btn remove-btn" onclick="removeTask('${taskId}')" title="حذف">🗑️</button>`;
