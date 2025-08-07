@@ -22,17 +22,13 @@
     <meta name="msapplication-TileColor" content="#667eea">
     <meta name="msapplication-config" content="/browserconfig.xml">
     
-    <!-- Preconnect for performance -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
-    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-    
-    <!-- Modern CDN Resources -->
-    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- Offline Resources - All Dependencies Local -->
+    <link href="/assets/css/vazirmatn.css" rel="stylesheet">
+    <link href="/assets/css/sweetalert2.min.css" rel="stylesheet">
+    <link href="/assets/css/animate.min.css" rel="stylesheet">
+    <script src="/assets/js/jquery.min.js"></script>
+    <script src="/assets/js/sweetalert2.all.min.js"></script>
+    <script src="/assets/js/sortable.min.js"></script>
     
     <style>
         /* Enhanced Persian File Copier Pro CSS */
@@ -1218,6 +1214,139 @@
         
         .task-failed {
             border-left-color: #ef4444;
+        }
+
+        /* Enhanced Task Item Styles */
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .task-info {
+            flex: 1;
+        }
+
+        .task-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .task-icon {
+            font-size: 18px;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .task-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .task-status-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .task-progress-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary) calc(var(--progress) * 3.6deg), #e5e7eb 0deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .task-progress-circle::before {
+            content: '';
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--surface);
+            position: absolute;
+        }
+
+        .progress-text {
+            position: relative;
+            z-index: 1;
+            font-weight: 600;
+            font-size: 11px;
+            color: var(--text-primary);
+        }
+
+        .task-progress-bar-container {
+            margin-bottom: 15px;
+        }
+
+        .task-progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .size-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        .task-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-icon {
+            font-size: 16px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.2;
+        }
         }
         
         .task-cancelled {
@@ -3079,6 +3208,11 @@
                         const taskElement = createTaskElementForPanel(taskId, task);
                         tasksList.append(taskElement);
                         hasActiveTasks = true;
+                        
+                        // Start polling for this task if not already polling
+                        if (!activeTaskPollers.has(taskId)) {
+                            startTaskPolling(taskId);
+                        }
                     }
                     
                     // Count for statistics
@@ -3111,19 +3245,75 @@
             }
         }
 
+        // Active task polling system
+        const activeTaskPollers = new Map();
+
+        // Start polling for a specific task
+        function startTaskPolling(taskId) {
+            // Stop existing poller if any
+            stopTaskPolling(taskId);
+            
+            console.log(`📡 Starting polling for task ${taskId}`);
+            
+            const poller = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/tasks/${taskId}`);
+                    if (response.ok) {
+                        const taskData = await response.json();
+                        updateSingleTaskDisplay(taskId, taskData);
+                        
+                        // Stop polling if task is completed or failed
+                        if (['completed', 'failed', 'cancelled'].includes(taskData.status)) {
+                            console.log(`✅ Task ${taskId} finished with status: ${taskData.status}`);
+                            stopTaskPolling(taskId);
+                        }
+                    } else if (response.status === 404) {
+                        // Task not found, stop polling
+                        console.log(`❌ Task ${taskId} not found, stopping polling`);
+                        stopTaskPolling(taskId);
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Polling error for task ${taskId}:`, error.message);
+                }
+            }, 500); // Poll every 500ms
+            
+            activeTaskPollers.set(taskId, poller);
+        }
+
+        // Stop polling for a specific task
+        function stopTaskPolling(taskId) {
+            const poller = activeTaskPollers.get(taskId);
+            if (poller) {
+                clearInterval(poller);
+                activeTaskPollers.delete(taskId);
+                console.log(`🛑 Stopped polling for task ${taskId}`);
+            }
+        }
+
+        // Update single task display without full refresh
+        function updateSingleTaskDisplay(taskId, taskData) {
+            const taskElement = $(`.task-item[data-task-id="${taskId}"]`);
+            if (taskElement.length > 0) {
+                // Update existing task element
+                const newElement = createTaskElementForPanel(taskId, taskData);
+                taskElement.replaceWith(newElement);
+                console.log(`🔄 Updated task ${taskId} - Progress: ${taskData.progress}%`);
+            } else {
+                // Task element doesn't exist, refresh full list
+                loadTasks();
+            }
+        }
+
         // Real-time Task Update Functions
         function updateTaskInRealTime(taskId, taskData) {
             console.log(`🔄 Real-time update for task ${taskId}:`, taskData);
             
-            const taskElement = $(`.task-item[data-task-id="${taskId}"]`);
-            if (taskElement.length > 0) {
-                // Update existing task
-                updateTaskProgress(taskId, taskData);
-            } else {
-                // Task doesn't exist in UI, refresh the entire list
-                console.log(`➕ Task ${taskId} not found in UI, refreshing tasks`);
-                loadTasks();
+            // Start polling for this task if not already polling
+            if (!activeTaskPollers.has(taskId)) {
+                startTaskPolling(taskId);
             }
+            
+            updateSingleTaskDisplay(taskId, taskData);
         }
 
         function updateTaskProgress(taskId, progressData) {
@@ -3171,47 +3361,71 @@
             const speed = formatFileSize(task.speed || 0) + '/s';
             const eta = formatTime(task.eta || 0);
             
-            // Extract full paths for better display
+            // Extract file names for better display
             const sourcePath = task.source_files ? (Array.isArray(task.source_files) ? task.source_files[0] : task.source_files) : 'نامشخص';
+            const sourceFileName = sourcePath.split('\\').pop().split('/').pop();
             const destPath = task.destination || 'نامشخص';
+            
+            // Calculate progress for copied size
+            const copiedSize = formatFileSize(task.copied_size || 0);
+            const totalSize = formatFileSize(task.total_size || 0);
+            const currentFile = task.current_file || sourceFileName;
             
             const element = $(`
                 <div class="task-item ${statusClass}" data-task-id="${taskId}" style="--progress: ${progress}%">
                     <div class="task-content">
                         <div class="task-header">
-                            <div class="task-paths">
-                                <div class="task-source">
-                                    📁 مبدا: ${sourcePath}
+                            <div class="task-info">
+                                <div class="task-title">
+                                    <span class="task-icon">📄</span>
+                                    <span class="file-name">${currentFile}</span>
                                 </div>
-                                <div class="task-destination">
-                                    📂 مقصد: ${destPath}
+                                <div class="task-subtitle">
+                                    📁 ${task.source_device || 'مبدا'} → 📂 ${task.dest_device || 'مقصد'}
                                 </div>
                             </div>
-                            <div class="task-right">
+                            <div class="task-status-container">
                                 <div class="task-status ${statusClass}">
                                     ${getTaskStatusText(task.status)}
                                 </div>
-                                <div class="task-progress-info">
-                                    ${progress}%
+                                <div class="task-progress-circle">
+                                    <span class="progress-text">${progress}%</span>
                                 </div>
                             </div>
                         </div>
-                        <div class="task-details">
-                            <div class="task-stats">
-                                <div class="task-stat">
-                                    <span>📊</span>
-                                    <span>${task.copied_files || 0} / ${task.total_files || 0} فایل</span>
-                                </div>
-                                <div class="task-stat">
-                                    <span>⚡</span>
-                                    <span>${speed}</span>
-                                </div>
-                                <div class="task-stat">
-                                    <span>⏱️</span>
-                                    <span>${eta}</span>
+                        
+                        <div class="task-progress-bar-container">
+                            <div class="task-progress-bar">
+                                <div class="progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                            <div class="size-info">
+                                ${copiedSize} / ${totalSize}
+                            </div>
+                        </div>
+                        
+                        <div class="task-stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-icon">📊</div>
+                                <div class="stat-info">
+                                    <div class="stat-value">${task.copied_files || 0} / ${task.total_files || 0}</div>
+                                    <div class="stat-label">فایل‌ها</div>
                                 </div>
                             </div>
-                            <div class="task-actions">
+                            <div class="stat-item">
+                                <div class="stat-icon">⚡</div>
+                                <div class="stat-info">
+                                    <div class="stat-value">${speed}</div>
+                                    <div class="stat-label">سرعت</div>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-icon">⏱️</div>
+                                <div class="stat-info">
+                                    <div class="stat-value">${eta}</div>
+                                    <div class="stat-label">زمان باقی</div>
+                                </div>
+                            </div>
+                            <div class="stat-item task-actions">
                                 ${getTaskActionButtons(taskId, task.status)}
                             </div>
                         </div>

@@ -92,6 +92,9 @@ app.add_middleware(
 # Serve static files (PWA files)
 app.mount("/static", StaticFiles(directory="."), name="static")
 
+# Serve assets directory for offline resources
+app.mount("/assets", StaticFiles(directory="assets"), name="assets")
+
 # Global state
 active_connections: Dict[str, WebSocket] = {}
 db_path = "persian_file_cache.db"
@@ -1619,6 +1622,47 @@ async def get_tasks():
         "tasks": serializable_tasks,
         "total": len(serializable_tasks)
     }
+
+@app.get("/api/tasks/{task_id}")
+async def get_single_task(task_id: str):
+    """Get single task by ID for real-time polling"""
+    if task_id not in file_ops.active_tasks:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    task = file_ops.active_tasks[task_id]
+    
+    # Handle both dict and object format
+    if hasattr(task, '__dict__'):
+        task_dict = task.__dict__.copy()
+    else:
+        task_dict = dict(task) if isinstance(task, dict) else {}
+    
+    # Remove non-serializable items
+    task_data = {k: v for k, v in task_dict.items() if k not in ["future", "executor", "event_loop"]}
+    
+    # Add essential fields with defaults
+    task_data.update({
+        "task_id": task_id,
+        "status": task_data.get("status", "unknown"),
+        "progress": task_data.get("progress", 0),
+        "speed": task_data.get("current_speed", 0),
+        "eta": task_data.get("eta", 0),
+        "copied_files": task_data.get("copied_files", 0),
+        "total_files": task_data.get("total_files", 0),
+        "source_files": task_data.get("source_files", []),
+        "destination": task_data.get("destination", ""),
+        "current_file": task_data.get("current_file", ""),
+        "total_size": task_data.get("total_size", 0),
+        "copied_size": task_data.get("copied_size", 0),
+        "source_device": task_data.get("source_device", ""),
+        "dest_device": task_data.get("dest_device", ""),
+        "created_at": task_data.get("created_at", ""),
+        "can_cancel": task_data.get("status") in ["running", "preparing", "paused"],
+        "can_pause": task_data.get("status") == "running",
+        "can_resume": task_data.get("status") == "paused"
+    })
+    
+    return task_data
 
 @app.post("/api/tasks/{task_id}/cancel")
 async def cancel_task(task_id: str):
