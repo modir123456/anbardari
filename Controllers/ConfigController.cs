@@ -162,14 +162,5 @@ namespace PersianFileCopierPro.Controllers
         }
     }
 
-    public class ActivateLicenseRequest
-    {
-        public string LicenseKey { get; set; } = string.Empty;
-    }
 
-    public class GenerateLicenseRequest
-    {
-        public string MachineId { get; set; } = string.Empty;
-        public int ValidityDays { get; set; } = 365;
-    }
 }

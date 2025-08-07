@@ -175,8 +175,5 @@ namespace PersianFileCopierPro.Controllers
         }
     }
 
-    public class CreateDirectoryRequest
-    {
-        public string Path { get; set; } = string.Empty;
-    }
+
 }

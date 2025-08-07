@@ -43,4 +43,9 @@ namespace PersianFileCopierPro.Models
             return $"{size:N2} {suffixes[suffixIndex]}";
         }
     }
+
+    public class CreateDirectoryRequest
+    {
+        public string Path { get; set; } = string.Empty;
+    }
 }

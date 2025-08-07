@@ -54,4 +54,15 @@ namespace PersianFileCopierPro.Models
         public string? SourceDevice { get; set; }
         public string? DestDevice { get; set; }
     }
+
+    public class ActivateLicenseRequest
+    {
+        public string LicenseKey { get; set; } = string.Empty;
+    }
+
+    public class GenerateLicenseRequest
+    {
+        public string MachineId { get; set; } = string.Empty;
+        public int ValidityDays { get; set; } = 365;
+    }
 }
