@@ -579,12 +579,26 @@
         .modal-content {
             background: var(--surface);
             border-radius: 20px;
-            padding: 2rem;
-            max-width: 90vw;
-            max-height: 90vh;
+            padding: 3rem;
+            width: 95vw;
+            height: 95vh;
+            max-width: 1400px;
+            max-height: 900px;
             overflow-y: auto;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
             position: relative;
+            animation: modalSlideIn 0.4s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
 
         .modal-close {
@@ -609,9 +623,10 @@
         /* Settings Styles */
         .settings-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2.5rem;
             margin-top: 2rem;
+            padding: 1rem;
         }
 
         .settings-group {
@@ -1434,123 +1449,7 @@
             </div>
         </div>
 
-        <!-- Settings Panel -->
-        <div id="settings-panel" class="panel" style="display: none;">
-            <div class="panel-header">
-                <h3>⚙️ تنظیمات</h3>
-                <button class="btn btn-primary" onclick="saveSettings()">
-                    💾 ذخیره تنظیمات
-                </button>
-            </div>
-            
-            <div class="settings-grid">
-                <div class="settings-section">
-                    <h4>🔍 تنظیمات اسکن</h4>
-                    <div class="setting-item">
-                        <label>حداکثر عمق اسکن:</label>
-                        <input type="number" id="scan_max_depth" min="1" max="50" value="10">
-                    </div>
-                    <div class="setting-item">
-                        <label>حداکثر تعداد فایل:</label>
-                        <input type="number" id="scan_max_files" min="1000" max="100000" value="50000">
-                    </div>
-                    <div class="setting-item">
-                        <label>
-                            <input type="checkbox" id="scan_include_hidden">
-                            شامل فایل‌های مخفی
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <label>
-                            <input type="checkbox" id="scan_include_system">
-                            شامل فایل‌های سیستمی
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <label>
-                            <input type="checkbox" id="scan_subdirectories" checked>
-                            اسکن زیرپوشه‌ها
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="settings-section">
-                    <h4>📋 تنظیمات کپی</h4>
-                    <div class="setting-item">
-                        <label>
-                            <input type="checkbox" id="copy_verify" checked>
-                            تأیید کپی
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <label>
-                            <input type="checkbox" id="copy_preserve_timestamps" checked>
-                            حفظ زمان‌بندی
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <label>
-                            <input type="checkbox" id="copy_create_destination" checked>
-                            ایجاد پوشه مقصد
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <label>اندازه بافر (KB):</label>
-                        <input type="number" id="copy_buffer_size" min="64" max="8192" value="1024">
-                    </div>
-                </div>
-                
-                <div class="settings-section">
-                    <h4>🔄 تنظیمات عمومی</h4>
-                    <div class="setting-item">
-                        <label>حداکثر تسک‌های همزمان:</label>
-                        <input type="number" id="max_concurrent_tasks" min="1" max="10" value="3">
-                    </div>
-                    <div class="setting-item">
-                        <label>
-                            <input type="checkbox" id="auto_index_drives" checked>
-                            ایندکس خودکار درایوها
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <label>فاصله به‌روزرسانی (ثانیه):</label>
-                        <input type="number" id="index_interval" min="60" max="3600" value="300">
-                    </div>
-                    <div class="setting-item">
-                        <label>سطح لاگ:</label>
-                        <select id="log_level">
-                            <option value="DEBUG">Debug</option>
-                            <option value="INFO" selected>Info</option>
-                            <option value="WARNING">Warning</option>
-                            <option value="ERROR">Error</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="settings-section">
-                    <h4>🎨 تنظیمات ظاهری</h4>
-                    <div class="setting-item">
-                        <label>تم:</label>
-                        <select id="theme">
-                            <option value="light" selected>روشن</option>
-                            <option value="dark">تاریک</option>
-                            <option value="semi_dark">نیمه تاریک</option>
-                            <option value="alborz">کوه البرز</option>
-                            <option value="caspian">دریای خزر</option>
-                            <option value="desert">کویر ایران</option>
-                            <option value="persian_gulf">خلیج فارس</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <label>زبان:</label>
-                        <select id="language">
-                            <option value="fa" selected>فارسی</option>
-                            <option value="en">English</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Settings Panel Removed - All settings moved to the modal popup -->
 
         <!-- Maintenance Panel -->
         <div id="maintenance-panel" class="panel" style="display: none;">
@@ -1679,9 +1578,7 @@
             <div class="nav-item" onclick="showPanel('tasks')">
                 📋 تسک‌ها
             </div>
-            <div class="nav-item" onclick="showPanel('settings')">
-                ⚙️ تنظیمات
-            </div>
+            <!-- Settings moved to modal popup -->
             <div class="nav-item" onclick="showPanel('maintenance')">
                 🔧 نگهداری
             </div>
@@ -1792,23 +1689,106 @@
                     </div>
                 </div>
 
-                <!-- Advanced Settings -->
+                <!-- Scan Settings -->
                 <div class="settings-group">
-                    <h4>🔧 پیشرفته</h4>
+                    <h4>🔍 تنظیمات اسکن</h4>
                     
                     <div class="setting-item">
-                        <div>ایندکس خودکار</div>
-                        <div class="toggle-switch active" onclick="toggleSetting(this, 'auto_index')"></div>
+                        <div>
+                            <div>حداکثر عمق اسکن</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">عمق جستجو در پوشه‌ها</div>
+                        </div>
+                        <input type="number" id="scan_max_depth" min="1" max="50" value="10" style="width: 80px; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 5px;">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <div>حداکثر تعداد فایل</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">محدودیت تعداد فایل‌ها</div>
+                        </div>
+                        <input type="number" id="scan_max_files" min="1000" max="100000" value="50000" style="width: 100px; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 5px;">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>شامل فایل‌های مخفی</div>
+                        <div class="toggle-switch" onclick="toggleSetting(this, 'scan_include_hidden')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>شامل فایل‌های سیستمی</div>
+                        <div class="toggle-switch" onclick="toggleSetting(this, 'scan_include_system')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>اسکن زیرپوشه‌ها</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'scan_subdirectories')"></div>
+                    </div>
+                </div>
+
+                <!-- Performance Settings -->
+                <div class="settings-group">
+                    <h4>⚡ تنظیمات عملکرد</h4>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <div>حداکثر تسک‌های همزمان</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">تعداد عملیات‌های موازی</div>
+                        </div>
+                        <input type="number" id="max_concurrent_tasks" min="1" max="10" value="3" style="width: 60px; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 5px;">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <div>اندازه بافر (KB)</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">اندازه بافر کپی فایل</div>
+                        </div>
+                        <input type="number" id="copy_buffer_size" min="64" max="8192" value="1024" style="width: 80px; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 5px;">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <div>فاصله به‌روزرسانی (ثانیه)</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">بازه ایندکس خودکار</div>
+                        </div>
+                        <input type="number" id="index_interval" min="60" max="3600" value="300" style="width: 80px; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 5px;">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>ایندکس خودکار درایوها</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'auto_index_drives')"></div>
                     </div>
                     
                     <div class="setting-item">
                         <div>کش فایل‌ها</div>
                         <div class="toggle-switch active" onclick="toggleSetting(this, 'cache_enabled')"></div>
                     </div>
+                </div>
+
+                <!-- Advanced Settings -->
+                <div class="settings-group">
+                    <h4>🔧 تنظیمات پیشرفته</h4>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <div>سطح لاگ</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">سطح جزئیات لاگ‌ها</div>
+                        </div>
+                        <select id="log_level" style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 5px;">
+                            <option value="DEBUG">Debug</option>
+                            <option value="INFO" selected>Info</option>
+                            <option value="WARNING">Warning</option>
+                            <option value="ERROR">Error</option>
+                        </select>
+                    </div>
                     
                     <div class="setting-item">
                         <div>تشخیص خودکار دستگاه</div>
                         <div class="toggle-switch active" onclick="toggleSetting(this, 'auto_device_detect')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>ایجاد پوشه مقصد</div>
+                        <div class="toggle-switch active" onclick="toggleSetting(this, 'copy_create_destination')"></div>
                     </div>
                 </div>
 
@@ -2149,8 +2129,8 @@
                 const driveFilter = $('#drive-filter').val();
                 const typeFilter = $('#type-filter').val();
 
-                // Debounced search - only search if query is meaningful
-                if (searchQuery && searchQuery.length < 2) {
+                // Debounced search - only require minimum length if there's a search query
+                if (searchQuery && searchQuery.length > 0 && searchQuery.length < 2) {
                     $('#file-list').html(`
                         <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                             <p>حداقل 2 کاراکتر برای جستجو وارد کنید</p>
@@ -2160,11 +2140,12 @@
                 }
 
                 const requestBody = {
-                    search: searchQuery,
-                    drive: driveFilter,
-                    type: typeFilter,
+                    search: searchQuery || "", // Empty string if no search query
+                    drive: driveFilter || "all",
+                    type: typeFilter || "all",
                     limit: 1000, // Increased limit
-                    fast_mode: true // Add fast mode flag
+                    fast_mode: true, // Add fast mode flag
+                    list_all: !searchQuery // Flag to list all files when no search query
                 };
 
                 const response = await fetch('/api/search', {
