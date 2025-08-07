@@ -51,6 +51,7 @@ namespace PersianFileCopierPro.Controllers
         }
 
         [HttpPost("copy")]
+        [HttpPost("/api/copy")]
         public async Task<IActionResult> CreateCopyTask([FromBody] CopyRequest request)
         {
             try
@@ -62,7 +63,7 @@ namespace PersianFileCopierPro.Controllers
                     return BadRequest(new { error = "Destination is required" });
 
                 var taskId = await _taskManager.CreateCopyTaskAsync(request);
-                return Ok(new { task_id = taskId, message = "Copy task created successfully" });
+                return Ok(new { success = true, task_id = taskId, message = "Copy task created successfully" });
             }
             catch (Exception ex)
             {

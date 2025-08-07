@@ -1,16 +1,37 @@
+using System.Text.Json.Serialization;
+
 namespace PersianFileCopierPro.Models
 {
     public class DriveModel
     {
+        [JsonPropertyName("label")]
         public string Name { get; set; } = string.Empty;
+        
+        [JsonPropertyName("path")]
         public string Path { get; set; } = string.Empty;
+        
+        [JsonPropertyName("device_type")]
         public string DriveType { get; set; } = string.Empty;
+        
+        [JsonPropertyName("filesystem")]
         public string FileSystem { get; set; } = string.Empty;
+        
+        [JsonPropertyName("total_space")]
         public long TotalSize { get; set; } = 0;
+        
+        [JsonPropertyName("free_space")]
         public long FreeSpace { get; set; } = 0;
+        
+        [JsonPropertyName("used_space")]
         public long UsedSpace => TotalSize - FreeSpace;
+        
+        [JsonPropertyName("usage_percentage")]
         public double UsagePercentage => TotalSize > 0 ? (double)UsedSpace / TotalSize * 100 : 0;
+        
+        [JsonPropertyName("is_ready")]
         public bool IsReady { get; set; } = true;
+        
+        [JsonPropertyName("icon")]
         public string Icon { get; set; } = "💾";
     }
 

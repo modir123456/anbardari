@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PersianFileCopierPro.Models
 {
     public enum TaskStatus
@@ -49,9 +51,16 @@ namespace PersianFileCopierPro.Models
 
     public class CopyRequest
     {
+        [JsonPropertyName("source_files")]
         public List<string> SourceFiles { get; set; } = new();
+        
+        [JsonPropertyName("destination")]
         public string Destination { get; set; } = string.Empty;
+        
+        [JsonPropertyName("source_device")]
         public string? SourceDevice { get; set; }
+        
+        [JsonPropertyName("dest_device")]
         public string? DestDevice { get; set; }
     }
 
