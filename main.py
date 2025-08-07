@@ -23,8 +23,15 @@ import re
 import platform
 import subprocess
 import stat
-import pwd
-import grp
+
+# Unix/Linux specific imports - handle gracefully on Windows
+try:
+    import pwd
+    import grp
+    UNIX_MODULES_AVAILABLE = True
+except ImportError:
+    UNIX_MODULES_AVAILABLE = False
+    # pwd and grp modules not available on Windows
 
 # Windows specific imports - handle gracefully on other platforms
 try:
