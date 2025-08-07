@@ -2137,6 +2137,10 @@
             
             if (isLoadingFiles) return;
             
+            let searchQuery = '';
+            let driveFilter = 'all';
+            let typeFilter = 'all';
+            
             try {
                 isLoadingFiles = true;
                 loadFilesAbortController = new AbortController();
@@ -2148,9 +2152,9 @@
                     </div>
                 `);
 
-                const searchQuery = $('#search-input').val().trim();
-                let driveFilter = $('#drive-filter').val();
-                let typeFilter = $('#type-filter').val();
+                searchQuery = $('#search-input').val().trim();
+                driveFilter = $('#drive-filter').val();
+                typeFilter = $('#type-filter').val();
                 
                 // Ensure proper values for filters
                 if (!driveFilter || driveFilter === 'undefined') driveFilter = 'all';

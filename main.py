@@ -320,11 +320,12 @@ class DeviceDetector:
             import wmi
             c = wmi.WMI()
             for device in c.Win32_PnPEntity():
-                if "MTP" in device.Name or "Media Transfer Protocol" in device.Name:
+                device_name = getattr(device, 'Name', None)
+                if device_name and ("MTP" in device_name or "Media Transfer Protocol" in device_name):
                     devices.append({
-                        "name": device.Name,
-                        "id": device.DeviceID,
-                        "status": device.Status
+                        "name": device_name,
+                        "id": getattr(device, 'DeviceID', ''),
+                        "status": getattr(device, 'Status', 'Unknown')
                     })
         except Exception as e:
             logger.error(f"Windows MTP scanning error: {e}")
@@ -1413,8 +1414,8 @@ async def search_files(request: dict):
         
         query = """
             SELECT path, name, size, modified, is_directory, extension, 
-                   type, NULL as icon, NULL as permissions, drive as drive_type
-            FROM files WHERE 1=1
+                   file_type, NULL as icon, permissions, drive_type
+            FROM file_cache WHERE 1=1
         """
         params = []
         
@@ -1429,7 +1430,7 @@ async def search_files(request: dict):
                 params.extend([f"%{search_term}%", f"%{search_term}%"])
         
         if drive_filter and drive_filter != "all":
-            query += " AND drive = ?"
+            query += " AND drive_type = ?"
             params.append(drive_filter)
             
         # Type filtering
@@ -1472,8 +1473,8 @@ async def search_files(request: dict):
                 "is_directory": is_dir,
                 "extension": row[5] or "",
                 "type": row[6] or ("folder" if is_dir else "file"),
-                "icon": "📁" if is_dir else "📄",
-                "permissions": "",
+                "icon": "📁" if is_dir else "📄", 
+                "permissions": row[8] or "",
                 "drive_type": row[9] or ""
             })
         
