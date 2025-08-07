@@ -657,6 +657,29 @@
             border-bottom: none;
         }
 
+        /* Stats Items */
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+
         .toggle-switch {
             position: relative;
             width: 50px;
@@ -2126,8 +2149,12 @@
                 `);
 
                 const searchQuery = $('#search-input').val().trim();
-                const driveFilter = $('#drive-filter').val();
-                const typeFilter = $('#type-filter').val();
+                let driveFilter = $('#drive-filter').val();
+                let typeFilter = $('#type-filter').val();
+                
+                // Ensure proper values for filters
+                if (!driveFilter || driveFilter === 'undefined') driveFilter = 'all';
+                if (!typeFilter || typeFilter === 'undefined') typeFilter = 'all';
 
                 // Debounced search - only require minimum length if there's a search query
                 if (searchQuery && searchQuery.length > 0 && searchQuery.length < 2) {
@@ -2140,12 +2167,11 @@
                 }
 
                 const requestBody = {
-                    search: searchQuery || "", // Empty string if no search query
-                    drive: driveFilter || "all",
+                    search: searchQuery || "",
+                    drive: driveFilter || "all", 
                     type: typeFilter || "all",
-                    limit: 1000, // Increased limit
-                    fast_mode: true, // Add fast mode flag
-                    list_all: !searchQuery // Flag to list all files when no search query
+                    limit: 1000,
+                    fast_mode: true
                 };
 
                 const response = await fetch('/api/search', {
@@ -2168,7 +2194,12 @@
                     return;
                 }
                 console.error('Error loading files:', error);
-                showErrorInFileList();
+                console.error('Request details:', {
+                    search: searchQuery,
+                    drive: driveFilter, 
+                    type: typeFilter
+                });
+                showErrorInFileList(error.message);
             } finally {
                 isLoadingFiles = false;
                 loadFilesAbortController = null;
@@ -2916,11 +2947,14 @@
             loadFiles();
         }
 
-        function showErrorInFileList() {
+        function showErrorInFileList(errorMessage = 'خطا در بارگیری فایل‌ها') {
             $('#file-list').html(`
                 <div style="text-align: center; padding: 3rem; color: #f44336;">
                     <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
-                    <p>خطا در بارگیری فایل‌ها</p>
+                    <p>${errorMessage}</p>
+                    <div style="margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="loadFiles()">🔄 تلاش مجدد</button>
+                    </div>
                 </div>
             `);
         }
@@ -3271,11 +3305,8 @@
                 case 'tasks':
                     loadTasks();
                     break;
-                case 'settings':
-                    loadSettings();
-                    break;
                 case 'maintenance':
-                    loadStats();
+                    refreshStats();
                     break;
             }
         }
@@ -3285,10 +3316,78 @@
                 'files': '📁 فایل‌ها',
                 'drives': '💾 درایوها',
                 'tasks': '📋 تسک‌ها',
-                'settings': '⚙️ تنظیمات',
                 'maintenance': '🔧 نگهداری'
             };
             return titles[panelName] || '';
+        }
+
+        // System Stats and Maintenance Functions
+        async function refreshStats() {
+            try {
+                $('#system-stats').html('<div class="loading"></div>');
+                
+                const response = await fetch('/api/system/stats');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const stats = await response.json();
+                displaySystemStats(stats);
+            } catch (error) {
+                console.error('Error loading system stats:', error);
+                $('#system-stats').html(`
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <p>⚠️ خطا در بارگیری آمار سیستم</p>
+                    </div>
+                `);
+            }
+        }
+
+        function displaySystemStats(stats) {
+            const statsHtml = `
+                <div class="stat-item">
+                    <div class="stat-label">فایل‌های ایندکس شده</div>
+                    <div class="stat-value">${stats.indexed_files || 0}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">کل اندازه</div>
+                    <div class="stat-value">${formatFileSize(stats.total_size || 0)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">آخرین ایندکس</div>
+                    <div class="stat-value">${formatDate(stats.last_index_time) || 'هرگز'}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">حافظه استفاده شده</div>
+                    <div class="stat-value">${formatFileSize(stats.memory_usage || 0)}</div>
+                </div>
+            `;
+            $('#system-stats').html(statsHtml);
+        }
+
+        async function cleanupDatabase() {
+            try {
+                const response = await fetch('/api/system/cleanup', { method: 'POST' });
+                if (response.ok) {
+                    showNotification('پایگاه داده پاکسازی شد', 'success');
+                    refreshStats();
+                } else {
+                    throw new Error('Cleanup failed');
+                }
+            } catch (error) {
+                console.error('Error cleaning database:', error);
+                showNotification('خطا در پاکسازی پایگاه داده', 'error');
+            }
+        }
+
+        function showDirectoryScanDialog() {
+            // Implementation for directory scan dialog
+            showNotification('قابلیت اسکن پوشه در حال توسعه است', 'info');
+        }
+
+        function showDriveIndexDialog() {
+            // Implementation for drive index dialog  
+            showNotification('قابلیت ایندکس درایو در حال توسعه است', 'info');
         }
     </script>
 </body>

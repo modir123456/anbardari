@@ -1413,8 +1413,8 @@ async def search_files(request: dict):
         
         query = """
             SELECT path, name, size, modified, is_directory, extension, 
-                   type, icon, permissions, drive_type
-            FROM file_cache WHERE 1=1
+                   type, NULL as icon, NULL as permissions, drive as drive_type
+            FROM files WHERE 1=1
         """
         params = []
         
@@ -1429,7 +1429,7 @@ async def search_files(request: dict):
                 params.extend([f"%{search_term}%", f"%{search_term}%"])
         
         if drive_filter and drive_filter != "all":
-            query += " AND drive_type = ?"
+            query += " AND drive = ?"
             params.append(drive_filter)
             
         # Type filtering
@@ -1463,16 +1463,17 @@ async def search_files(request: dict):
         
         files = []
         for row in results:
+            is_dir = bool(row[4])
             files.append({
                 "path": row[0],
                 "name": row[1],
                 "size": row[2] or 0,
                 "modified": row[3],
-                "is_directory": bool(row[4]),
+                "is_directory": is_dir,
                 "extension": row[5] or "",
-                "type": row[6] or ("folder" if bool(row[4]) else "file"),
-                "icon": row[7] or ("📁" if bool(row[4]) else "📄"),
-                "permissions": row[8] or "",
+                "type": row[6] or ("folder" if is_dir else "file"),
+                "icon": "📁" if is_dir else "📄",
+                "permissions": "",
                 "drive_type": row[9] or ""
             })
         
