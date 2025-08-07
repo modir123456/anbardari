@@ -3292,6 +3292,19 @@
             return false;
         }
 
+        // Helper function to convert numeric status to string
+        function getTaskStatusString(numericStatus) {
+            const statusMap = {
+                0: 'preparing',
+                1: 'running', 
+                2: 'paused',
+                3: 'completed',
+                4: 'failed',
+                5: 'cancelled'
+            };
+            return statusMap[numericStatus] || 'unknown';
+        }
+
         // Enhanced Load Tasks for Main Panel
         async function loadTasks() {
             try {
@@ -3313,8 +3326,14 @@
                 let hasActiveTasks = false;
                 
                 for (const [taskId, task] of Object.entries(data.tasks || {})) {
+                    // Convert numeric status to string for consistency
+                    const statusString = getTaskStatusString(task.status);
+                    task.statusString = statusString; // Add string version for later use
+                    
+                    console.log(`📝 Task ${taskId}: status=${task.status} (${statusString})`);
+                    
                     // Only show active tasks (running, preparing, paused)
-                    if (['running', 'preparing', 'paused'].includes(task.status)) {
+                    if (['running', 'preparing', 'paused'].includes(statusString)) {
                         const taskElement = createTaskElementForPanel(taskId, task);
                         tasksList.append(taskElement);
                         hasActiveTasks = true;
@@ -3326,13 +3345,13 @@
                     }
                     
                     // Count for statistics
-                    if (task.status === 'running' || task.status === 'preparing' || task.status === 'paused') {
+                    if (statusString === 'running' || statusString === 'preparing' || statusString === 'paused') {
                         activeCount++;
-                    } else if (task.status === 'completed') {
+                    } else if (statusString === 'completed') {
                         completedCount++;
                         // Auto-remove completed tasks after 3 seconds
                         setTimeout(() => removeCompletedTask(taskId), 3000);
-                    } else if (task.status === 'failed' || task.status === 'cancelled') {
+                    } else if (statusString === 'failed' || statusString === 'cancelled') {
                         failedCount++;
                     }
                 }
@@ -3373,8 +3392,9 @@
                         updateSingleTaskDisplay(taskId, taskData);
                         
                         // Stop polling if task is completed or failed
-                        if (['completed', 'failed', 'cancelled'].includes(taskData.status)) {
-                            console.log(`✅ Task ${taskId} finished with status: ${taskData.status}`);
+                        const statusString = getTaskStatusString(taskData.status);
+                        if (['completed', 'failed', 'cancelled'].includes(statusString)) {
+                            console.log(`✅ Task ${taskId} finished with status: ${taskData.status} (${statusString})`);
                             stopTaskPolling(taskId);
                         }
                     } else if (response.status === 404) {
@@ -3557,7 +3577,7 @@
         
         // Create Task Element for Main Panel (Enhanced View)
         function createTaskElementForPanel(taskId, task) {
-            const statusClass = task.status;
+            const statusClass = getTaskStatusClass(task.status);
             const progress = Math.round(task.progress || 0);
             const speed = formatFileSize(task.speed || 0) + '/s';
             const eta = formatTime(task.eta || 0);
@@ -3691,6 +3711,8 @@
         }
         
         function getTaskStatusClass(status) {
+            // Convert numeric status to string if needed
+            const statusString = typeof status === 'number' ? getTaskStatusString(status) : status;
             const classes = {
                 'running': 'task-running',
                 'preparing': 'task-preparing',
@@ -3699,10 +3721,12 @@
                 'failed': 'task-failed',
                 'cancelled': 'task-cancelled'
             };
-            return classes[status] || 'task-unknown';
+            return classes[statusString] || 'task-unknown';
         }
         
         function getTaskStatusText(status) {
+            // Convert numeric status to string if needed
+            const statusString = typeof status === 'number' ? getTaskStatusString(status) : status;
             const texts = {
                 'running': 'در حال اجرا',
                 'preparing': 'در حال آماده‌سازی',
@@ -3711,7 +3735,7 @@
                 'failed': 'ناموفق',
                 'cancelled': 'لغو شده'
             };
-            return texts[status] || status;
+            return texts[statusString] || statusString;
         }
         
         function getTaskTypeTitle(type) {
@@ -3726,17 +3750,20 @@
         function getTaskActions(task) {
             let actions = '';
             
-            if (task.status === 'running') {
+            // Get status string (either from statusString property or convert numeric status)
+            const statusString = task.statusString || getTaskStatusString(task.status);
+            
+            if (statusString === 'running') {
                 actions += `<button class="btn btn-warning btn-sm" onclick="pauseTask('${task.task_id}')">⏸️ توقف</button> `;
-            } else if (task.status === 'paused') {
+            } else if (statusString === 'paused') {
                 actions += `<button class="btn btn-success btn-sm" onclick="resumeTask('${task.task_id}')">▶️ ادامه</button> `;
             }
             
-            if (['running', 'preparing', 'paused'].includes(task.status)) {
+            if (['running', 'preparing', 'paused'].includes(statusString)) {
                 actions += `<button class="btn btn-danger btn-sm" onclick="cancelTask('${task.task_id}')">❌ لغو</button> `;
             }
             
-            if (['completed', 'failed', 'cancelled'].includes(task.status)) {
+            if (['completed', 'failed', 'cancelled'].includes(statusString)) {
                 actions += `<button class="btn btn-danger btn-sm" onclick="deleteTask('${task.task_id}')">🗑️ حذف</button> `;
             }
             
