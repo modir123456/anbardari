@@ -364,6 +364,11 @@ class DatabaseManager:
         """Initialize database with enhanced schema"""
         try:
             with sqlite3.connect(self.db_file) as conn:
+                # Optimize SQLite for speed
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA synchronous=NORMAL") 
+                conn.execute("PRAGMA cache_size=10000")
+                conn.execute("PRAGMA temp_store=MEMORY")
                 cursor = conn.cursor()
                 
                 # Enhanced file cache table
@@ -2273,22 +2278,42 @@ async def monitor_task_progress():
             
             if hasattr(file_ops, 'tasks') and file_ops.tasks:
                 for task_id, task in file_ops.tasks.items():
-                    if hasattr(task, 'status') and task.status in ['running', 'preparing', 'paused']:
+                    # Handle both dict and object format
+                    if isinstance(task, dict):
+                        status = task.get('status', 'unknown')
+                    else:
+                        status = getattr(task, 'status', 'unknown')
+                    
+                    if status in ['running', 'preparing', 'paused']:
                         active_task_count += 1
                         
                         # Get detailed progress info safely
-                        progress_data = {
-                            'task_id': task_id,
-                            'status': getattr(task, 'status', 'unknown'),
-                            'progress': getattr(task, 'progress', 0),
-                            'speed': getattr(task, 'current_speed', 0),
-                            'eta': getattr(task, 'eta', 0),
-                            'copied_files': getattr(task, 'copied_files', 0),
-                            'total_files': getattr(task, 'total_files', 0),
-                            'current_file': getattr(task, 'current_file', ''),
-                            'source_files': getattr(task, 'source_files', []),
-                            'destination': getattr(task, 'destination', '')
-                        }
+                        if isinstance(task, dict):
+                            progress_data = {
+                                'task_id': task_id,
+                                'status': task.get('status', 'unknown'),
+                                'progress': task.get('progress', 0),
+                                'speed': task.get('speed', 0),
+                                'eta': task.get('eta', 0),
+                                'copied_files': task.get('copied_files', 0),
+                                'total_files': task.get('total_files', 0),
+                                'current_file': task.get('current_file', ''),
+                                'source_files': task.get('source_files', []),
+                                'destination': task.get('destination', '')
+                            }
+                        else:
+                            progress_data = {
+                                'task_id': task_id,
+                                'status': getattr(task, 'status', 'unknown'),
+                                'progress': getattr(task, 'progress', 0),
+                                'speed': getattr(task, 'current_speed', 0),
+                                'eta': getattr(task, 'eta', 0),
+                                'copied_files': getattr(task, 'copied_files', 0),
+                                'total_files': getattr(task, 'total_files', 0),
+                                'current_file': getattr(task, 'current_file', ''),
+                                'source_files': getattr(task, 'source_files', []),
+                                'destination': getattr(task, 'destination', '')
+                            }
                         
                         # Broadcast individual progress update
                         await manager.broadcast_json({
@@ -2311,4 +2336,15 @@ async def monitor_task_progress():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=DEFAULT_PORT, reload=False)
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=DEFAULT_PORT, 
+        reload=False,
+        access_log=False,  # Disable access logging for speed
+        workers=1,  # Single worker for simplicity
+        loop="asyncio",  # Use asyncio loop
+        http="httptools",  # Use httptools for better performance
+        ws="websockets",  # Use websockets for WS
+        log_level="warning"  # Reduce log verbosity
+    )

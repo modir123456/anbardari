@@ -14,17 +14,17 @@ from pathlib import Path
 from config import *
 
 def print_header():
-    """نمایش هدر برنامه"""
+    """Display application header"""
     print("=" * 60)
     print(f"🌟 {APP_NAME}")
-    print(f"📦 نسخه {APP_VERSION} - {APP_EDITION}")
+    print(f"📦 Version {APP_VERSION} - {APP_EDITION}")
     print(f"🏢 {COMPANY_NAME}")
     print(f"📞 تلگرام: {TELEGRAM_ID}")
     print("=" * 60)
 
 def install_dependencies():
-    """نصب وابستگی‌های Python"""
-    print("📦 نصب وابستگی‌های مورد نیاز...")
+    """Install Python dependencies"""
+    print("📦 Installing required dependencies...")
     
     required_packages = [
         "fastapi",
@@ -40,23 +40,23 @@ def install_dependencies():
     for package in required_packages:
         try:
             __import__(package.split('[')[0])
-            print(f"   ✅ {package} موجود است")
+            print(f"   ✅ {package} available")
         except ImportError:
             print(f"   📦 نصب {package}...")
             try:
                 subprocess.run([
                     sys.executable, "-m", "pip", "install", package, "--break-system-packages", "--quiet"
                 ], check=True, capture_output=True)
-                print(f"   ✅ {package} نصب شد")
+                print(f"   ✅ {package} installed")
             except subprocess.CalledProcessError:
                 try:
                     # Try without --break-system-packages
                     subprocess.run([
                         sys.executable, "-m", "pip", "install", package, "--quiet"
                     ], check=True, capture_output=True)
-                    print(f"   ✅ {package} نصب شد")
+                    print(f"   ✅ {package} installed")
                 except subprocess.CalledProcessError as e:
-                    print(f"   ❌ خطا در نصب {package}: {e}")
+                    print(f"   ❌ Installation error for {package}: {e}")
                     return False
     
     return True
@@ -71,15 +71,15 @@ def check_files():
             missing_files.append(file)
     
     if missing_files:
-        print(f"❌ فایل‌های ضروری یافت نشدند: {', '.join(missing_files)}")
+        print(f"❌ Essential files not found: {', '.join(missing_files)}")
         return False
     
-    print("✅ همه فایل‌های ضروری موجودند")
+    print("✅ All essential files are present")
     return True
 
 def start_server():
-    """راه‌اندازی سرور FastAPI"""
-    print(f"🚀 راه‌اندازی سرور روی پورت {DEFAULT_PORT}...")
+    """Start FastAPI server"""
+    print(f"🚀 Starting server on port {DEFAULT_PORT}...")
     
     try:
         # Start the server
@@ -91,7 +91,7 @@ def start_server():
             "--reload"
         ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
-        print("⏳ در حال راه‌اندازی سرور...")
+        print("⏳ Starting server...")
         time.sleep(3)
         
         # Test if server is running
@@ -101,36 +101,36 @@ def start_server():
             
             with urllib.request.urlopen(test_url, timeout=5) as response:
                 if response.status == 200:
-                    print("✅ سرور با موفقیت راه‌اندازی شد!")
+                    print("✅ Server started successfully!")
                     return process
         except Exception as e:
-            print(f"⚠️ تست سرور انجام نشد: {e}")
+            print(f"⚠️ Server test failed: {e}")
             # اما ادامه بده، ممکن است کار کند
             return process
             
     except Exception as e:
-        print(f"❌ خطا در راه‌اندازی سرور: {e}")
+        print(f"❌ Server startup error: {e}")
         return None
 
 def open_browser():
     """باز کردن مرورگر"""
     url = f"http://localhost:{DEFAULT_PORT}"
-    print(f"🌐 باز کردن مرورگر: {url}")
+    print(f"🌐 Opening browser: {url}")
     
     try:
         webbrowser.open(url)
-        print("✅ مرورگر باز شد")
+        print("✅ Browser opened")
     except Exception as e:
-        print(f"⚠️ خطا در باز کردن مرورگر: {e}")
-        print(f"📋 لطفاً این آدرس را دستی باز کنید: {url}")
+        print(f"⚠️ Browser opening error: {e}")
+        print(f"📋 Please open this URL manually: {url}")
 
 def show_running_info():
     """نمایش اطلاعات در حال اجرا"""
     print("\n" + "=" * 60)
-    print("✅ Persian File Copier Pro در حال اجرا است!")
-    print(f"🌐 آدرس اصلی: http://localhost:{DEFAULT_PORT}")
-    print(f"📖 مستندات API: http://localhost:{DEFAULT_PORT}/docs")
-    print("⏹️  برای توقف Ctrl+C را فشار دهید")
+    print("✅ Persian File Copier Pro is running!")
+    print(f"🌐 Main URL: http://localhost:{DEFAULT_PORT}")
+    print(f"📖 API Documentation: http://localhost:{DEFAULT_PORT}/docs")
+    print("⏹️  Press Ctrl+C to stop")
     print("=" * 60)
 
 def cleanup_old_files():
@@ -155,7 +155,7 @@ def cleanup_old_files():
                 pass
     
     if cleaned > 0:
-        print(f"🧹 {cleaned} فایل قدیمی پاک شد")
+        print(f"🧹 {cleaned} old files cleaned")
 
 def main():
     """تابع اصلی"""
@@ -172,20 +172,20 @@ def main():
     
     # بررسی فایل‌ها
     if not check_files():
-        print("\n❌ فایل‌های ضروری موجود نیستند!")
+        print("\n❌ Essential files are missing!")
         input("Enter را برای خروج فشار دهید...")
         sys.exit(1)
     
     # نصب وابستگی‌ها
     if not install_dependencies():
-        print("\n❌ خطا در نصب وابستگی‌ها!")
+        print("\n❌ Installation error for وابستگی‌ها!")
         input("Enter را برای خروج فشار دهید...")
         sys.exit(1)
     
     # راه‌اندازی سرور
     server_process = start_server()
     if not server_process:
-        print("\n❌ خطا در راه‌اندازی سرور!")
+        print("\n❌ Server startup error!")
         input("Enter را برای خروج فشار دهید...")
         sys.exit(1)
     
@@ -196,24 +196,24 @@ def main():
     open_browser()
     
     try:
-        print("\n📡 سرور در حال اجرا... برای توقف Ctrl+C فشار دهید")
+        print("\n📡 Server is running... Press Ctrl+C to stop")
         server_process.wait()
     except KeyboardInterrupt:
-        print("\n🛑 در حال توقف...")
+        print("\n🛑 Stopping...")
         server_process.terminate()
         
         try:
             server_process.wait(timeout=5)
-            print("✅ سرور متوقف شد")
+            print("✅ Server stopped")
         except subprocess.TimeoutExpired:
-            print("🔄 اجبار به توقف...")
+            print("🔄 Force stopping...")
             server_process.kill()
-            print("✅ سرور به زور متوقف شد")
+            print("✅ Server force stopped")
             
     except Exception as e:
-        print(f"❌ خطا: {e}")
+        print(f"❌ Error: {e}")
     finally:
-        print(f"\n🙏 از استفاده از {APP_NAME} متشکریم!")
+        print(f"\n🙏 Thank you for using {APP_NAME} !!")
         input("Enter را برای خروج فشار دهید...")
 
 if __name__ == "__main__":

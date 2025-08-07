@@ -3059,6 +3059,9 @@
                 const response = await fetch('/api/tasks');
                 const data = await response.json();
                 
+                console.log('📋 Tasks API Response:', data);
+                console.log('📊 Number of tasks:', Object.keys(data.tasks || {}).length);
+                
                 const tasksList = $('#tasks-list');
                 const noTasksMessage = $('#no-tasks-message');
                 
@@ -3105,6 +3108,59 @@
             } catch (error) {
                 console.error('Error loading tasks:', error);
                 console.error('Task loading failed, but continuing...');
+            }
+        }
+
+        // Real-time Task Update Functions
+        function updateTaskInRealTime(taskId, taskData) {
+            console.log(`🔄 Real-time update for task ${taskId}:`, taskData);
+            
+            const taskElement = $(`.task-item[data-task-id="${taskId}"]`);
+            if (taskElement.length > 0) {
+                // Update existing task
+                updateTaskProgress(taskId, taskData);
+            } else {
+                // Task doesn't exist in UI, refresh the entire list
+                console.log(`➕ Task ${taskId} not found in UI, refreshing tasks`);
+                loadTasks();
+            }
+        }
+
+        function updateTaskProgress(taskId, progressData) {
+            const taskElement = $(`.task-item[data-task-id="${taskId}"]`);
+            if (taskElement.length > 0) {
+                const progress = Math.round(progressData.progress || 0);
+                
+                console.log(`📊 Updating task ${taskId} progress: ${progress}%`);
+                
+                // Update CSS custom property for background progress
+                taskElement.css('--progress', `${progress}%`);
+                
+                // Update progress percentage display
+                const progressInfo = taskElement.find('.task-progress-info');
+                progressInfo.text(`${progress}%`);
+                
+                // Update stats
+                const statsElements = taskElement.find('.task-stat span:last-child');
+                if (statsElements.length >= 3) {
+                    $(statsElements[1]).text(`${formatFileSize(progressData.speed || 0)}/s`);
+                    $(statsElements[2]).text(`${formatTime(progressData.eta || 0)}`);
+                }
+                
+                // Update file count if available
+                if (progressData.copied_files !== undefined) {
+                    $(statsElements[0]).text(`${progressData.copied_files} / ${progressData.total_files || 0} فایل`);
+                }
+                
+                // Update current file if available
+                if (progressData.current_file) {
+                    const sourceDiv = taskElement.find('.task-source');
+                    sourceDiv.text(`📁 در حال کپی: ${progressData.current_file}`);
+                }
+                
+                console.log(`✅ Task ${taskId} progress updated to ${progress}%`);
+            } else {
+                console.log(`❌ Task element ${taskId} not found for progress update`);
             }
         }
         
@@ -4356,49 +4412,7 @@
             });
         }
 
-        // Duplicate function removed - consolidated above
-
-        function updateTaskInRealTime(taskId, taskData) {
-            const taskElement = $(`.task-item[data-task-id="${taskId}"]`);
-            if (taskElement.length > 0) {
-                // Update existing task
-                const newElement = createTaskElementForPanel(taskId, taskData);
-                taskElement.replaceWith(newElement);
-            } else if (['running', 'preparing', 'paused'].includes(taskData.status)) {
-                // Add new active task
-                const newElement = createTaskElementForPanel(taskId, taskData);
-                $('#no-tasks-message').hide();
-                $('#tasks-list').append(newElement);
-            }
-        }
-
-        function updateTaskProgress(taskId, progressData) {
-            const taskElement = $(`.task-item[data-task-id="${taskId}"]`);
-            if (taskElement.length > 0) {
-                const progress = Math.round(progressData.progress || 0);
-                
-                // Update CSS custom property for background progress
-                taskElement.css('--progress', `${progress}%`);
-                
-                // Update progress percentage display
-                const progressInfo = taskElement.find('.task-progress-info');
-                progressInfo.text(`${progress}%`);
-                
-                // Update stats
-                const statsElements = taskElement.find('.task-stat span:last-child');
-                if (statsElements.length >= 3) {
-                    $(statsElements[1]).text(`${formatFileSize(progressData.speed || 0)}/s`);
-                    $(statsElements[2]).text(`${formatTime(progressData.eta || 0)}`);
-                }
-                
-                // Update file count if available
-                if (progressData.copied_files !== undefined) {
-                    $(statsElements[0]).text(`${progressData.copied_files} / ${progressData.total_files || 0} فایل`);
-                }
-                
-                console.log(`Task ${taskId} progress updated to ${progress}%`);
-            }
-        }
+        // Duplicate functions removed - using consolidated versions above
 
         function handleTaskCompletion(taskId) {
             Swal.fire({
