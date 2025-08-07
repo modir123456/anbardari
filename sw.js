@@ -132,18 +132,32 @@ self.addEventListener('fetch', (event) => {
                         if (!event.request.url.includes('favicon.ico') && 
                             !event.request.url.includes('.png') &&
                             !event.request.url.includes('.jpg') &&
-                            !event.request.url.includes('.ico')) {
-                            console.warn('[SW] Fetch failed:', error.message);
+                            !event.request.url.includes('.ico') &&
+                            !event.request.url.includes('docs#/')) {
+                            console.debug('[SW] Fetch failed for:', event.request.url, error.message);
                         }
                         
                         // Return offline page for navigation requests
                         if (event.request.mode === 'navigate') {
                             return caches.match(OFFLINE_URL) || 
                                    caches.match('/') ||
-                                   new Response('App is offline', { status: 503 });
+                                   new Response('<html><body><h1>App is offline</h1><p>Application unavailable</p></body></html>', { 
+                                       status: 503,
+                                       headers: { 'Content-Type': 'text/html' }
+                                   });
                         }
                         
-                        // For other requests, return basic error response
+                        // For other requests, return appropriate error response
+                        if (event.request.url.includes('api/')) {
+                            return new Response(JSON.stringify({
+                                error: 'API unavailable',
+                                message: 'سرویس در دسترس نیست'
+                            }), {
+                                status: 503,
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                        }
+                        
                         return new Response('Resource not available', {
                             status: 404,
                             headers: { 'Content-Type': 'text/plain' }
