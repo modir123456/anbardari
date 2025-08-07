@@ -252,9 +252,25 @@ namespace PersianFileCopierPro.Services
                     }
 
                     task.CurrentFile = sourceFile;
-                    await _fileOperationService.CopyFileAsync(sourceFile, task.Destination, 
-                        (progress) => UpdateTaskProgress(task, progress, stopwatch, ref lastCopiedSize),
-                        task.CancellationTokenSource.Token);
+                    
+                    // Check if source is a file or directory
+                    if (File.Exists(sourceFile))
+                    {
+                        await _fileOperationService.CopyFileAsync(sourceFile, task.Destination, 
+                            (progress) => UpdateTaskProgress(task, progress, stopwatch, ref lastCopiedSize),
+                            task.CancellationTokenSource.Token);
+                    }
+                    else if (Directory.Exists(sourceFile))
+                    {
+                        await _fileOperationService.CopyDirectoryAsync(sourceFile, task.Destination, 
+                            (progress) => UpdateTaskProgress(task, progress, stopwatch, ref lastCopiedSize),
+                            task.CancellationTokenSource.Token);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"⚠️ Source not found: {sourceFile}");
+                        continue;
+                    }
 
                     task.CopiedFiles++;
                 }

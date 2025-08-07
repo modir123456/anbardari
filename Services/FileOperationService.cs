@@ -74,6 +74,54 @@ namespace PersianFileCopierPro.Services
             }
         }
 
+        public async Task CopyDirectoryAsync(string sourcePath, string destinationPath, Action<long>? progressCallback = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (!Directory.Exists(sourcePath))
+                {
+                    throw new DirectoryNotFoundException($"Source directory not found: {sourcePath}");
+                }
+
+                // Create destination directory
+                var destDirInfo = new DirectoryInfo(destinationPath);
+                if (destDirInfo.Exists)
+                {
+                    // If destination exists, create subdirectory with source name
+                    var sourceDirName = new DirectoryInfo(sourcePath).Name;
+                    destinationPath = Path.Combine(destinationPath, sourceDirName);
+                }
+
+                Directory.CreateDirectory(destinationPath);
+
+                // Copy all files in current directory
+                var sourceDir = new DirectoryInfo(sourcePath);
+                foreach (var file in sourceDir.GetFiles())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    var destFilePath = Path.Combine(destinationPath, file.Name);
+                    await CopyFileAsync(file.FullName, destFilePath, progressCallback, cancellationToken);
+                }
+
+                // Recursively copy subdirectories
+                foreach (var subDir in sourceDir.GetDirectories())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    var destSubDirPath = Path.Combine(destinationPath, subDir.Name);
+                    await CopyDirectoryAsync(subDir.FullName, destSubDirPath, progressCallback, cancellationToken);
+                }
+
+                _logger.LogDebug($"✅ Successfully copied directory {sourcePath} to {destinationPath}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"❌ Failed to copy directory {sourcePath}: {ex.Message}");
+                throw;
+            }
+        }
+
         public async Task<List<FileModel>> GetFilesAsync(string path, string? searchQuery = null, string? typeFilter = null)
         {
             var files = new List<FileModel>();
