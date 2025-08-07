@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyTitle>Persian File Copier Pro</AssemblyTitle>
-    <AssemblyDescription>فارسی کاپیر فایل حرفه‌ای - نرم‌افزار پیشرفته کپی و مدیریت فایل</AssemblyDescription>
+    <AssemblyDescription> کپی فایل حرفه‌ای فارسی- نرم‌افزار پیشرفته کپی و مدیریت فایل</AssemblyDescription>
     <AssemblyVersion>3.6.0.0</AssemblyVersion>
     <FileVersion>3.6.0.0</FileVersion>
     <Company>Persian File Copier Team</Company>
@@ -14,16 +14,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Management" Version="9.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="9.0.0" />
     <PackageReference Include="System.IO.Abstractions" Version="21.1.7" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

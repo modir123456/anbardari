@@ -1702,22 +1702,35 @@
 
         .task-progress-bar {
             width: 100%;
-            height: 14px;
-            background: rgba(0,0,0,0.1);
-            border-radius: 8px;
+            height: 20px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
             overflow: hidden;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             position: relative;
-            border: 1px solid rgba(0,0,0,0.05);
+            border: 2px solid rgba(0,0,0,0.1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--progress-color, #10b981), rgba(16, 185, 129, 0.8));
+            background: linear-gradient(90deg, var(--progress-color, #10b981), rgba(16, 185, 129, 0.9));
             border-radius: 8px;
             transition: width 0.5s ease;
             position: relative;
-            box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
+        }
+
+        .task-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            z-index: 10;
         }
         
         .progress-fill::after {
@@ -1767,9 +1780,35 @@
         }
 
         .task-actions .task-action-btn {
-            min-width: 40px;
+            min-width: 45px;
             height: 40px;
             font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .task-action-btn.pause-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .task-action-btn.resume-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .task-action-btn.cancel-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .task-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
         .task-stats-grid .task-actions {
@@ -2221,7 +2260,7 @@
     </header>
 
     <!-- Main Container -->
-    <div class="main-container">
+    <div class="main-container" style="margin-right: 100px; margin-left: 100px;">
         <!-- Drives Panel -->
         <div class="drives-panel">
             <div class="panel-header">
@@ -4063,6 +4102,7 @@
                             <div class="task-progress-bar-container">
                                 <div class="task-progress-bar">
                                     <div class="progress-fill" style="width: ${progress}%"></div>
+                                    <div class="task-progress-text">${progress}%</div>
                                 </div>
                                 <div class="size-info">
                                     ${copiedSize} / ${totalSize}
@@ -4672,7 +4712,7 @@
 
         function displayLicenseStatus(licenseInfo) {
             const statusDiv = $('#license-status');
-            let statusClass = licenseInfo.licenseType || licenseInfo.LicenseType || 'Free';
+            let statusClass = licenseInfo.licenseType || 'Free';
             let statusText = '';
             let statusIcon = '';
             
@@ -4680,7 +4720,7 @@
             const isExpired = licenseInfo.expiryDate && new Date(licenseInfo.expiryDate) < new Date();
             const daysRemaining = licenseInfo.daysRemaining || 0;
             
-            if (licenseInfo.isActivated || licenseInfo.IsActivated) {
+            if (licenseInfo.isActivated) {
                 if (isExpired) {
                     statusIcon = '❌';
                     statusText = 'لایسنس منقضی شده';
@@ -4692,7 +4732,7 @@
                     statusIcon = '✅';
                     statusText = 'فعال';
                 }
-            } else if (licenseInfo.isTrial || licenseInfo.IsTrial) {
+            } else if (licenseInfo.isTrial) {
                 statusIcon = '⏳';
                 statusText = `دوره آزمایشی (${daysRemaining} روز باقیمانده)`;
                 statusClass = 'trial';
@@ -5074,14 +5114,11 @@
             if (statusString === 'running') {
                 buttons += `<button class="task-action-btn pause-btn" onclick="pauseTask('${taskId}')" title="توقف">⏸️</button>`;
                 buttons += `<button class="task-action-btn cancel-btn" onclick="cancelTask('${taskId}')" title="لغو">⏹️</button>`;
-                buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
             } else if (statusString === 'paused') {
                 buttons += `<button class="task-action-btn resume-btn" onclick="resumeTask('${taskId}')" title="ادامه">▶️</button>`;
                 buttons += `<button class="task-action-btn cancel-btn" onclick="cancelTask('${taskId}')" title="لغو">⏹️</button>`;
-                buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
             } else if (statusString === 'preparing') {
                 buttons += `<button class="task-action-btn cancel-btn" onclick="cancelTask('${taskId}')" title="لغو">⏹️</button>`;
-                buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
             } else if (statusString === 'completed') {
                 buttons += `<button class="task-action-btn retry-btn" onclick="retryTask('${taskId}')" title="تکرار">🔄</button>`;
                 buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
