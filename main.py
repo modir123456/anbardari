@@ -89,6 +89,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve static files (PWA files)
+app.mount("/static", StaticFiles(directory="."), name="static")
+
 # Global state
 active_connections: Dict[str, WebSocket] = {}
 db_path = "persian_file_cache.db"
@@ -682,6 +685,11 @@ class FileOperationsManager:
         self.event_loop = None
         self.device_detector = DeviceDetector()
     
+    @property
+    def tasks(self):
+        """Alias for active_tasks for compatibility"""
+        return self.active_tasks
+    
     def get_optimal_buffer_size(self, source_device: str, dest_device: str) -> int:
         """Get optimal buffer size based on device types"""
         try:
@@ -724,7 +732,7 @@ class FileOperationsManager:
                     logger.warning(f"File not accessible: {file_path}")
             
             if not valid_files:
-                raise ValueError("هیچ فایل معتبری برای کپی یافت نشد")
+                raise ValueError("No valid files found for copying")
             
             # Create destination directory if needed
             if options.get("create_destination", True):
@@ -1160,14 +1168,14 @@ class LicenseManager:
             else:
                 return {
                     'success': False,
-                    'message': 'خطا در ذخیره لایسنس'
+                    'message': 'Error saving license'
                 }
                 
         except Exception as e:
             logger.error(f"License activation error: {e}")
             return {
                 'success': False,
-                'message': f'خطا در فعال‌سازی: {str(e)}'
+                'message': f'Activation error: {str(e)}'
             }
     
     def check_license(self):
@@ -1372,10 +1380,28 @@ async def serve_index():
             <h1>🌟 {APP_NAME}</h1>
             <p>{COMPANY_NAME}</p>
             <p>نسخه {APP_VERSION}</p>
-            <p>لطفاً فایل index.html را در پوشه اصلی قرار دهید.</p>
+            <p>Please place index.html in the root directory.</p>
         </body>
         </html>
         """)
+
+@app.get("/manifest.json")
+async def get_manifest():
+    """Serve PWA manifest"""
+    manifest_path = Path("manifest.json")
+    if manifest_path.exists():
+        return FileResponse(manifest_path, media_type="application/json")
+    else:
+        raise HTTPException(status_code=404, detail="Manifest not found")
+
+@app.get("/sw.js")
+async def get_service_worker():
+    """Serve Service Worker"""
+    sw_path = Path("sw.js")
+    if sw_path.exists():
+        return FileResponse(sw_path, media_type="application/javascript")
+    else:
+        raise HTTPException(status_code=404, detail="Service Worker not found")
 
 @app.get("/api/health")
 async def health_check():
@@ -1512,13 +1538,13 @@ async def start_copy(request: CopyRequest):
             if len(request.source_files) > features['max_files']:
                 raise HTTPException(
                     status_code=403, 
-                    detail=f"نسخه رایگان محدود به {features['max_files']} فایل است"
+                    detail=f"Free version limited to {features['max_files']} files"
                 )
             
             if len(file_ops.active_tasks) >= features['max_tasks']:
                 raise HTTPException(
                     status_code=403,
-                    detail=f"نسخه رایگان محدود به {features['max_tasks']} تسک همزمان است"
+                    detail=f"Free version limited to {features['max_tasks']} concurrent tasks"
                 )
         
         task_id = file_ops.start_copy_task(
@@ -1544,11 +1570,32 @@ async def get_tasks():
     """Get all active tasks"""
     serializable_tasks = {}
     for task_id, task in file_ops.active_tasks.items():
-        task_data = {k: v for k, v in task.items() if k != "future"}
-        # Add control flags
-        task_data["can_cancel"] = task.get("status") in ["running", "preparing", "paused"]
-        task_data["can_pause"] = task.get("status") == "running"
-        task_data["can_resume"] = task.get("status") == "paused"
+        # Handle both dict and object format
+        if hasattr(task, '__dict__'):
+            task_dict = task.__dict__.copy()
+        else:
+            task_dict = dict(task) if isinstance(task, dict) else {}
+        
+        # Remove non-serializable items
+        task_data = {k: v for k, v in task_dict.items() if k not in ["future", "executor", "event_loop"]}
+        
+        # Add essential fields with defaults
+        task_data.update({
+            "task_id": task_id,
+            "status": task_data.get("status", "unknown"),
+            "progress": task_data.get("progress", 0),
+            "speed": task_data.get("current_speed", 0),
+            "eta": task_data.get("eta", 0),
+            "copied_files": task_data.get("copied_files", 0),
+            "total_files": task_data.get("total_files", 0),
+            "source_files": task_data.get("source_files", []),
+            "destination": task_data.get("destination", ""),
+            "created_at": task_data.get("created_at", ""),
+            "can_cancel": task_data.get("status") in ["running", "preparing", "paused"],
+            "can_pause": task_data.get("status") == "running",
+            "can_resume": task_data.get("status") == "paused"
+        })
+        
         serializable_tasks[task_id] = task_data
     
     return {
@@ -1575,17 +1622,17 @@ async def cancel_task(task_id: str):
                 "data": {
                     "task_id": task_id,
                     "status": "cancelled",
-                    "message": "تسک لغو شد"
+                    "message": "Task cancelled"
                 }
             })
             
-            return {"success": True, "message": "تسک لغو شد"}
+            return {"success": True, "message": "Task cancelled"}
         else:
-            raise HTTPException(status_code=404, detail="تسک یافت نشد")
+            raise HTTPException(status_code=404, detail="Task not found")
             
     except Exception as e:
         logger.error(f"Error cancelling task {task_id}: {e}")
-        raise HTTPException(status_code=500, detail="خطا در لغو تسک")
+        raise HTTPException(status_code=500, detail="Error cancelling task")
 
 @app.post("/api/tasks/{task_id}/pause")
 async def pause_task(task_id: str):
@@ -1603,19 +1650,19 @@ async def pause_task(task_id: str):
                     "data": {
                         "task_id": task_id,
                         "status": "paused",
-                        "message": "تسک متوقف شد"
+                        "message": "Task paused"
                     }
                 })
                 
-                return {"success": True, "message": "تسک متوقف شد"}
+                return {"success": True, "message": "Task paused"}
             else:
-                raise HTTPException(status_code=400, detail="تسک قابل توقف نیست")
+                raise HTTPException(status_code=400, detail="Task cannot be paused")
         else:
-            raise HTTPException(status_code=404, detail="تسک یافت نشد")
+            raise HTTPException(status_code=404, detail="Task not found")
             
     except Exception as e:
         logger.error(f"Error pausing task {task_id}: {e}")
-        raise HTTPException(status_code=500, detail="خطا در توقف تسک")
+        raise HTTPException(status_code=500, detail="Error pausing task")
 
 @app.post("/api/tasks/{task_id}/resume")
 async def resume_task(task_id: str):
@@ -1633,19 +1680,19 @@ async def resume_task(task_id: str):
                     "data": {
                         "task_id": task_id,
                         "status": "running", 
-                        "message": "تسک ادامه یافت"
+                        "message": "Task resumed"
                     }
                 })
                 
-                return {"success": True, "message": "تسک ادامه یافت"}
+                return {"success": True, "message": "Task resumed"}
             else:
-                raise HTTPException(status_code=400, detail="تسک در حالت توقف نیست")
+                raise HTTPException(status_code=400, detail="Task is not paused")
         else:
-            raise HTTPException(status_code=404, detail="تسک یافت نشد")
+            raise HTTPException(status_code=404, detail="Task not found")
             
     except Exception as e:
         logger.error(f"Error resuming task {task_id}: {e}")
-        raise HTTPException(status_code=500, detail="خطا در ادامه تسک")
+        raise HTTPException(status_code=500, detail="Error resuming task")
 
 @app.delete("/api/tasks/{task_id}")
 async def delete_task(task_id: str):
@@ -1668,15 +1715,15 @@ async def delete_task(task_id: str):
                     "data": {"task_id": task_id}
                 })
                 
-                return {"success": True, "message": "تسک حذف شد"}
+                return {"success": True, "message": "Task deleted"}
             else:
-                raise HTTPException(status_code=400, detail="فقط تسک های تکمیل شده قابل حذف هستند")
+                raise HTTPException(status_code=400, detail="Only completed tasks can be deleted")
         else:
-            raise HTTPException(status_code=404, detail="تسک یافت نشد")
+            raise HTTPException(status_code=404, detail="Task not found")
             
     except Exception as e:
         logger.error(f"Error deleting task {task_id}: {e}")
-        raise HTTPException(status_code=500, detail="خطا در حذف تسک")
+        raise HTTPException(status_code=500, detail="Error deleting task")
 
 @app.delete("/api/tasks/completed")
 async def clear_completed_tasks():
@@ -1702,13 +1749,13 @@ async def clear_completed_tasks():
         
         return {
             "success": True, 
-            "message": f"{len(completed_tasks)} تسک حذف شد",
+            "message": f"{len(completed_tasks)} Task deleted",
             "deleted_count": len(completed_tasks)
         }
         
     except Exception as e:
         logger.error(f"Error clearing completed tasks: {e}")
-        raise HTTPException(status_code=500, detail="خطا در حذف تسک‌ها")
+        raise HTTPException(status_code=500, detail="Error deleting task‌ها")
 
 @app.get("/api/config")
 async def get_config():
@@ -1751,7 +1798,7 @@ async def activate_license(request: dict):
         raise
     except Exception as e:
         logger.error(f"License activation error: {e}")
-        raise HTTPException(status_code=500, detail="خطا در فعال‌سازی لایسنس")
+        raise HTTPException(status_code=500, detail="Activation error لایسنس")
 
 @app.post("/api/license/generate")
 async def generate_license(request: dict):
@@ -1762,7 +1809,7 @@ async def generate_license(request: dict):
         
         # Simple admin verification
         if admin_key != "ADMIN-2024-PERSIAN-FILE":
-            raise HTTPException(status_code=403, detail="دسترسی غیرمجاز")
+            raise HTTPException(status_code=403, detail="Unauthorized access")
         
         new_key = license_manager.generate_license_key(license_type)
         
@@ -1777,7 +1824,7 @@ async def generate_license(request: dict):
         raise
     except Exception as e:
         logger.error(f"License generation error: {e}")
-        raise HTTPException(status_code=500, detail="خطا در تولید لایسنس")
+        raise HTTPException(status_code=500, detail="License generation error")
 
 @app.get("/api/settings")
 async def get_settings():
@@ -1824,7 +1871,7 @@ async def get_settings():
             
     except Exception as e:
         logger.error(f"Error getting settings: {e}")
-        raise HTTPException(status_code=500, detail="خطا در دریافت تنظیمات")
+        raise HTTPException(status_code=500, detail="Error getting settings")
 
 @app.post("/api/settings")
 async def update_settings(request: dict):
@@ -1838,9 +1885,9 @@ async def update_settings(request: dict):
                 if key == "scan_max_depth" and not (1 <= value <= 50):
                     raise HTTPException(status_code=400, detail="عمق اسکن باید بین 1 تا 50 باشد")
                 elif key == "scan_max_files" and not (1000 <= value <= 100000):
-                    raise HTTPException(status_code=400, detail="حداکثر فایل‌ها باید بین 1000 تا 100000 باشد")
+                    raise HTTPException(status_code=400, detail="Max files must be between 1000-100000")
                 elif key == "max_concurrent_tasks" and not (1 <= value <= 10):
-                    raise HTTPException(status_code=400, detail="حداکثر تسک‌های همزمان باید بین 1 تا 10 باشد")
+                    raise HTTPException(status_code=400, detail="Max concurrent tasks must be between 1-10")
                 
                 # Store as JSON for complex values
                 if isinstance(value, (dict, list)):
@@ -1864,7 +1911,7 @@ async def update_settings(request: dict):
         raise
     except Exception as e:
         logger.error(f"Error updating settings: {e}")
-        raise HTTPException(status_code=500, detail="خطا در به‌روزرسانی تنظیمات")
+        raise HTTPException(status_code=500, detail="Error updating settings")
 
 @app.post("/api/scan/directory")
 async def scan_directory(request: dict):
@@ -1877,7 +1924,7 @@ async def scan_directory(request: dict):
             raise HTTPException(status_code=400, detail="مسیر نامعتبر است")
         
         if not os.access(directory, os.R_OK):
-            raise HTTPException(status_code=403, detail="دسترسی خواندن به مسیر وجود ندارد")
+            raise HTTPException(status_code=403, detail="No read access to path")
         
         # Create scan settings
         scan_settings = ScanSettings(
@@ -1946,7 +1993,7 @@ async def scan_directory(request: dict):
         raise
     except Exception as e:
         logger.error(f"Error starting directory scan: {e}")
-        raise HTTPException(status_code=500, detail="خطا در شروع اسکن")
+        raise HTTPException(status_code=500, detail="Error starting scan")
 
 @app.post("/api/index/drive")
 async def index_drive(request: dict):
@@ -1974,7 +2021,7 @@ async def index_drive(request: dict):
             )
         except Exception as e:
             logger.error(f"Error getting drive info: {e}")
-            raise HTTPException(status_code=500, detail="خطا در دریافت اطلاعات درایو")
+            raise HTTPException(status_code=500, detail="Error getting drive info")
         
         # Start indexing in background
         task_id = str(uuid.uuid4())
@@ -2018,7 +2065,7 @@ async def index_drive(request: dict):
         raise
     except Exception as e:
         logger.error(f"Error starting drive indexing: {e}")
-        raise HTTPException(status_code=500, detail="خطا در شروع ایندکس")
+        raise HTTPException(status_code=500, detail="Error starting index")
 
 @app.get("/api/stats")
 async def get_stats():
@@ -2077,7 +2124,7 @@ async def get_stats():
             
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
-        raise HTTPException(status_code=500, detail="خطا در دریافت آمار")
+        raise HTTPException(status_code=500, detail="Error getting stats")
 
 @app.post("/api/maintenance/cleanup")
 async def cleanup_database():
@@ -2107,14 +2154,14 @@ async def cleanup_database():
             
             return {
                 "success": True,
-                "message": f"پاکسازی انجام شد: {deleted_tasks} تسک و {deleted_dirs} پوشه حذف شد",
+                "message": f"Cleanup completed: {deleted_tasks} tasks and {deleted_dirs} directories deleted",
                 "deleted_tasks": deleted_tasks,
                 "deleted_directories": deleted_dirs
             }
             
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
-        raise HTTPException(status_code=500, detail="خطا در پاکسازی")
+        raise HTTPException(status_code=500, detail="Cleanup error")
 
 # WebSocket endpoint
 @app.websocket("/ws")
@@ -2168,40 +2215,45 @@ async def monitor_task_progress():
     while True:
         try:
             # Get all active tasks
-            active_tasks = {}
-            for task_id, task in file_ops.tasks.items():
-                if task.status in ['running', 'preparing', 'paused']:
-                    # Get detailed progress info
-                    progress_data = {
-                        'task_id': task_id,
-                        'status': task.status,
-                        'progress': getattr(task, 'progress', 0),
-                        'speed': getattr(task, 'current_speed', 0),
-                        'eta': getattr(task, 'eta', 0),
-                        'copied_files': getattr(task, 'copied_files', 0),
-                        'total_files': getattr(task, 'total_files', 0),
-                        'current_file': getattr(task, 'current_file', ''),
-                        'source_files': task.source_files,
-                        'destination': task.destination
-                    }
-                    active_tasks[task_id] = progress_data
-                    
-                    # Broadcast individual progress update
-                    await manager.broadcast_json({
-                        'type': 'task_progress',
-                        'task_id': task_id,
-                        'progress_data': progress_data
-                    })
+            active_task_count = 0
+            
+            if hasattr(file_ops, 'tasks') and file_ops.tasks:
+                for task_id, task in file_ops.tasks.items():
+                    if hasattr(task, 'status') and task.status in ['running', 'preparing', 'paused']:
+                        active_task_count += 1
+                        
+                        # Get detailed progress info safely
+                        progress_data = {
+                            'task_id': task_id,
+                            'status': getattr(task, 'status', 'unknown'),
+                            'progress': getattr(task, 'progress', 0),
+                            'speed': getattr(task, 'current_speed', 0),
+                            'eta': getattr(task, 'eta', 0),
+                            'copied_files': getattr(task, 'copied_files', 0),
+                            'total_files': getattr(task, 'total_files', 0),
+                            'current_file': getattr(task, 'current_file', ''),
+                            'source_files': getattr(task, 'source_files', []),
+                            'destination': getattr(task, 'destination', '')
+                        }
+                        
+                        # Broadcast individual progress update
+                        await manager.broadcast_json({
+                            'type': 'task_progress',
+                            'task_id': task_id,
+                            'progress_data': progress_data
+                        })
+                        
+                        logger.debug(f"Task {task_id}: {progress_data['progress']:.1f}% - {progress_data['status']}")
             
             # If no active tasks, wait longer
-            if not active_tasks:
+            if active_task_count == 0:
                 await asyncio.sleep(5)
             else:
                 await asyncio.sleep(1)  # Update every second when tasks are active
                 
         except Exception as e:
-            logger.error(f"Error in task progress monitoring: {e}")
-            await asyncio.sleep(2)
+            logger.error(f"Task progress monitoring error: {e}")
+            await asyncio.sleep(3)
 
 if __name__ == "__main__":
     import uvicorn
