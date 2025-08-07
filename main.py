@@ -3,7 +3,7 @@ Persian File Copier Pro - Enhanced Backend
 🚀 Ultimate file management with advanced features
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
@@ -2162,6 +2162,60 @@ async def cleanup_database():
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
         raise HTTPException(status_code=500, detail="Cleanup error")
+
+@app.post("/api/upload")
+async def upload_files(files: List[UploadFile] = File(...), destination: str = Form(...)):
+    """Upload files to destination directory"""
+    try:
+        # Validate destination
+        if not destination or not os.path.exists(destination):
+            raise HTTPException(status_code=400, detail="Invalid destination path")
+        
+        if not os.access(destination, os.W_OK):
+            raise HTTPException(status_code=403, detail="No write access to destination")
+        
+        uploaded_files = []
+        total_size = 0
+        
+        for file in files:
+            if file.filename:
+                # Create safe filename
+                safe_filename = file.filename.replace("..", "_").replace("/", "_").replace("\\", "_")
+                file_path = os.path.join(destination, safe_filename)
+                
+                # Ensure unique filename
+                counter = 1
+                original_path = file_path
+                while os.path.exists(file_path):
+                    name, ext = os.path.splitext(original_path)
+                    file_path = f"{name}_{counter}{ext}"
+                    counter += 1
+                
+                # Save file
+                with open(file_path, "wb") as buffer:
+                    content = await file.read()
+                    buffer.write(content)
+                    total_size += len(content)
+                
+                uploaded_files.append({
+                    "filename": safe_filename,
+                    "path": file_path,
+                    "size": len(content)
+                })
+                
+                logger.info(f"Uploaded file: {safe_filename} -> {file_path}")
+        
+        return {
+            "success": True,
+            "message": f"Successfully uploaded {len(uploaded_files)} files",
+            "copied_files": len(uploaded_files),
+            "total_size": total_size,
+            "files": uploaded_files
+        }
+        
+    except Exception as e:
+        logger.error(f"Upload error: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 # WebSocket endpoint
 @app.websocket("/ws")
