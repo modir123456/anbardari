@@ -22,19 +22,31 @@ namespace PersianFileCopierPro.Controllers
         {
             try
             {
-                // Default to root search if no specific drive
-                string searchPath = "C:\\"; // Default for Windows
+                // Default to user desktop or root
+                string searchPath;
                 
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || 
-                    RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    searchPath = "/";
+                    // Try user desktop first, fallback to C:
+                    searchPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                    if (string.IsNullOrEmpty(searchPath) || !Directory.Exists(searchPath))
+                    {
+                        searchPath = "C:\\";
+                    }
+                }
+                else
+                {
+                    // Linux/macOS
+                    searchPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) ?? "/";
                 }
 
                 // If specific drive is selected, use that path
                 if (!string.IsNullOrWhiteSpace(request.Drive) && request.Drive != "all")
                 {
-                    searchPath = request.Drive;
+                    if (Directory.Exists(request.Drive))
+                    {
+                        searchPath = request.Drive;
+                    }
                 }
 
                 var files = await _fileService.GetFilesAsync(searchPath, request.Search, request.Type);

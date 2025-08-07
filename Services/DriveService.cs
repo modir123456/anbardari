@@ -90,13 +90,20 @@ namespace PersianFileCopierPro.Services
                 }
 
                 // Add special directories for easy access
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                try
                 {
-                    AddSpecialFolders(drives);
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        AddSpecialFolders(drives);
+                    }
+                    else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    {
+                        AddLinuxSpecialFolders(drives);
+                    }
                 }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                catch (Exception ex)
                 {
-                    AddLinuxSpecialFolders(drives);
+                    _logger.LogWarning($"⚠️ Could not add special folders: {ex.Message}");
                 }
 
                 _cachedDrives = drives.OrderBy(d => d.Path).ToList();
@@ -160,8 +167,7 @@ namespace PersianFileCopierPro.Services
                 (Environment.SpecialFolder.MyDocuments, "📄 اسناد"),
                 (Environment.SpecialFolder.MyPictures, "🖼️ تصاویر"),
                 (Environment.SpecialFolder.MyMusic, "🎵 موزیک"),
-                (Environment.SpecialFolder.MyVideos, "🎬 ویدیوها"),
-                (Environment.SpecialFolder.DesktopDirectory, "🗂️ پوشه دسکتاپ")
+                (Environment.SpecialFolder.MyVideos, "🎬 ویدیوها")
             };
 
             foreach (var (folder, name) in specialFolders)
@@ -171,22 +177,39 @@ namespace PersianFileCopierPro.Services
                     var path = Environment.GetFolderPath(folder);
                     if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
                     {
+                        // Get directory info for size calculation
+                        var dirInfo = new DirectoryInfo(path);
+                        long totalSize = 0;
+                        int fileCount = 0;
+                        
+                        try
+                        {
+                            var files = dirInfo.GetFiles("*", SearchOption.TopDirectoryOnly);
+                            totalSize = files.Sum(f => f.Length);
+                            fileCount = files.Length;
+                        }
+                        catch
+                        {
+                            // If can't access, just use 0
+                        }
+
                         drives.Add(new DriveModel
                         {
-                            Name = name,
+                            Name = $"{name} ({fileCount} فایل)",
                             Path = path,
                             DriveType = "Special",
                             FileSystem = "NTFS",
-                            TotalSize = 0,
+                            TotalSize = totalSize,
                             FreeSpace = 0,
                             IsReady = true,
                             Icon = name.Split(' ')[0]
                         });
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Ignore if special folder is not accessible
+                    // Log but continue
+                    Console.WriteLine($"Could not access special folder {folder}: {ex.Message}");
                 }
             }
         }

@@ -175,16 +175,23 @@ namespace PersianFileCopierPro.Services
             {
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    using var searcher = new ManagementObjectSearcher("SELECT UUID FROM Win32_ComputerSystemProduct");
-                    var collection = searcher.Get();
-                    
-                    foreach (ManagementObject obj in collection)
+                    try
                     {
-                        var uuid = obj["UUID"]?.ToString();
-                        if (!string.IsNullOrEmpty(uuid))
+                        using var searcher = new ManagementObjectSearcher("SELECT UUID FROM Win32_ComputerSystemProduct");
+                        var collection = searcher.Get();
+                        
+                        foreach (ManagementObject obj in collection)
                         {
-                            return await Task.FromResult(uuid);
+                            var uuid = obj["UUID"]?.ToString();
+                            if (!string.IsNullOrEmpty(uuid))
+                            {
+                                return await Task.FromResult(uuid);
+                            }
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"⚠️ WMI access failed: {ex.Message}");
                     }
                 }
             }
@@ -193,7 +200,9 @@ namespace PersianFileCopierPro.Services
                 // Fallback to machine name + hash
             }
 
-            return await Task.FromResult(ComputeHash(Environment.MachineName + Environment.UserName));
+            // Improved fallback using multiple system identifiers
+            var machineId = ComputeHash($"{Environment.MachineName}-{Environment.UserName}-{Environment.OSVersion}");
+            return await Task.FromResult(machineId);
         }
 
         private async Task<string> GetLinuxMachineIdAsync()
