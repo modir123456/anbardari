@@ -76,8 +76,8 @@ app = FastAPI(
     title=APP_NAME,
     description=f"{COMPANY_NAME} - {APP_EDITION}",
     version=APP_VERSION,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
 # CORS configuration
