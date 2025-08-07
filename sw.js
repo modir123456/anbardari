@@ -4,13 +4,12 @@
 const CACHE_NAME = 'pfc-pro-v3.5.0';
 const OFFLINE_URL = '/offline.html';
 
-// Files to cache for offline functionality
+// Files to cache for offline functionality - only essential files
 const CACHE_FILES = [
-    '/',
     '/index.html',
-    '/manifest.json',
-    '/sw.js',
-    // Add critical CSS and JS files here if they become separate files
+    '/manifest.json'
+    // Note: Service worker will cache itself automatically
+    // Removed root path '/' to avoid caching issues
 ];
 
 // Install event
@@ -68,7 +67,7 @@ self.addEventListener('fetch', (event) => {
     
     // Handle API requests differently
     if (event.request.url.includes('/api/')) {
-        // For API requests, always try network first
+        // For API requests, check if server is actually running first
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
@@ -76,12 +75,18 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 })
                 .catch((error) => {
-                    console.warn('[SW] API request failed, app likely offline:', error);
-                    // Return a custom offline response for API requests
+                    // Only log as error if it's a real network failure
+                    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                        console.debug('[SW] API server not responding, may be starting up:', error.message);
+                    } else {
+                        console.warn('[SW] API request failed:', error);
+                    }
+                    
+                    // Return a minimal error response
                     return new Response(
                         JSON.stringify({
-                            error: 'Network unavailable',
-                            message: 'برنامه آفلاین است',
+                            error: 'Server unavailable',
+                            message: 'سرور در دسترس نیست',
                             offline: true
                         }),
                         {
@@ -123,7 +128,13 @@ self.addEventListener('fetch', (event) => {
                         return response;
                     })
                     .catch((error) => {
-                        console.warn('[SW] Fetch failed:', error);
+                        // Don't log errors for favicon and common missing resources
+                        if (!event.request.url.includes('favicon.ico') && 
+                            !event.request.url.includes('.png') &&
+                            !event.request.url.includes('.jpg') &&
+                            !event.request.url.includes('.ico')) {
+                            console.warn('[SW] Fetch failed:', error.message);
+                        }
                         
                         // Return offline page for navigation requests
                         if (event.request.mode === 'navigate') {
@@ -132,7 +143,11 @@ self.addEventListener('fetch', (event) => {
                                    new Response('App is offline', { status: 503 });
                         }
                         
-                        throw error;
+                        // For other requests, return basic error response
+                        return new Response('Resource not available', {
+                            status: 404,
+                            headers: { 'Content-Type': 'text/plain' }
+                        });
                     });
             })
     );

@@ -728,16 +728,28 @@ class FileOperationsManager:
             # Validate source files
             valid_files = []
             total_size = 0
+            logger.info(f"Validating {len(source_files)} source files for copy task")
+            
             for file_path in source_files:
-                if os.path.exists(file_path) and os.access(file_path, os.R_OK):
-                    valid_files.append(file_path)
-                    if os.path.isfile(file_path):
-                        total_size += os.path.getsize(file_path)
+                logger.debug(f"Checking file: {file_path}")
+                if os.path.exists(file_path):
+                    if os.access(file_path, os.R_OK):
+                        valid_files.append(file_path)
+                        if os.path.isfile(file_path):
+                            file_size = os.path.getsize(file_path)
+                            total_size += file_size
+                            logger.debug(f"Valid file: {file_path} ({file_size} bytes)")
+                        else:
+                            logger.debug(f"Valid directory: {file_path}")
+                    else:
+                        logger.warning(f"File not readable: {file_path}")
                 else:
-                    logger.warning(f"File not accessible: {file_path}")
+                    logger.warning(f"File not found: {file_path}")
+            
+            logger.info(f"Found {len(valid_files)} valid files out of {len(source_files)} total")
             
             if not valid_files:
-                raise ValueError("No valid files found for copying")
+                raise ValueError(f"No valid files found for copying from {len(source_files)} source files")
             
             # Create destination directory if needed
             if options.get("create_destination", True):
