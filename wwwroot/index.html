@@ -262,17 +262,19 @@
 
         .drive-item {
             padding: 1rem;
-            background: rgba(255, 255, 255, 0.5);
             border-radius: 12px;
             margin-bottom: 0.8rem;
             cursor: pointer;
             transition: all var(--animation-speed) ease;
             border: 2px solid transparent;
+            position: relative;
+            backdrop-filter: blur(5px);
         }
 
         .drive-item:hover {
-            background: rgba(102, 126, 234, 0.1);
-            transform: translateX(-3px);
+            transform: translateX(-3px) translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
         }
 
         .drive-item.active {
@@ -292,6 +294,25 @@
             background: rgba(255, 152, 0, 0.15);
             transform: translateX(-3px) scale(0.98);
             transition: all 0.3s ease;
+        }
+
+        .user-folders-section, .drives-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .user-folders-section h4, .drives-section h4 {
+            margin: 0 0 1rem 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .drive-item.user-folder {
+            border-left: 4px solid rgba(0,0,0,0.2);
         }
 
         .drive-name {
@@ -441,6 +462,21 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .file-path-breadcrumb {
+            margin-bottom: 0.3rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        .path-text {
+            background: rgba(102, 126, 234, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
         }
 
         .file-details {
@@ -2586,7 +2622,38 @@
                 return;
             }
 
-            const drivesHtml = drives.map(drive => {
+            // Define color palette for drives
+            const driveColors = [
+                '#e3f2fd', '#f3e5f5', '#e8f5e8', '#fff3e0',
+                '#fce4ec', '#e1f5fe', '#f1f8e9', '#fff8e1',
+                '#ede7f6', '#e0f2f1', '#ffebee', '#f9fbe7'
+            ];
+
+            // User folders first
+            const userFolders = [
+                { path: 'Desktop', icon: '🖥️', name: 'دسکتاپ', color: driveColors[0] },
+                { path: 'Documents', icon: '📄', name: 'اسناد', color: driveColors[1] },
+                { path: 'Downloads', icon: '📥', name: 'دانلودها', color: driveColors[2] },
+                { path: 'Pictures', icon: '🖼️', name: 'تصاویر', color: driveColors[3] },
+                { path: 'Videos', icon: '🎬', name: 'ویدیوها', color: driveColors[4] },
+                { path: 'Music', icon: '🎵', name: 'موزیک', color: driveColors[5] }
+            ];
+
+            let html = '<div class="user-folders-section"><h4>🏠 پوشه‌های کاربر</h4>';
+            userFolders.forEach(folder => {
+                html += `
+                    <div class="drive-item user-folder" data-path="${folder.path}" style="background-color: ${folder.color};">
+                        <div class="drive-name">
+                            ${folder.icon} ${folder.name}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            html += '<div class="drives-section"><h4>💾 درایوها</h4>';
+            
+            const drivesHtml = drives.map((drive, index) => {
                 const usedPercent = drive.total_space > 0 ? 
                     ((drive.total_space - drive.free_space) / drive.total_space * 100).toFixed(1) : 0;
                 
@@ -2599,8 +2666,11 @@
                 const driveLetter = drive.path.replace(/[\\\/]+$/, '');
                 const displayName = drive.label ? `${driveLetter} (${drive.label})` : driveLetter;
                 
+                // Assign color to drive based on index
+                const driveColor = driveColors[index % driveColors.length];
+                
                 return `
-                    <div class="drive-item" data-path="${drive.path}" data-type="${drive.device_type}">
+                    <div class="drive-item" data-path="${drive.path}" data-type="${drive.device_type}" style="background-color: ${driveColor};">
                         <div class="drive-name">
                             ${driveIcon} ${displayName}
                             ${!drive.is_ready ? '<span style="color: orange;">⚠️</span>' : ''}
@@ -2617,8 +2687,10 @@
                     </div>
                 `;
             }).join('');
+            
+            html += drivesHtml + '</div>';
 
-            $('#drives-list').html(drivesHtml);
+            $('#drives-list').html(html);
         }
 
         // Update Drive Filter
@@ -2733,13 +2805,23 @@
                 return;
             }
 
-            const fileListHtml = files.map(file => `
+            const fileListHtml = files.map(file => {
+                // Create breadcrumb path
+                const pathParts = file.path.split(/[\\\/]/).filter(part => part);
+                const breadcrumbPath = pathParts.length > 3 
+                    ? `${pathParts[0]}\\...\\${pathParts.slice(-2).join('\\')}`
+                    : file.path;
+                
+                return `
                 <div class="file-item" data-path="${file.path}" data-size="${file.size}" data-type="${file.type || 'file'}"
                      draggable="true">
                     <input type="checkbox" class="file-checkbox" data-path="${file.path}">
                     <div class="file-icon">${file.icon || getFileIcon(file.extension, file.is_directory)}</div>
                     <div class="file-info">
                         <div class="file-name" title="${file.path}">${file.name}</div>
+                        <div class="file-path-breadcrumb" title="${file.path}">
+                            <span class="path-text">${breadcrumbPath}</span>
+                        </div>
                         <div class="file-details">
                             <span>${formatFileSize(file.size)}</span>
                             <span>${formatDate(file.modified)}</span>
@@ -2747,7 +2829,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
 
             $('#file-list').html(fileListHtml);
             updateSelectedFiles();
