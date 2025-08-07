@@ -32,6 +32,8 @@ namespace PersianFileCopierPro.Models
         public DateTime StartTime { get; set; } = DateTime.Now;
         public DateTime? EndTime { get; set; }
         public string? Error { get; set; }
+        
+        [JsonIgnore]
         public CancellationTokenSource CancellationTokenSource { get; set; } = new();
         public bool IsPaused { get; set; } = false;
     }
