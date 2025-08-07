@@ -4679,7 +4679,7 @@
                 const licenseInfo = await response.json();
                 
                 displayLicenseStatus(licenseInfo);
-                $('#machine-id').text(licenseInfo.machine_id || 'نامشخص');
+                $('#machine-id').text(licenseInfo.machineId || 'نامشخص');
                 
             } catch (error) {
                 console.error('Error loading license info:', error);
