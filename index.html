@@ -500,13 +500,13 @@
                 0 20px 40px rgba(0,0,0,0.1),
                 0 8px 16px rgba(0,0,0,0.06),
                 inset 0 1px 0 rgba(255,255,255,0.7);
-            max-height: 700px;
-            overflow: hidden;
             width: fit-content;
             min-width: 450px;
             max-width: 600px;
             border: 1px solid rgba(255,255,255,0.2);
             backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
         }
 
         .panel-header {
@@ -1515,12 +1515,14 @@
 
         /* Tasks List Container */
         #tasks-list {
-            max-height: 500px;
+            flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
             padding: 1.5rem;
             scrollbar-width: thin;
             scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+            min-height: 200px;
+            max-height: 70vh;
         }
 
         #tasks-list::-webkit-scrollbar {

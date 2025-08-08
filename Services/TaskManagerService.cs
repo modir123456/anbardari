@@ -258,13 +258,13 @@ namespace PersianFileCopierPro.Services
                     {
                         await _fileOperationService.CopyFileAsync(sourceFile, task.Destination, 
                             (progress) => UpdateTaskProgress(task, progress, stopwatch, ref lastCopiedSize),
-                            task.CancellationTokenSource.Token);
+                            task.CancellationTokenSource.Token, task);
                     }
                     else if (Directory.Exists(sourceFile))
                     {
                         await _fileOperationService.CopyDirectoryAsync(sourceFile, task.Destination, 
                             (progress) => UpdateTaskProgress(task, progress, stopwatch, ref lastCopiedSize),
-                            task.CancellationTokenSource.Token);
+                            task.CancellationTokenSource.Token, task);
                     }
                     else
                     {
