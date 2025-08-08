@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="app-title">Persian File Copier Pro</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png">
+    
     <!-- PWA Configuration -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#667eea">
@@ -223,13 +229,13 @@
 
         /* Main Layout */
         .main-container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 2rem;
+            max-width: 1600px;
+            margin: 1rem auto;
+            padding: 0 1rem;
             display: grid;
-            grid-template-columns: 300px 1fr 350px;
-            gap: 2rem;
-            min-height: calc(100vh - 200px);
+            grid-template-columns: 320px 1fr 400px;
+            gap: 1.5rem;
+            min-height: calc(100vh - 140px);
         }
 
         /* Drives Panel */
@@ -261,17 +267,19 @@
 
         .drive-item {
             padding: 1rem;
-            background: rgba(255, 255, 255, 0.5);
             border-radius: 12px;
             margin-bottom: 0.8rem;
             cursor: pointer;
             transition: all var(--animation-speed) ease;
             border: 2px solid transparent;
+            position: relative;
+            backdrop-filter: blur(5px);
         }
 
         .drive-item:hover {
-            background: rgba(102, 126, 234, 0.1);
-            transform: translateX(-3px);
+            transform: translateX(-3px) translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
         }
 
         .drive-item.active {
@@ -291,6 +299,25 @@
             background: rgba(255, 152, 0, 0.15);
             transform: translateX(-3px) scale(0.98);
             transition: all 0.3s ease;
+        }
+
+        .user-folders-section, .drives-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .user-folders-section h4, .drives-section h4 {
+            margin: 0 0 1rem 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .drive-item.user-folder {
+            border-left: 4px solid rgba(0,0,0,0.2);
         }
 
         .drive-name {
@@ -442,6 +469,21 @@
             text-overflow: ellipsis;
         }
 
+        .file-path-breadcrumb {
+            margin-bottom: 0.3rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        .path-text {
+            background: rgba(102, 126, 234, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
+
         .file-details {
             font-size: 0.8rem;
             color: var(--text-secondary);
@@ -449,26 +491,182 @@
             gap: 1rem;
         }
 
-        /* Tasks Panel */
+        /* Enhanced Tasks Panel */
         .tasks-panel {
-            background: var(--surface);
-            border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
-            max-height: 600px;
-            overflow-y: auto;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.95));
+            border-radius: 24px;
+            padding: 0;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.1),
+                0 8px 16px rgba(0,0,0,0.06),
+                inset 0 1px 0 rgba(255,255,255,0.7);
             width: fit-content;
-            min-width: 400px;
-            max-width: 100%;
+            min-width: 450px;
+            max-width: 600px;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 24px 24px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .panel-header h3 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .task-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(255,255,255,0.15);
+            padding: 0.5rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-separator {
+            width: 1px;
+            height: 30px;
+            background: rgba(255,255,255,0.3);
         }
 
         .task-item {
-            background: white;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.9));
+            border-radius: 20px;
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 1px solid rgba(255,255,255,0.4);
+            backdrop-filter: blur(10px);
+            min-height: 160px;
+        }
+
+        .task-wrapper {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-stats-bottom {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .task-stats-bottom .stat-item {
+            color: var(--text-secondary);
+            font-weight: 500;
+            background: rgba(0,0,0,0.05);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .task-main-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .task-paths {
+            flex: 1;
+            max-width: 60%;
+        }
+
+        .task-source-path, .task-dest-path {
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .path-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-left: 0.5rem;
+        }
+
+        .path-value {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            background: rgba(0,0,0,0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .task-progress-area {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+
+
+
+        .task-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .task-controls-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(0,0,0,0.05);
             border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transition: all var(--animation-speed) ease;
+            border: 1px solid rgba(0,0,0,0.08);
+            align-self: flex-start;
+            min-width: 50px;
+        }
+
+        .task-controls-sidebar .task-action-btn {
+            min-width: 44px;
+            height: 44px;
+            font-size: 18px;
+            margin: 0;
         }
 
         .task-item:hover {
@@ -945,53 +1143,124 @@
             gap: 0.2rem;
         }
 
-        .task-action-btn {
-            background: rgba(0, 0, 0, 0.05);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 0.2rem 0.4rem;
-            font-size: 0.8rem;
+        .task-control-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 16px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            min-width: 25px;
+            transition: all 0.3s ease;
+            min-width: 38px;
+            min-height: 38px;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .task-control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .task-control-btn:hover::before {
+            left: 100%;
+        }
+
+        .task-control-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        .task-control-btn:active {
+            transform: translateY(0);
+        }
+
+        .task-action-btn {
+            background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(240,240,240,0.9));
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 36px;
+            min-height: 36px;
             text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .task-action-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+            transition: left 0.4s ease;
+        }
+
+        .task-action-btn:hover::before {
+            left: 100%;
         }
 
         .task-action-btn:hover {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-            transform: translateY(-1px);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         }
         
         .task-action-btn.pause-btn:hover {
             background: #FF9800;
             border-color: #FF9800;
+            color: white;
         }
         
         .task-action-btn.resume-btn:hover {
             background: #4CAF50;
             border-color: #4CAF50;
+            color: white;
         }
         
         .task-action-btn.cancel-btn:hover {
             background: #f44336;
             border-color: #f44336;
+            color: white;
         }
         
         .task-action-btn.retry-btn:hover {
             background: #2196F3;
             border-color: #2196F3;
+            color: white;
         }
         
         .task-action-btn.remove-btn:hover {
             background: #9E9E9E;
             border-color: #9E9E9E;
+            color: white;
         }
         
         .task-action-btn.details-btn:hover {
             background: #673AB7;
             border-color: #673AB7;
+            color: white;
         }
 
         /* Responsive adjustments */
@@ -1075,21 +1344,54 @@
         }
 
         /* Responsive Design */
+        @media (max-width: 1400px) {
+            .main-container {
+                max-width: 1200px;
+                grid-template-columns: 280px 1fr 360px;
+            }
+        }
+
         @media (max-width: 1200px) {
             .main-container {
                 grid-template-columns: 250px 1fr 300px;
+                gap: 1rem;
+                margin: 0.5rem auto;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 0 0.5rem;
+            }
+            
+            .task-stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .task-actions {
+                justify-content: center;
             }
         }
 
         @media (max-width: 768px) {
-            .main-container {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-            
             .header-content {
                 flex-direction: column;
                 gap: 1rem;
+            }
+            
+            .task-controls {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .control-group {
+                justify-content: center;
+            }
+            
+            .task-stats-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1238,45 +1540,129 @@
             color: white;
         }
 
+        /* Tasks List Container */
+        #tasks-list {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 1.5rem;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+            min-height: 200px;
+            max-height: 70vh;
+        }
+
+        #tasks-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #tasks-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #tasks-list::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 3px;
+        }
+
+        #tasks-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.5);
+        }
+
+        #no-tasks-message {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-secondary);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            border-radius: 16px;
+            margin: 1rem;
+            border: 1px dashed rgba(102, 126, 234, 0.2);
+        }
+
+        #no-tasks-message div {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.6;
+        }
+
+        #no-tasks-message p {
+            font-size: 1.1rem;
+            margin: 0;
+            font-weight: 500;
+        }
+
         /* Task Management Styles */
         .task-list {
             max-height: 600px;
             overflow-y: auto;
+            overflow-x: hidden; /* Prevent horizontal overflow */
         }
         
         .task-item {
-            background: var(--surface);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-left: 4px solid var(--primary);
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.9));
+            border-radius: 20px;
+            padding: 0;
+            margin-bottom: 20px;
+            box-shadow: 
+                0 8px 32px rgba(0,0,0,0.08),
+                0 2px 8px rgba(0,0,0,0.04),
+                inset 0 1px 0 rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.4);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .task-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, 
+                var(--progress-color, #667eea) calc(var(--progress) * 1%), 
+                rgba(0,0,0,0.1) calc(var(--progress) * 1%));
             transition: all 0.3s ease;
         }
         
         .task-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 
+                0 16px 48px rgba(0,0,0,0.12),
+                0 8px 16px rgba(0,0,0,0.08);
+            border-color: rgba(255,255,255,0.6);
+        }
+
+        .task-content {
+            padding: 1.5rem;
         }
         
         .task-running {
-            border-left-color: #10b981;
+            --progress-color: #10b981;
         }
         
         .task-preparing {
-            border-left-color: #f59e0b;
+            --progress-color: #f59e0b;
         }
         
         .task-paused {
-            border-left-color: #f59e0b;
+            --progress-color: #f59e0b;
         }
         
         .task-completed {
-            border-left-color: #10b981;
+            --progress-color: #10b981;
         }
         
         .task-failed {
-            border-left-color: #ef4444;
+            --progress-color: #ef4444;
+        }
+
+        .task-cancelled {
+            --progress-color: #6b7280;
         }
 
         /* Enhanced Task Item Styles */
@@ -1284,57 +1670,85 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
+            gap: 16px;
+            min-width: 0; /* Allow content to shrink */
         }
 
         .task-info {
             flex: 1;
+            min-width: 0; /* Allow content to shrink */
+            overflow: hidden;
         }
 
         .task-title {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 5px;
+            gap: 10px;
+            margin-bottom: 8px;
+            min-width: 0; /* Allow text to shrink */
         }
 
         .task-icon {
-            font-size: 18px;
+            font-size: 20px;
+            flex-shrink: 0; /* Keep icon size fixed */
         }
 
         .file-name {
             font-weight: 600;
             font-size: 16px;
             color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0; /* Allow text to shrink */
         }
 
         .task-subtitle {
             font-size: 13px;
             color: var(--text-secondary);
             margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .task-status-container {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+        
+        .task-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
         }
 
         .task-progress-circle {
-            width: 50px;
-            height: 50px;
+            width: 56px;
+            height: 56px;
             border-radius: 50%;
-            background: conic-gradient(var(--primary) calc(var(--progress) * 3.6deg), #e5e7eb 0deg);
+            background: conic-gradient(var(--progress-color, #10b981) calc(var(--progress) * 3.6deg), rgba(0,0,0,0.1) 0deg);
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 2px solid rgba(255,255,255,0.8);
         }
 
         .task-progress-circle::before {
             content: '';
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: var(--surface);
             position: absolute;
@@ -1343,29 +1757,62 @@
         .progress-text {
             position: relative;
             z-index: 1;
-            font-weight: 600;
-            font-size: 11px;
+            font-weight: 700;
+            font-size: 12px;
             color: var(--text-primary);
         }
 
         .task-progress-bar-container {
-            margin-bottom: 15px;
+            margin-bottom: 16px;
         }
 
         .task-progress-bar {
             width: 100%;
-            height: 8px;
-            background: #e5e7eb;
-            border-radius: 4px;
+            height: 20px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
             overflow: hidden;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            position: relative;
+            border: 2px solid rgba(0,0,0,0.1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            border-radius: 4px;
-            transition: width 0.3s ease;
+            background: linear-gradient(90deg, var(--progress-color, #10b981), rgba(16, 185, 129, 0.9));
+            border-radius: 8px;
+            transition: width 0.5s ease;
+            position: relative;
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
+        }
+
+        .task-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            z-index: 10;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
 
         .size-info {
@@ -1376,9 +1823,67 @@
 
         .task-stats-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr auto;
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
             align-items: center;
+            margin-top: 8px;
+        }
+        
+        .task-details {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0,0,0,0.08);
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0,0,0,0.08);
+            flex-wrap: wrap;
+        }
+
+        .task-actions .task-action-btn {
+            min-width: 45px;
+            height: 40px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .task-action-btn.pause-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .task-action-btn.resume-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .task-action-btn.cancel-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .task-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .task-stats-grid .task-actions {
+            grid-column: 1 / -1; /* Take full width on new row */
+            justify-self: end;
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .stat-item {
@@ -1821,7 +2326,7 @@
     </header>
 
     <!-- Main Container -->
-    <div class="main-container">
+    <div class="main-container" style="margin-right: 100px; margin-left: 100px;">
         <!-- Drives Panel -->
         <div class="drives-panel">
             <div class="panel-header">
@@ -2577,7 +3082,38 @@
                 return;
             }
 
-            const drivesHtml = drives.map(drive => {
+            // Define color palette for drives
+            const driveColors = [
+                '#e3f2fd', '#f3e5f5', '#e8f5e8', '#fff3e0',
+                '#fce4ec', '#e1f5fe', '#f1f8e9', '#fff8e1',
+                '#ede7f6', '#e0f2f1', '#ffebee', '#f9fbe7'
+            ];
+
+            // User folders first
+            const userFolders = [
+                { path: 'Desktop', icon: '🖥️', name: 'دسکتاپ', color: driveColors[0] },
+                { path: 'Documents', icon: '📄', name: 'اسناد', color: driveColors[1] },
+                { path: 'Downloads', icon: '📥', name: 'دانلودها', color: driveColors[2] },
+                { path: 'Pictures', icon: '🖼️', name: 'تصاویر', color: driveColors[3] },
+                { path: 'Videos', icon: '🎬', name: 'ویدیوها', color: driveColors[4] },
+                { path: 'Music', icon: '🎵', name: 'موزیک', color: driveColors[5] }
+            ];
+
+            let html = '<div class="user-folders-section"><h4>🏠 پوشه‌های کاربر</h4>';
+            userFolders.forEach(folder => {
+                html += `
+                    <div class="drive-item user-folder" data-path="${folder.path}" style="background-color: ${folder.color};">
+                        <div class="drive-name">
+                            ${folder.icon} ${folder.name}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            html += '<div class="drives-section"><h4>💾 درایوها</h4>';
+            
+            const drivesHtml = drives.map((drive, index) => {
                 const usedPercent = drive.total_space > 0 ? 
                     ((drive.total_space - drive.free_space) / drive.total_space * 100).toFixed(1) : 0;
                 
@@ -2590,8 +3126,11 @@
                 const driveLetter = drive.path.replace(/[\\\/]+$/, '');
                 const displayName = drive.label ? `${driveLetter} (${drive.label})` : driveLetter;
                 
+                // Assign color to drive based on index
+                const driveColor = driveColors[index % driveColors.length];
+                
                 return `
-                    <div class="drive-item" data-path="${drive.path}" data-type="${drive.device_type}">
+                    <div class="drive-item" data-path="${drive.path}" data-type="${drive.device_type}" style="background-color: ${driveColor};">
                         <div class="drive-name">
                             ${driveIcon} ${displayName}
                             ${!drive.is_ready ? '<span style="color: orange;">⚠️</span>' : ''}
@@ -2608,8 +3147,10 @@
                     </div>
                 `;
             }).join('');
+            
+            html += drivesHtml + '</div>';
 
-            $('#drives-list').html(drivesHtml);
+            $('#drives-list').html(html);
         }
 
         // Update Drive Filter
@@ -2724,13 +3265,23 @@
                 return;
             }
 
-            const fileListHtml = files.map(file => `
+            const fileListHtml = files.map(file => {
+                // Create breadcrumb path
+                const pathParts = file.path.split(/[\\\/]/).filter(part => part);
+                const breadcrumbPath = pathParts.length > 3 
+                    ? `${pathParts[0]}\\...\\${pathParts.slice(-2).join('\\')}`
+                    : file.path;
+                
+                return `
                 <div class="file-item" data-path="${file.path}" data-size="${file.size}" data-type="${file.type || 'file'}"
                      draggable="true">
                     <input type="checkbox" class="file-checkbox" data-path="${file.path}">
                     <div class="file-icon">${file.icon || getFileIcon(file.extension, file.is_directory)}</div>
                     <div class="file-info">
                         <div class="file-name" title="${file.path}">${file.name}</div>
+                        <div class="file-path-breadcrumb" title="${file.path}">
+                            <span class="path-text">${breadcrumbPath}</span>
+                        </div>
                         <div class="file-details">
                             <span>${formatFileSize(file.size)}</span>
                             <span>${formatDate(file.modified)}</span>
@@ -2738,7 +3289,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
 
             $('#file-list').html(fileListHtml);
             updateSelectedFiles();
@@ -3002,7 +3554,7 @@
                                 // Add selection to clicked item
                                 this.classList.add('selected');
                                 this.style.borderColor = '#667eea';
-                                this.style.background = 'linear-gradient(135deg, #667eea15 0%, #764ba220 100%)';
+                                this.style.background = 'linear-gradient(135deg, rgba(126, 234, 21, 0.4) 0%, rgba(75, 162, 32, 0.46) 100%)';
                             });
                         });
                     }
@@ -3292,6 +3844,19 @@
             return false;
         }
 
+        // Helper function to convert numeric status to string
+        function getTaskStatusString(numericStatus) {
+            const statusMap = {
+                0: 'preparing',
+                1: 'running', 
+                2: 'paused',
+                3: 'completed',
+                4: 'failed',
+                5: 'cancelled'
+            };
+            return statusMap[numericStatus] || 'unknown';
+        }
+
         // Enhanced Load Tasks for Main Panel
         async function loadTasks() {
             try {
@@ -3313,8 +3878,14 @@
                 let hasActiveTasks = false;
                 
                 for (const [taskId, task] of Object.entries(data.tasks || {})) {
+                    // Convert numeric status to string for consistency
+                    const statusString = getTaskStatusString(task.status);
+                    task.statusString = statusString; // Add string version for later use
+                    
+                    console.log(`📝 Task ${taskId}: status=${task.status} (${statusString})`);
+                    
                     // Only show active tasks (running, preparing, paused)
-                    if (['running', 'preparing', 'paused'].includes(task.status)) {
+                    if (['running', 'preparing', 'paused'].includes(statusString)) {
                         const taskElement = createTaskElementForPanel(taskId, task);
                         tasksList.append(taskElement);
                         hasActiveTasks = true;
@@ -3326,13 +3897,13 @@
                     }
                     
                     // Count for statistics
-                    if (task.status === 'running' || task.status === 'preparing' || task.status === 'paused') {
+                    if (statusString === 'running' || statusString === 'preparing' || statusString === 'paused') {
                         activeCount++;
-                    } else if (task.status === 'completed') {
+                    } else if (statusString === 'completed') {
                         completedCount++;
                         // Auto-remove completed tasks after 3 seconds
                         setTimeout(() => removeCompletedTask(taskId), 3000);
-                    } else if (task.status === 'failed' || task.status === 'cancelled') {
+                    } else if (statusString === 'failed' || statusString === 'cancelled') {
                         failedCount++;
                     }
                 }
@@ -3373,8 +3944,9 @@
                         updateSingleTaskDisplay(taskId, taskData);
                         
                         // Stop polling if task is completed or failed
-                        if (['completed', 'failed', 'cancelled'].includes(taskData.status)) {
-                            console.log(`✅ Task ${taskId} finished with status: ${taskData.status}`);
+                        const statusString = getTaskStatusString(taskData.status);
+                        if (['completed', 'failed', 'cancelled'].includes(statusString)) {
+                            console.log(`✅ Task ${taskId} finished with status: ${taskData.status} (${statusString})`);
                             stopTaskPolling(taskId);
                         }
                     } else if (response.status === 404) {
@@ -3541,7 +4113,7 @@
                 const currentStatus = taskElement.attr('class').match(/\b(running|preparing|paused|completed|failed)\b/);
                 if (!currentStatus || currentStatus[1] !== status) {
                     const newButtons = getTaskActionButtons(taskElement.data('task-id'), status);
-                    taskElement.find('.task-actions').html(newButtons);
+                    taskElement.find('.task-controls-sidebar').html(newButtons);
                 }
             });
         }
@@ -3557,7 +4129,7 @@
         
         // Create Task Element for Main Panel (Enhanced View)
         function createTaskElementForPanel(taskId, task) {
-            const statusClass = task.status;
+            const statusClass = getTaskStatusClass(task.status);
             const progress = Math.round(task.progress || 0);
             const speed = formatFileSize(task.speed || 0) + '/s';
             const eta = formatTime(task.eta || 0);
@@ -3573,62 +4145,44 @@
             const currentFile = task.current_file || sourceFileName;
             
             const element = $(`
-                <div class="task-item ${statusClass}" data-task-id="${taskId}" style="--progress: ${progress}%">
-                    <div class="task-content">
-                        <div class="task-header">
-                            <div class="task-info">
-                                <div class="task-title">
-                                    <span class="task-icon">📄</span>
-                                    <span class="file-name">${currentFile}</span>
+                <div class="task-item ${statusClass}" data-task-id="${taskId}" style="--progress: ${progress}">
+                    <div class="task-wrapper">
+                        <div class="task-content">
+                            <!-- Main content - paths and progress in center -->
+                            <div class="task-main-row">
+                                <div class="task-paths">
+                                    <div class="task-source-path">
+                                        <span class="path-label">مبدا:</span>
+                                        <span class="path-value">${sourcePath}</span>
+                                    </div>
+                                    <div class="task-dest-path">
+                                        <span class="path-label">مقصد:</span>
+                                        <span class="path-value">${destPath}</span>
+                                    </div>
                                 </div>
-                                <div class="task-subtitle">
-                                    📁 ${task.source_device || 'مبدا'} → 📂 ${task.dest_device || 'مقصد'}
+                                <div class="task-progress-area">
+                                    <div class="task-progress-circle">
+                                        <span class="progress-text">${progress}%</span>
+                                    </div>
+                                    <div class="task-progress-bar">
+                                        <div class="progress-fill" style="width: ${progress}%"></div>
+                                        <div class="task-progress-text">${progress}%</div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="task-status-container">
-                                <div class="task-status ${statusClass}">
-                                    ${getTaskStatusText(task.status)}
-                                </div>
-                                <div class="task-progress-circle">
-                                    <span class="progress-text">${progress}%</span>
-                                </div>
+                            
+                            <!-- Stats at bottom -->
+                            <div class="task-stats-bottom">
+                                <span class="stat-item">📊 ${task.copied_files || 0}/${task.total_files || 0} فایل</span>
+                                <span class="stat-item">📦 ${copiedSize}/${totalSize}</span>
+                                <span class="stat-item">⚡ ${speed}</span>
+                                <span class="stat-item">⏱️ ${eta}</span>
                             </div>
                         </div>
                         
-                        <div class="task-progress-bar-container">
-                            <div class="task-progress-bar">
-                                <div class="progress-fill" style="width: ${progress}%"></div>
-                            </div>
-                            <div class="size-info">
-                                ${copiedSize} / ${totalSize}
-                            </div>
-                        </div>
-                        
-                        <div class="task-stats-grid">
-                            <div class="stat-item">
-                                <div class="stat-icon">📊</div>
-                                <div class="stat-info">
-                                    <div class="stat-value">${task.copied_files || 0} / ${task.total_files || 0}</div>
-                                    <div class="stat-label">فایل‌ها</div>
-                                </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-icon">⚡</div>
-                                <div class="stat-info">
-                                    <div class="stat-value">${speed}</div>
-                                    <div class="stat-label">سرعت</div>
-                                </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-icon">⏱️</div>
-                                <div class="stat-info">
-                                    <div class="stat-value">${eta}</div>
-                                    <div class="stat-label">زمان باقی</div>
-                                </div>
-                            </div>
-                            <div class="stat-item task-actions">
-                                ${getTaskActionButtons(taskId, task.status)}
-                            </div>
+                        <!-- Controls sidebar -->
+                        <div class="task-controls-sidebar">
+                            ${getTaskActionButtons(taskId, task.status)}
                         </div>
                     </div>
                 </div>
@@ -3691,6 +4245,8 @@
         }
         
         function getTaskStatusClass(status) {
+            // Convert numeric status to string if needed
+            const statusString = typeof status === 'number' ? getTaskStatusString(status) : status;
             const classes = {
                 'running': 'task-running',
                 'preparing': 'task-preparing',
@@ -3699,10 +4255,12 @@
                 'failed': 'task-failed',
                 'cancelled': 'task-cancelled'
             };
-            return classes[status] || 'task-unknown';
+            return classes[statusString] || 'task-unknown';
         }
         
         function getTaskStatusText(status) {
+            // Convert numeric status to string if needed
+            const statusString = typeof status === 'number' ? getTaskStatusString(status) : status;
             const texts = {
                 'running': 'در حال اجرا',
                 'preparing': 'در حال آماده‌سازی',
@@ -3711,7 +4269,7 @@
                 'failed': 'ناموفق',
                 'cancelled': 'لغو شده'
             };
-            return texts[status] || status;
+            return texts[statusString] || statusString;
         }
         
         function getTaskTypeTitle(type) {
@@ -3726,17 +4284,20 @@
         function getTaskActions(task) {
             let actions = '';
             
-            if (task.status === 'running') {
+            // Get status string (either from statusString property or convert numeric status)
+            const statusString = task.statusString || getTaskStatusString(task.status);
+            
+            if (statusString === 'running') {
                 actions += `<button class="btn btn-warning btn-sm" onclick="pauseTask('${task.task_id}')">⏸️ توقف</button> `;
-            } else if (task.status === 'paused') {
+            } else if (statusString === 'paused') {
                 actions += `<button class="btn btn-success btn-sm" onclick="resumeTask('${task.task_id}')">▶️ ادامه</button> `;
             }
             
-            if (['running', 'preparing', 'paused'].includes(task.status)) {
+            if (['running', 'preparing', 'paused'].includes(statusString)) {
                 actions += `<button class="btn btn-danger btn-sm" onclick="cancelTask('${task.task_id}')">❌ لغو</button> `;
             }
             
-            if (['completed', 'failed', 'cancelled'].includes(task.status)) {
+            if (['completed', 'failed', 'cancelled'].includes(statusString)) {
                 actions += `<button class="btn btn-danger btn-sm" onclick="deleteTask('${task.task_id}')">🗑️ حذف</button> `;
             }
             
@@ -4184,7 +4745,7 @@
                 const licenseInfo = await response.json();
                 
                 displayLicenseStatus(licenseInfo);
-                $('#machine-id').text(licenseInfo.machine_id || 'نامشخص');
+                $('#machine-id').text(licenseInfo.machineId || 'نامشخص');
                 
             } catch (error) {
                 console.error('Error loading license info:', error);
@@ -4198,26 +4759,34 @@
 
         function displayLicenseStatus(licenseInfo) {
             const statusDiv = $('#license-status');
-            let statusClass = licenseInfo.status;
+            let statusClass = licenseInfo.licenseType || 'Free';
             let statusText = '';
             let statusIcon = '';
             
-            switch (licenseInfo.status) {
-                case 'pro':
-                    statusIcon = '✅';
-                    statusText = 'نسخه حرفه‌ای فعال';
-                    break;
-                case 'trial':
-                    statusIcon = '⏳';
-                    statusText = `دوره آزمایشی (${licenseInfo.trial_days_left} روز باقیمانده)`;
-                    break;
-                case 'expired':
+            // Check if trial period or activated
+            const isExpired = licenseInfo.expiryDate && new Date(licenseInfo.expiryDate) < new Date();
+            const daysRemaining = licenseInfo.daysRemaining || 0;
+            
+            if (licenseInfo.isActivated) {
+                if (isExpired) {
                     statusIcon = '❌';
                     statusText = 'لایسنس منقضی شده';
-                    break;
-                default:
-                    statusIcon = '⚠️';
-                    statusText = 'وضعیت نامشخص';
+                    statusClass = 'expired';
+                } else if (statusClass.toLowerCase() === 'pro') {
+                    statusIcon = '✅';
+                    statusText = 'نسخه حرفه‌ای فعال';
+                } else {
+                    statusIcon = '✅';
+                    statusText = 'فعال';
+                }
+            } else if (licenseInfo.isTrial) {
+                statusIcon = '⏳';
+                statusText = `دوره آزمایشی (${daysRemaining} روز باقیمانده)`;
+                statusClass = 'trial';
+            } else {
+                statusIcon = '🆓';
+                statusText = 'نسخه رایگان';
+                statusClass = 'free';
             }
             
             let html = `
@@ -4586,22 +5155,22 @@
         function getTaskActionButtons(taskId, status) {
             let buttons = '';
             
-            if (status === 'running') {
+            // Convert numeric status to string if needed
+            const statusString = typeof status === 'number' ? getTaskStatusString(status) : status;
+            
+            if (statusString === 'running') {
                 buttons += `<button class="task-action-btn pause-btn" onclick="pauseTask('${taskId}')" title="توقف">⏸️</button>`;
                 buttons += `<button class="task-action-btn cancel-btn" onclick="cancelTask('${taskId}')" title="لغو">⏹️</button>`;
-                buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
-            } else if (status === 'paused') {
+            } else if (statusString === 'paused') {
                 buttons += `<button class="task-action-btn resume-btn" onclick="resumeTask('${taskId}')" title="ادامه">▶️</button>`;
                 buttons += `<button class="task-action-btn cancel-btn" onclick="cancelTask('${taskId}')" title="لغو">⏹️</button>`;
-                buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
-            } else if (status === 'preparing') {
+            } else if (statusString === 'preparing') {
                 buttons += `<button class="task-action-btn cancel-btn" onclick="cancelTask('${taskId}')" title="لغو">⏹️</button>`;
-                buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
-            } else if (status === 'completed') {
+            } else if (statusString === 'completed') {
                 buttons += `<button class="task-action-btn retry-btn" onclick="retryTask('${taskId}')" title="تکرار">🔄</button>`;
                 buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات">ℹ️</button>`;
                 buttons += `<button class="task-action-btn remove-btn" onclick="removeTask('${taskId}')" title="حذف">🗑️</button>`;
-            } else if (status === 'failed') {
+            } else if (statusString === 'failed') {
                 buttons += `<button class="task-action-btn retry-btn" onclick="retryTask('${taskId}')" title="تلاش مجدد">🔄</button>`;
                 buttons += `<button class="task-action-btn details-btn" onclick="showTaskDetails('${taskId}')" title="جزئیات خطا">ℹ️</button>`;
                 buttons += `<button class="task-action-btn remove-btn" onclick="removeTask('${taskId}')" title="حذف">🗑️</button>`;

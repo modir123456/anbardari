@@ -13,7 +13,7 @@ namespace PersianFileCopierPro.Services
             _logger = logger;
         }
 
-        public async Task CopyFileAsync(string sourcePath, string destinationPath, Action<long> progressCallback, CancellationToken cancellationToken)
+        public async Task CopyFileAsync(string sourcePath, string destinationPath, Action<long> progressCallback, CancellationToken cancellationToken, TaskModel? task = null)
         {
             try
             {
@@ -48,6 +48,12 @@ namespace PersianFileCopierPro.Services
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     
+                    // Wait if task is paused
+                    while (task?.IsPaused == true && !cancellationToken.IsCancellationRequested)
+                    {
+                        await Task.Delay(100, cancellationToken);
+                    }
+                    
                     await destStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
                     totalCopied += bytesRead;
                     
@@ -74,7 +80,7 @@ namespace PersianFileCopierPro.Services
             }
         }
 
-        public async Task CopyDirectoryAsync(string sourcePath, string destinationPath, Action<long>? progressCallback = null, CancellationToken cancellationToken = default)
+        public async Task CopyDirectoryAsync(string sourcePath, string destinationPath, Action<long>? progressCallback = null, CancellationToken cancellationToken = default, TaskModel? task = null)
         {
             try
             {
@@ -101,7 +107,7 @@ namespace PersianFileCopierPro.Services
                     cancellationToken.ThrowIfCancellationRequested();
                     
                     var destFilePath = Path.Combine(destinationPath, file.Name);
-                    await CopyFileAsync(file.FullName, destFilePath, progressCallback, cancellationToken);
+                    await CopyFileAsync(file.FullName, destFilePath, progressCallback, cancellationToken, task);
                 }
 
                 // Recursively copy subdirectories
@@ -110,7 +116,7 @@ namespace PersianFileCopierPro.Services
                     cancellationToken.ThrowIfCancellationRequested();
                     
                     var destSubDirPath = Path.Combine(destinationPath, subDir.Name);
-                    await CopyDirectoryAsync(subDir.FullName, destSubDirPath, progressCallback, cancellationToken);
+                    await CopyDirectoryAsync(subDir.FullName, destSubDirPath, progressCallback, cancellationToken, task);
                 }
 
                 _logger.LogDebug($"✅ Successfully copied directory {sourcePath} to {destinationPath}");
